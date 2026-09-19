@@ -1,0 +1,14 @@
+# Build output
+/bin/
+
+# IDE/editor
+.vscode/
+.idea/
+
+# Go
+*.test
+*.out
+coverage.out
+
+# macOS
+.DS_Store
