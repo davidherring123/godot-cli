@@ -18,8 +18,13 @@ run:
 test:
 	go test ./...
 
-fmt:
+format:
 	go fmt ./...
+
+vet:
+	go vet ./...
+
+check: format vet test
 
 clean:
 	rm -rf $(BIN_DIR)

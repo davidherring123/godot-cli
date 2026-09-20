@@ -3,19 +3,16 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"github.com/davidherring123/godot-cli/internal/project"
 )
 
 const VERSION = "dev"
+
+const USAGE_TEXT = "Usage: godot-cli <command>"
 
 const HELP_TEXT = `godot-cli — CLI tooling for Godot projects
 
 Usage:
   godot-cli <command> [options]
-
-Commands:
-  status        Show project and Godot information
 
 Options:
   -h, --help    Show help
@@ -23,18 +20,29 @@ Options:
 `
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: godot-cli <command>")
+	args, err := parseArgs(os.Args)
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 
-	switch os.Args[1] {
+	if len(args.Positionals) < 1 {
+		fmt.Println(USAGE_TEXT)
+		os.Exit(1)
+	}
+
+	switch args.Positionals[0] {
 	case "--version", "-v":
 		fmt.Printf("godot-cli %s\n", VERSION)
 	case "--help", "-h":
 		fmt.Printf(HELP_TEXT)
 	case "status":
 		runStatus()
+	case "scene":
+		runScene(args)
+	case "init":
+		runInit(args)
 
 	default:
 		fmt.Printf("Unkown command: %s\n", os.Args[1])
@@ -42,20 +50,4 @@ func main() {
 	}
 
 	os.Exit(0)
-}
-
-func runStatus() {
-	cwd, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	root, err := project.FindProjectRoot(cwd)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("Godot project:", root)
 }
