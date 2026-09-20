@@ -2,7 +2,6 @@ package addon
 
 import (
 	"embed"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -61,101 +60,6 @@ func Install(projectRoot string) error {
 		[]byte("managed by godot-cli\n"),
 		0644,
 	)
-}
-
-func IsEnabled(projectRoot string) bool {
-	projectFile := filepath.Join(projectRoot, "project.godot")
-
-	data, err := os.ReadFile(projectFile)
-	if err != nil {
-		return false
-	}
-
-	const pluginPath = `"res://addons/godot_cli/plugin.cfg"`
-
-	return strings.Contains(string(data), pluginPath)
-}
-
-func Enable(projectRoot string) error {
-	projectFile := filepath.Join(projectRoot, "project.godot")
-
-	data, err := os.ReadFile(projectFile)
-	if err != nil {
-		return err
-	}
-
-	content := string(data)
-
-	const pluginPath = "res://addons/godot_cli/plugin.cfg"
-	const pluginEntry = `"res://addons/godot_cli/plugin.cfg"`
-
-	if strings.Contains(content, pluginPath) {
-		return nil
-	}
-
-	const sectionName = "[editor_plugins]"
-
-	sectionStart := strings.Index(content, sectionName)
-
-	if sectionStart == -1 {
-		content += fmt.Sprintf(
-			"\n%s\n\nenabled=PackedStringArray(%s)\n",
-			sectionName,
-			pluginEntry,
-		)
-
-		return os.WriteFile(projectFile, []byte(content), 0644)
-	}
-
-	sectionBodyStart := sectionStart + len(sectionName)
-	sectionEnd := len(content)
-
-	if nextSection := strings.Index(content[sectionBodyStart:], "\n["); nextSection != -1 {
-		sectionEnd = sectionBodyStart + nextSection
-	}
-
-	section := content[sectionStart:sectionEnd]
-
-	const enabledPrefix = "enabled=PackedStringArray("
-
-	enabledOffset := strings.Index(section, enabledPrefix)
-
-	if enabledOffset == -1 {
-		insertAt := sectionBodyStart
-
-		content =
-			content[:insertAt] +
-				fmt.Sprintf("\n\nenabled=PackedStringArray(%s)", pluginEntry) +
-				content[insertAt:]
-
-		return os.WriteFile(projectFile, []byte(content), 0644)
-	}
-
-	enabledStart := sectionStart + enabledOffset
-	arrayStart := enabledStart + len(enabledPrefix)
-
-	arrayEndOffset := strings.Index(content[arrayStart:], ")")
-	if arrayEndOffset == -1 {
-		return fmt.Errorf("invalid editor_plugins enabled setting")
-	}
-
-	arrayEnd := arrayStart + arrayEndOffset
-
-	existing := strings.TrimSpace(content[arrayStart:arrayEnd])
-
-	if existing == "" {
-		content =
-			content[:arrayStart] +
-				pluginEntry +
-				content[arrayEnd:]
-	} else {
-		content =
-			content[:arrayEnd] +
-				", " + pluginEntry +
-				content[arrayEnd:]
-	}
-
-	return os.WriteFile(projectFile, []byte(content), 0644)
 }
 
 func Path(projectRoot string) string {
