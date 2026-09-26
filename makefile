@@ -3,7 +3,7 @@ CMD := ./cmd/godot-cli
 BIN_DIR := ./bin
 INSTALL_DIR := $(HOME)/.local/bin
 
-.PHONY: build install run test clean fmt
+.PHONY: build install run format format-check vet test check clean
 
 build:
 	mkdir -p $(BIN_DIR)
