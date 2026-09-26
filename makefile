@@ -3,7 +3,7 @@ CMD := ./cmd/godot-cli
 BIN_DIR := ./bin
 INSTALL_DIR := $(HOME)/.local/bin
 
-.PHONY: build install run test clean fmt
+.PHONY: build install run format format-check vet test check clean
 
 build:
 	mkdir -p $(BIN_DIR)
@@ -15,16 +15,20 @@ install:
 run:
 	go run $(CMD)
 
-test:
-	go test ./...
-
 format:
 	go fmt ./...
+
+format-check:
+	@test -z "$$(gofmt -l .)" || \
+		(echo "Files need formatting:" && gofmt -l . && exit 1)
 
 vet:
 	go vet ./...
 
-check: format vet test
+test:
+	go test ./...
+
+check: format-check vet test
 
 clean:
 	rm -rf $(BIN_DIR)

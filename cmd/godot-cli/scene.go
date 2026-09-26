@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/davidherring123/godot-cli/internal/bridge"
 	"github.com/davidherring123/godot-cli/internal/project"
 	"github.com/davidherring123/godot-cli/internal/scene"
 )
@@ -19,15 +20,17 @@ func runScene(args ParsedArgs) {
 	}
 
 	switch args.Positionals[1] {
+	case "tree":
+		runSceneTree(args)
 	case "list":
-		runSceneList(args.Flags)
+		runSceneList(args)
 	default:
 		fmt.Printf("Unkown scene command: %s\n", args.Positionals[1])
 		os.Exit(1)
 	}
 }
 
-func runSceneList(flags Flags) {
+func runSceneList(args ParsedArgs) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -46,14 +49,44 @@ func runSceneList(flags Flags) {
 		os.Exit(1)
 	}
 
-	if flags.JSON {
-		printJSON(SceneListOutput{
-			Scenes: scenes,
-		})
-		return
+	printJSON(SceneListOutput{
+		Scenes: scenes,
+	})
+}
+
+func runSceneTree(args ParsedArgs) {
+	if len(args.Positionals) < 3 {
+		fmt.Fprintln(os.Stderr, "Usage: godot-cli scene tree <scene>")
+		os.Exit(1)
 	}
 
-	for _, scenePath := range scenes {
-		fmt.Println(scenePath)
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
 	}
+
+	root, err := project.FindProjectRoot(cwd)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+
+	client, err := bridge.Connect(root)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+	defer client.Close()
+
+	tree, err := scene.Tree(
+		client,
+		args.Positionals[2],
+	)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+
+	printJSON(tree)
 }

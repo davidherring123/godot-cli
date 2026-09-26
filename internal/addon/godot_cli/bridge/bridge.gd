@@ -7,7 +7,11 @@ const END_PORT := 49252
 
 var server := TCPServer.new()
 var clients: Array[Dictionary] = []
+var request_handler: RequestHandler
 
+
+func _init(request_handler: RequestHandler) -> void:
+    self.request_handler = request_handler
 
 func start() -> Error:
     for port in range(START_PORT, END_PORT + 1):
@@ -83,31 +87,24 @@ func _poll_client(index: int) -> void:
     clients[index] = client
 
 func _handle_request(peer: StreamPeerTCP, line: String) -> void:
-    var request = JSON.parse_string(line)
+    var json_request = JSON.parse_string(line)
 
-    if not request is Dictionary:
-        _send(peer, {
-            "ok": false,
-            "error": "invalid request"
-        })
+    if not json_request is Dictionary:
+        _send(peer, Response.failure("invalid_request", "Request must be a JSON object"))    
+
+    var request := Request.from_dict(json_request)
+
+    var response = request_handler.handle(request)
+
+    if not response is Response:
+        _send(peer, Response.failure("internal_error", "Command returned an invalid response"))
         return
-    
-    match request.get("command", ""):
-        "ping":
-            _send(peer, {
-                "ok": true,
-                "result": "pong"
-            })
-        
-        _:
-            _send(peer, {
-                "ok": false,
-                "error": "unknown command"
-            })
+
+    _send(peer, response)
         
     
-func _send(peer: StreamPeerTCP, response: Dictionary) -> void:
-    var data := (JSON.stringify(response) + "\n").to_utf8_buffer()
+func _send(peer: StreamPeerTCP, response: Response) -> void:
+    var data := (response.to_json() + "\n").to_utf8_buffer()
 
     var error := peer.put_data(data)
 
