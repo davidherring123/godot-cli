@@ -15,16 +15,20 @@ install:
 run:
 	go run $(CMD)
 
-test:
-	go test ./...
-
 format:
 	go fmt ./...
+
+format-check:
+	@test -z "$$(gofmt -l .)" || \
+		(echo "Files need formatting:" && gofmt -l . && exit 1)
 
 vet:
 	go vet ./...
 
-check: format vet test
+test:
+	go test ./...
+
+check: format-check vet test
 
 clean:
 	rm -rf $(BIN_DIR)

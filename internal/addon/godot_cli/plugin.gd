@@ -3,11 +3,13 @@ extends EditorPlugin
 
 const INSTANCES_DIR := "res://.godot/godot-cli/instances"
 
+var request_handler: RequestHandler
 var bridge: Bridge
 var instance_path := ""
 
 func _enter_tree() -> void:
-    bridge = Bridge.new()
+    request_handler = RequestHandler.new(get_editor_interface())
+    bridge = Bridge.new(request_handler)
 
     var error := bridge.start()
 
@@ -51,6 +53,8 @@ func _register_instance(port: int) -> void:
         push_error("godot-cli: failed to create instances directory")
         return
     
+    _vc_ignore_instance(instances_dir)
+    
     var pid := OS.get_process_id()
 
     instance_path = "%s/%d.json" % [instances_dir, pid]
@@ -69,3 +73,14 @@ func _register_instance(port: int) -> void:
     }
 
     file.store_string(JSON.stringify(data, "\t"))
+
+func _vc_ignore_instance(instances_dir: String) -> void:
+    var ignore_path := instances_dir.path_join(".gitignore")
+
+    if FileAccess.file_exists(ignore_path):
+        return
+    
+    var file := FileAccess.open(ignore_path, FileAccess.WRITE)
+
+    if file != null:
+        file.store_string("*.json\n")
