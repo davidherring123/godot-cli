@@ -41,6 +41,8 @@ func main() {
 		runStatus()
 	case "scene":
 		runScene(args)
+	case "node":
+		runNode(args)
 	case "init":
 		runInit(args)
 

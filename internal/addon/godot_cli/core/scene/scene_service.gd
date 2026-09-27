@@ -1,11 +1,6 @@
 class_name SceneService
 extends CommandService
 
-var editor_interface: EditorInterface
-
-
-func _init(editor_interface: EditorInterface) -> void:
-    self.editor_interface = editor_interface
 
 func get_commands() -> Dictionary:
     return {
