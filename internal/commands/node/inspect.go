@@ -11,7 +11,21 @@ import (
 type Property struct {
 	Name  string          `json:"name"`
 	Type  string          `json:"type"`
+	Hint  *PropertyHint   `json:"hint,omitempty"`
 	Value json.RawMessage `json:"value"`
+}
+
+type PropertyHint struct {
+	Type     string   `json:"type"`
+	Options  []string `json:"options,omitempty"`
+	Types    []string `json:"types,omitempty"`
+	Value    string   `json:"value,omitempty"`
+	Selected []Layer  `json:"selected,omitempty"`
+}
+
+type Layer struct {
+	Index int    `json:"index"`
+	Name  string `json:"name"`
 }
 
 type InspectResult struct {
