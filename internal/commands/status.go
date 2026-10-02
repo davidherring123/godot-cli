@@ -1,9 +1,8 @@
-package project
+package commands
 
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/commands"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +19,7 @@ func runStatus(
 	cmd *cobra.Command,
 	args []string,
 ) error {
-	context, err := commands.FetchProjectContext()
+	context, err := FetchProjectContext()
 	if err != nil {
 		return err
 	}

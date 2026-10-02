@@ -6,7 +6,6 @@ import (
 
 	"github.com/davidherring123/godot-cli/internal/commands"
 	"github.com/davidherring123/godot-cli/internal/commands/node"
-	"github.com/davidherring123/godot-cli/internal/commands/project"
 	"github.com/davidherring123/godot-cli/internal/commands/scene"
 )
 
@@ -16,8 +15,8 @@ func main() {
 	root := commands.NewRootCommand(VERSION)
 
 	root.AddCommand(
-		project.NewInitCommand(),
-		project.NewStatusCommand(),
+		commands.NewInitCommand(),
+		commands.NewStatusCommand(),
 		scene.NewCommand(),
 		node.NewCommand(),
 	)

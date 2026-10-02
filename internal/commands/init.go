@@ -1,28 +1,37 @@
-package project
+package commands
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/davidherring123/godot-cli/internal/addon"
-	"github.com/davidherring123/godot-cli/internal/commands"
 	"github.com/spf13/cobra"
 )
 
 func NewInitCommand() *cobra.Command {
-	return &cobra.Command{
+	var agents []string
+	
+	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Install godot-cli into the current project",
 		Args:  cobra.NoArgs,
 		RunE:  runInit,
 	}
+
+	cmd.Flags().StringSliceVar(
+		&agents,
+		"agent",
+		nil,
+		"Install skills for an AI agent (codex, opencode)",
+	)
+
+	return cmd
 }
 
 func runInit(
 	cmd *cobra.Command,
-	args []string,
+	agents []string,
 ) error {
-	context, err := commands.FetchProjectContext()
+	context, err := FetchProjectContext()
 	if err != nil {
 		return err
 	}
@@ -31,23 +40,6 @@ func runInit(
 		fmt.Println(
 			"Godot CLI is already installed in this project.",
 		)
-		return nil
-	}
-
-	projectName := filepath.Base(context.Root)
-
-	confirmed, err := commands.Confirm(
-		fmt.Sprintf(
-			"Install Godot CLI addon into %s (%s)?",
-			projectName,
-			context.Root,
-		),
-	)
-	if err != nil {
-		return err
-	}
-
-	if !confirmed {
 		return nil
 	}
 
@@ -63,6 +55,11 @@ func runInit(
 			"Enable the addon in Godot:\n" +
 			"Project → Project Settings → Plugins → Godot CLI",
 	)
+
+
+	for _, agent := range agents {
+		if err := agent.Install
+	}
 
 	return nil
 }
