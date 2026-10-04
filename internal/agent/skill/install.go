@@ -31,7 +31,7 @@ func Install(projectRoot string, root *cobra.Command) (string, error) {
 	}
 
 	files["SKILL.md"] = []byte(skillTemplate)
-	
+
 	skillDir := filepath.Join(projectRoot, ".agents", "skills", "godot-cli")
 	paths := make([]string, 0, len(files))
 	for path := range files {
