@@ -4,22 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/davidherring123/godot-cli/internal/commands"
-	"github.com/davidherring123/godot-cli/internal/commands/node"
-	"github.com/davidherring123/godot-cli/internal/commands/scene"
+	"github.com/davidherring123/godot-cli/internal/cli"
 )
 
 const VERSION = "dev"
 
 func main() {
-	root := commands.NewRootCommand(VERSION)
-
-	root.AddCommand(
-		commands.NewInitCommand(),
-		commands.NewStatusCommand(),
-		scene.NewCommand(),
-		node.NewCommand(),
-	)
+	root := cli.NewRootCommand(VERSION)
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)

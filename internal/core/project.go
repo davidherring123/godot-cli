@@ -1,35 +1,13 @@
-package commands
+package core
 
 import (
 	"errors"
 	"os"
 	"path/filepath"
-
-	"github.com/davidherring123/godot-cli/internal/bridge"
 )
 
-type ProjectContext struct {
+type Project struct {
 	Root string
-}
-
-func FetchProjectContext() (*ProjectContext, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	root, err := FindProjectRoot(cwd)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ProjectContext{
-		Root: root,
-	}, nil
-}
-
-func (context *ProjectContext) ConnectEditor() (*bridge.Client, error) {
-	return bridge.Connect(context.Root)
 }
 
 func FindProjectRoot(start string) (string, error) {

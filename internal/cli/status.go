@@ -1,4 +1,4 @@
-package commands
+package cli
 
 import (
 	"fmt"
@@ -8,10 +8,12 @@ import (
 
 func NewStatusCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "status",
-		Short: "Show Godot project status",
-		Args:  cobra.NoArgs,
-		RunE:  runStatus,
+		Use:     "status",
+		Short:   "Show Godot project status",
+		Long:    "Print the discovered Godot project root as text. Does not check whether the editor or addon is running.",
+		Example: "godot-cli status",
+		Args:    cobra.NoArgs,
+		RunE:    runStatus,
 	}
 }
 

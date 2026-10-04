@@ -1,10 +1,10 @@
-package commands
+package cli
 
 import (
 	"fmt"
 
 	"github.com/davidherring123/godot-cli/internal/addon"
-	"github.com/davidherring123/godot-cli/internal/agent"
+	"github.com/davidherring123/godot-cli/internal/agent/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -12,9 +12,11 @@ func NewInitCommand() *cobra.Command {
 	var agents []string
 
 	cmd := &cobra.Command{
-		Use:   "init",
-		Short: "Install godot-cli into the current project",
-		Args:  cobra.NoArgs,
+		Use:     "init",
+		Short:   "Install godot-cli into the current project",
+		Long:    "Install the Godot addon. With --agent, also install or refresh the portable skill and command reference. Prints setup instructions as text.",
+		Example: "godot-cli init\ngodot-cli init --agent codex,opencode",
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runInit(cmd, agents)
 		},
@@ -34,7 +36,7 @@ func runInit(
 	cmd *cobra.Command,
 	agents []string,
 ) error {
-	if err := agent.ValidateNames(agents); err != nil {
+	if err := skill.ValidateNames(agents); err != nil {
 		return err
 	}
 
@@ -80,7 +82,7 @@ func installSkill(cmd *cobra.Command, projectRoot string, agents []string) error
 		return nil
 	}
 
-	path, err := agent.Install(projectRoot)
+	path, err := skill.Install(projectRoot, cmd.Root())
 	if err != nil {
 		return fmt.Errorf("installing skill: %w", err)
 	}
