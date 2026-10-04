@@ -1,86 +1,35 @@
 package agent
 
 import (
-	"bytes"
 	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
-	"text/template"
-
-	"github.com/spf13/cobra"
 )
 
 //go:embed skill_template.md
 var skillTemplate string
 
-type skillTemplateData struct {
-	Commands string
+func ValidateNames(targets []string) error {
+	for _, target := range targets {
+		switch target {
+		case "codex", "opencode":
+		default:
+			return fmt.Errorf("unsupported/unknown agent %q (supported: codex, opencode)", target)
+		}
+	}
+	return nil
 }
 
-func Install(
-	projectRoot string,
-	target string,
-	root *cobra.Command,
-) (string, error) {
-	skillDir, err := fetchSkillDirectory(projectRoot, target)
-	if err != nil {
-		return "", err
-	}
-
+func Install(projectRoot string) (string, error) {
+	skillDir := filepath.Join(projectRoot, ".agents", "skills", "godot-cli")
 	if err := os.MkdirAll(skillDir, 0755); err != nil {
 		return "", err
 	}
 
-	content, err := renderSkill(root)
-	if err != nil {
+	path := filepath.Join(skillDir, "SKILL.md")
+	if err := os.WriteFile(path, []byte(skillTemplate), 0644); err != nil {
 		return "", err
 	}
-
-	path := filepath.Join(skillDir, "skill.md")
-
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		return "", err
-	}
-
 	return path, nil
-}
-
-func renderSkill(root *cobra.Command) (string, error) {
-	tmpl, err := template.New("skill").Parse(skillTemplate)
-	if err != nil {
-		return "", err
-	}
-
-	data := skillTemplateData{
-		Commands: renderCommmands(root),
-	}
-
-	var output bytes.Buffer
-
-	if err := tmpl.Execute(&output, data); err != nil {
-		return "", err
-	}
-
-	return output.String(), nil
-}
-
-// func renderCommands(root *)
-
-// TODO: Make more graceful default case.
-func fetchSkillDirectory(projectRoot string, target string) (string, error) {
-	switch target {
-	case "codex":
-		return filepath.Join(
-			projectRoot,
-			".codex",
-			"skills",
-			"godot-cli",
-		), nil
-	default:
-		return "", fmt.Errorf(
-			"unsupported agent %q",
-			target,
-		)
-	}
 }
