@@ -3,6 +3,9 @@ extends RefCounted
 
 
 static func serialize(value: Variant) -> Variant:
+    if value == null:
+        return null
+    
     match typeof(value):
         TYPE_STRING_NAME:
             return str(value)

@@ -84,10 +84,24 @@ func _get_properties(node: Node) -> Array[Dictionary]:
         var property_name: String = property.get("name", "")
         var value = node.get(property_name)
 
-        properties.append({
+        var property_hint: int = property.get("hint", PROPERTY_HINT_NONE)
+        var hint_string: String = property.get("hint_string", "")
+        
+        var serialized_hint := PropertyHintSerializer.serialize(
+            property_hint,
+            hint_string,
+            value
+        )
+        
+        var serialized_property := {
             "name": property_name,
             "type": type_string(property_type),
             "value": VariantSerializer.serialize(value)
-        })
+        }
+
+        if serialized_hint != null:
+            serialized_property["hint"] = serialized_hint
+
+        properties.append(serialized_property)
 
     return properties

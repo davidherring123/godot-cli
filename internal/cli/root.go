@@ -1,4 +1,4 @@
-package commands
+package cli
 
 import "github.com/spf13/cobra"
 
@@ -12,6 +12,12 @@ func NewRootCommand(version string) *cobra.Command {
 	}
 
 	cmd.SetVersionTemplate("godot-cli {{.Version}}\n")
+	cmd.AddCommand(
+		NewInitCommand(),
+		NewStatusCommand(),
+		NewSceneCommand(),
+		NewNodeCommand(),
+	)
 
 	return cmd
 }
