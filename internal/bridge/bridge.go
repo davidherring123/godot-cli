@@ -27,14 +27,14 @@ type Client struct {
 }
 
 type Request[P any] struct {
-	Command string `json:"command"`
-	Params  P      `json:"params"`
+	Action string `json:"action"`
+	Params P      `json:"params"`
 }
 
 type Response[R any] struct {
-	Result  R      `json:"result,omitempty"`
-	Code    string `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
+	Result  R         `json:"result,omitempty"`
+	Code    ErrorCode `json:"code,omitempty"`
+	Message string    `json:"message,omitempty"`
 }
 
 func Success[R any](result R) Response[R] {
@@ -43,7 +43,7 @@ func Success[R any](result R) Response[R] {
 	}
 }
 
-func Failure[R any](code string, message string) Response[R] {
+func Failure[R any](code ErrorCode, message string) Response[R] {
 	return Response[R]{
 		Code:    code,
 		Message: message,
@@ -82,14 +82,14 @@ func (c *Client) Close() error {
 
 func Call[P any, R any](
 	client *Client,
-	command string,
+	action string,
 	params P,
 ) (R, error) {
 	var emptyResult R
 
 	request := Request[P]{
-		Command: command,
-		Params:  params,
+		Action: action,
+		Params: params,
 	}
 
 	if err := client.encoder.Encode(request); err != nil {
@@ -109,11 +109,10 @@ func Call[P any, R any](
 	}
 
 	if response.Code != "" {
-		return emptyResult, fmt.Errorf(
-			"%s: %s",
-			response.Code,
-			response.Message,
-		)
+		return emptyResult, &APIError{
+			Code:    response.Code,
+			Message: response.Message,
+		}
 	}
 
 	return response.Result, nil

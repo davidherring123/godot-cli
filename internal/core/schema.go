@@ -27,13 +27,17 @@ func define[P, R any](name, description string) ActionDefinition {
 }
 
 var (
-	SceneList   = define[scene.ListParams, scene.ListResult](scene.ListName, "List scenes in the project")
-	SceneTree   = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show a scene's node tree")
-	NodeInspect = define[node.InspectParams, node.InspectResult](node.InspectName, "Inspect a node and its properties")
+	SceneList    = define[scene.ListParams, scene.ListResult](scene.ListName, "List scenes in the project")
+	SceneCurrent = define[scene.CurrentParams, scene.CurrentResult](scene.CurrentName, "Show the active editor scene")
+	SceneOpen    = define[scene.OpenParams, scene.OpenResult](scene.OpenName, "Open or activate an editor scene")
+	SceneSave    = define[scene.SaveParams, scene.SaveResult](scene.SaveName, "Save the active editor scene")
+	SceneTree    = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show the active editor scene's node tree")
+	NodeInspect  = define[node.InspectParams, node.InspectResult](node.InspectName, "Inspect a node in the active editor scene")
+	NodeSet      = define[node.SetParams, node.SetResult](node.SetName, "Set node properties as one undoable editor action")
 )
 
 func All() []ActionDefinition {
-	return []ActionDefinition{SceneList, SceneTree, NodeInspect}
+	return []ActionDefinition{SceneList, SceneCurrent, SceneOpen, SceneSave, SceneTree, NodeInspect, NodeSet}
 }
 
 func Lookup(name string) (ActionDefinition, bool) {

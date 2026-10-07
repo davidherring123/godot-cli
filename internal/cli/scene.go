@@ -19,7 +19,10 @@ func NewSceneCommand() *cobra.Command {
 
 	cmd.AddCommand(
 		newSceneListCommand(),
+		newSceneCurrentCommand(),
+		newSceneOpenCommand(),
 		newSceneTreeCommand(),
+		newSceneSaveCommand(),
 	)
 
 	return cmd
@@ -50,25 +53,104 @@ func runSceneList(cmd *cobra.Command, args []string) error {
 }
 
 func newSceneTreeCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:         "tree <scene>",
+	var flags editorSceneFlags
+	cmd := &cobra.Command{
+		Use:         "tree",
 		Short:       core.SceneTree.Description,
-		Long:        "Load a scene resource and show its node tree as JSON. Requires a running Godot editor with the addon enabled. Reads a loaded resource, not the unsaved editor scene.",
-		Example:     "godot-cli scene tree res://main.tscn",
+		Long:        "Read the active editor scene's node tree as JSON, including unsaved changes. Requires a running editor with the addon enabled. Does not open or switch scenes.",
+		Example:     "godot-cli scene tree\ngodot-cli scene tree --expect-scene res://main.tscn",
 		Annotations: map[string]string{skill.ActionKey: core.SceneTree.Name},
-		Args:        cobra.ExactArgs(1),
-		RunE:        runSceneTree,
+		Args:        cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runSceneTree(flags.expectedScene)
+		},
 	}
+	flags.bind(cmd)
+	return cmd
 }
 
-func runSceneTree(cmd *cobra.Command, args []string) error {
+func runSceneTree(expectedScene string) error {
 	project, err := FetchProjectContext()
 	if err != nil {
 		return err
 	}
-	result, err := scene.Tree(project.Root, scene.TreeParams{Scene: args[0]})
+	result, err := scene.Tree(project.Root, scene.TreeParams{ExpectedScene: expectedScene})
 	if err != nil {
 		return err
 	}
 	return PrintJSON(result)
+}
+
+func newSceneCurrentCommand() *cobra.Command {
+	var flags editorSceneFlags
+	cmd := &cobra.Command{
+		Use:         "current",
+		Short:       core.SceneCurrent.Description,
+		Long:        "Identify the active editor scene and whether it has unsaved changes. An empty scene path means it has never been saved. Fails if no scene is being edited.",
+		Example:     "godot-cli scene current\ngodot-cli scene current --expect-scene res://main.tscn",
+		Annotations: map[string]string{skill.ActionKey: core.SceneCurrent.Name},
+		Args:        cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			project, err := FetchProjectContext()
+			if err != nil {
+				return err
+			}
+			result, err := scene.Current(project.Root, scene.CurrentParams{
+				ExpectedScene: flags.expectedScene,
+			})
+			if err != nil {
+				return err
+			}
+			return PrintJSON(result)
+		},
+	}
+	flags.bind(cmd)
+	return cmd
+}
+
+func newSceneOpenCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:         "open <scene>",
+		Short:       core.SceneOpen.Description,
+		Long:        "Open a res:// scene path through Godot or activate its existing tab, preserving unsaved edits. Returns only after confirming that scene is active. Does not save or reload scenes.",
+		Example:     "godot-cli scene open res://main.tscn",
+		Annotations: map[string]string{skill.ActionKey: core.SceneOpen.Name},
+		Args:        cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			project, err := FetchProjectContext()
+			if err != nil {
+				return err
+			}
+			result, err := scene.Open(project.Root, scene.OpenParams{Scene: args[0]})
+			if err != nil {
+				return err
+			}
+			return PrintJSON(result)
+		},
+	}
+}
+
+func newSceneSaveCommand() *cobra.Command {
+	var flags editorSceneFlags
+	cmd := &cobra.Command{
+		Use:         "save",
+		Short:       core.SceneSave.Description,
+		Long:        "Save the active scene through Godot's editor to its existing resource path. Does not switch scenes or save other tabs. A scene without a path must first be saved using the editor's Save As.",
+		Example:     "godot-cli scene save --expect-scene res://main.tscn",
+		Annotations: map[string]string{skill.ActionKey: core.SceneSave.Name},
+		Args:        cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			project, err := FetchProjectContext()
+			if err != nil {
+				return err
+			}
+			result, err := scene.Save(project.Root, scene.SaveParams{ExpectedScene: flags.expectedScene})
+			if err != nil {
+				return err
+			}
+			return PrintJSON(result)
+		},
+	}
+	flags.bind(cmd)
+	return cmd
 }

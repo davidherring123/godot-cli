@@ -10,6 +10,16 @@ project settings, or editor state.
 
 Prefer inspecting actual Godot state instead of guessing.
 
+Use `scene current` to identify the active editor scene and `scene open <scene>`
+to open or activate a scene. `scene tree`, `node inspect <node>`, and
+`node set <node> <properties-json>` operate on that live scene, including unsaved
+changes. Use `--expect-scene res://path.tscn` to catch unexpected tab switches.
+Use repeatable `--property <name>` flags with `node inspect` when only specific
+properties are needed. `node set` groups property changes into one editor undo
+step. Pass `--save` to mutation commands to persist the active scene as part of
+the action; otherwise use `scene save`. A scene without a path must first be
+saved using the editor's Save As.
+
 Scene and node commands return JSON. Setup, status, and help output are text.
 Failures use stderr and a nonzero exit code.
 
