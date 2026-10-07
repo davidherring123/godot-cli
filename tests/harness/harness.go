@@ -40,6 +40,10 @@ type Session struct {
 	stderr  lockedBuffer
 }
 
+func (session *Session) Root() string {
+	return session.root
+}
+
 func Start(outputLogf func(format string, args ...any)) (*Session, error) {
 	startedAt := time.Now()
 
