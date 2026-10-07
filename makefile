@@ -2,6 +2,8 @@ BINARY := godot-cli
 CMD := ./cmd/godot-cli
 BIN_DIR := ./bin
 INSTALL_DIR := $(HOME)/.local/bin
+TEST_PACKAGES ?= ./tests/core
+TEST_ARGS ?=
 
 ifeq ($(OS),Windows_NT)
 SHELL := powershell.exe
@@ -43,7 +45,7 @@ vet:
 	go vet ./...
 
 test:
-	go test ./...
+	go test -count=1 $(TEST_ARGS) $(TEST_PACKAGES)
 
 check: format-check vet test
 

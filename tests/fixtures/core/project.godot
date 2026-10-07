@@ -1,0 +1,11 @@
+; Project used by the godot-cli core test suite.
+config_version=5
+
+[application]
+
+config/name="godot-cli Business Tests"
+config/features=PackedStringArray("4.4")
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_cli/plugin.cfg")
