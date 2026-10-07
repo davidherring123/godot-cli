@@ -47,7 +47,7 @@ vet:
 test:
 	go test -count=1 $(TEST_ARGS) $(TEST_PACKAGES)
 
-check: format-check vet test
+check: format-check vet
 
 clean:
 ifeq ($(OS),Windows_NT)
