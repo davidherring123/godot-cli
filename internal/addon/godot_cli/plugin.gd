@@ -8,7 +8,7 @@ var bridge: Bridge
 var instance_path := ""
 
 func _enter_tree() -> void:
-    request_handler = RequestHandler.new(get_editor_interface())
+    request_handler = RequestHandler.new(get_editor_interface(), get_undo_redo())
     bridge = Bridge.new(request_handler)
 
     var error := bridge.start()
@@ -37,11 +37,11 @@ func _exit_tree() -> void:
     if bridge != null:
         bridge.stop()
         bridge = null
-    
+
     if not instance_path.is_empty() \
     and FileAccess.file_exists(instance_path):
         DirAccess.remove_absolute(instance_path)
-    
+
     print("godot-cli: plugin disabled")
 
 func _register_instance(port: int) -> void:
@@ -52,9 +52,9 @@ func _register_instance(port: int) -> void:
     if error != OK:
         push_error("godot-cli: failed to create instances directory")
         return
-    
+
     _vc_ignore_instance(instances_dir)
-    
+
     var pid := OS.get_process_id()
 
     instance_path = "%s/%d.json" % [instances_dir, pid]
@@ -79,7 +79,7 @@ func _vc_ignore_instance(instances_dir: String) -> void:
 
     if FileAccess.file_exists(ignore_path):
         return
-    
+
     var file := FileAccess.open(ignore_path, FileAccess.WRITE)
 
     if file != null:

@@ -1,19 +1,18 @@
 class_name Request
 extends RefCounted
 
-var command: String
+var action: String
 var params: Dictionary
 
-
 func _init(
-    command: String,
+    action_name: String,
     params: Dictionary = {}
 ) -> void:
-    self.command = command
+    action = action_name
     self.params = params
 
 static func from_dict(data: Dictionary) -> Request:
     return Request.new(
-        str(data.get("command", "")),
+        data.get("action", ""),
         data.get("params", {})
     )

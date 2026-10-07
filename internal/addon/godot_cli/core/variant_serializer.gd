@@ -1,11 +1,10 @@
 class_name VariantSerializer
 extends RefCounted
 
-
 static func serialize(value: Variant) -> Variant:
     if value == null:
         return null
-    
+
     match typeof(value):
         TYPE_STRING_NAME:
             return str(value)
@@ -13,17 +12,25 @@ static func serialize(value: Variant) -> Variant:
         TYPE_NODE_PATH:
             return str(value)
 
-        TYPE_VECTOR2:
+        TYPE_VECTOR2, TYPE_VECTOR2I:
             return {
                 "x": value.x,
                 "y": value.y
             }
 
-        TYPE_VECTOR3:
+        TYPE_VECTOR3, TYPE_VECTOR3I:
             return {
                 "x": value.x,
                 "y": value.y,
                 "z": value.z
+            }
+
+        TYPE_VECTOR4, TYPE_VECTOR4I:
+            return {
+                "x": value.x,
+                "y": value.y,
+                "z": value.z,
+                "w": value.w
             }
 
         TYPE_COLOR:
@@ -34,7 +41,7 @@ static func serialize(value: Variant) -> Variant:
                 "a": value.a
             }
 
-        TYPE_RECT2:
+        TYPE_RECT2, TYPE_RECT2I:
             return {
                 "position": serialize(value.position),
                 "size": serialize(value.size)
