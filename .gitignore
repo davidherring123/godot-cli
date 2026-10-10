@@ -4,6 +4,9 @@
 # Build output
 /bin/
 
+# Benchmark results
+/benchmarks/results/
+
 # IDE/editor
 .vscode/
 .idea/

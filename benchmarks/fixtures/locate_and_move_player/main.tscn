@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[node name="Main" type="Node2D"]
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Entities" type="Node2D" parent="World"]
+
+[node name="Player" type="CharacterBody2D" parent="World/Entities"]
+position = Vector2(16, 24)

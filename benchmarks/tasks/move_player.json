@@ -1,0 +1,15 @@
+{
+  "id": "move_player",
+  "goal": "Move the Player node in res://main.tscn to position (64, 96) and save the scene.",
+  "initialScene": "res://main.tscn",
+  "verify": {
+    "scene": "res://main.tscn",
+    "node": "Player",
+    "properties": {
+      "position": {
+        "x": 64,
+        "y": 96
+      }
+    }
+  }
+}
