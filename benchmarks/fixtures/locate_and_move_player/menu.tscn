@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[node name="Menu" type="Control"]
+
+[node name="Title" type="Label" parent="."]
+offset_left = 40.0
+offset_top = 24.0
+text = "Menu"

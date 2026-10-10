@@ -2,8 +2,19 @@ BINARY := godot-cli
 CMD := ./cmd/godot-cli
 BIN_DIR := ./bin
 INSTALL_DIR := $(HOME)/.local/bin
+
 TEST_PACKAGES ?= ./tests/core
 TEST_ARGS ?=
+
+# WARNING: Benchmarks invoke a model and may cost money
+# BENCHMARK_APPROACH: godot-cli | direct-files | both
+# BENCHMARK_RUNS > 1 or BENCHMARK_APPROACH=both prints a median summary.
+
+BENCHMARK_MODEL ?= opencode-go/deepseek-v4.1-flash
+BENCHMARK_APPROACH ?= godot-cli
+BENCHMARK_TASK ?= move_player
+BENCHMARK_RUNS ?= 1
+BENCHMARK_ARGS ?=
 
 ifeq ($(OS),Windows_NT)
 SHELL := powershell.exe
@@ -14,7 +25,7 @@ endif
 
 export GOBIN = $(INSTALL_DIR)
 
-.PHONY: build install run format format-check vet test check clean
+.PHONY: build install run format format-check vet test check clean benchmark benchmark-smoke
 
 build:
 ifeq ($(OS),Windows_NT)
@@ -48,6 +59,17 @@ test:
 	go test -count=1 $(TEST_ARGS) $(TEST_PACKAGES)
 
 check: format-check vet
+
+benchmark:
+	go run ./benchmarks \
+		--model "$(BENCHMARK_MODEL)" \
+		--approach "$(BENCHMARK_APPROACH)" \
+		--task "$(BENCHMARK_TASK)" \
+		--runs "$(BENCHMARK_RUNS)" \
+		$(BENCHMARK_ARGS)
+
+benchmark-smoke:
+	go run ./benchmarks --smoke-api
 
 clean:
 ifeq ($(OS),Windows_NT)

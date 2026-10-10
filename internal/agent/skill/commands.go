@@ -128,49 +128,62 @@ func marshal(value any) ([]byte, error) {
 
 func render(reference Reference) string {
 	var text strings.Builder
-	fmt.Fprintf(&text, "# Command reference\n\nGenerated from godot-cli %s. Refresh with `godot-cli init --agent codex` or `godot-cli init --agent opencode`.\n\n", reference.Version)
-	text.WriteString("Run commands from within a Godot project. Positional arguments appear in usage order; `<name>` is required and `[name]` is optional.\n\n")
-	text.WriteString("Schema paths are relative to this reference. Input schemas describe the named parameters supplied by each command; use CLI usage for argument order and flags. Output schemas describe successful JSON results; failures use stderr and a nonzero exit code. Setup, status, and help output are text.\n\n")
-	text.WriteString("Machine-readable definitions: [commands.json](commands.json).\n\n## Commands\n\n")
+
+	text.WriteString("# godot-cli commands\n\n")
+	text.WriteString("Run from within a Godot project. `<name>` is required and `[name]` is optional. ")
+	text.WriteString("Input and output schemas live at `schemas/<command.with.dots>.input.json` and `.output.json`.\n\n")
+
 	for _, cmd := range reference.Commands {
-		fmt.Fprintf(&text, "- `%s` — %s\n", cmd.Path, cmd.Summary)
-	}
-	for _, cmd := range reference.Commands {
-		fmt.Fprintf(&text, "\n## `%s`\n\n```text\n%s\n```\n\n", cmd.Path, cmd.Usage)
 		description := cmd.Description
 		if description == "" {
 			description = cmd.Summary
 		}
-		fmt.Fprintf(&text, "%s\n", description)
-		if len(cmd.Aliases) > 0 {
-			fmt.Fprintf(&text, "\nAliases: %s\n", strings.Join(cmd.Aliases, ", "))
-		}
-		if cmd.Deprecated != "" {
-			fmt.Fprintf(&text, "\nDeprecated: %s\n", cmd.Deprecated)
-		}
-		if len(cmd.Flags) > 0 {
-			text.WriteString("\n### Flags\n\n")
-		}
-		for _, flag := range cmd.Flags {
-			fmt.Fprintf(&text, "- `--%s`", flag.Name)
-			if flag.Shorthand != "" {
-				fmt.Fprintf(&text, " / `-%s`", flag.Shorthand)
-			}
-			fmt.Fprintf(&text, " (%s, default: `%s`)", flag.Type, flag.Default)
-			if flag.Required {
-				text.WriteString(" **required**")
-			}
-			if flag.Inherited {
-				text.WriteString(" (inherited)")
-			}
-			fmt.Fprintf(&text, ": %s\n", flag.Usage)
-		}
-		if cmd.Examples != "" {
-			fmt.Fprintf(&text, "\n### Examples\n\n```shell\n%s\n```\n", cmd.Examples)
-		}
-		if cmd.Action != "" {
-			fmt.Fprintf(&text, "\n### Schemas\n\n- [Input](%s)\n- [Output](%s)\n", cmd.InputSchema, cmd.OutputSchema)
-		}
+
+		fmt.Fprintf(
+			&text,
+			"- `%s` — %s\n",
+			compactSignature(cmd),
+			firstSentence(description),
+		)
 	}
+
 	return text.String()
+}
+
+func compactSignature(cmd Command) string {
+	signature := strings.TrimSuffix(cmd.Usage, " [flags]")
+
+	for _, flag := range cmd.Flags {
+		if flag.Inherited {
+			continue
+		}
+
+		token := "--" + flag.Name
+
+		if flag.Type != "bool" {
+			token += " <value>"
+
+			if flag.Type == "stringArray" || flag.Type == "stringSlice" {
+				token += "..."
+			}
+		}
+
+		if !flag.Required {
+			token = "[" + token + "]"
+		}
+
+		signature += " " + token
+	}
+
+	return signature
+}
+
+func firstSentence(text string) string {
+	text = strings.Join(strings.Fields(text), " ")
+
+	if index := strings.Index(text, ". "); index >= 0 {
+		return text[:index+1]
+	}
+
+	return text
 }
