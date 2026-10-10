@@ -160,6 +160,12 @@ func (editor *godotEditor) logs() string {
 	)
 }
 
+type verifySpec struct {
+	Node       string   `json:"node"`
+	Absent     bool     `json:"absent"`
+	Properties []string `json:"properties"`
+}
+
 func verifySavedScene(
 	ctx context.Context,
 	godotPath string,
@@ -167,6 +173,28 @@ func verifySavedScene(
 	verifierPath string,
 	verification verification,
 ) (probeResult, string, error) {
+	checks := verification.checks()
+	spec := make([]verifySpec, 0, len(checks))
+
+	for _, check := range checks {
+		propertyNames := make([]string, 0, len(check.Properties))
+		for name := range check.Properties {
+			propertyNames = append(propertyNames, name)
+		}
+		sort.Strings(propertyNames)
+		spec = append(spec, verifySpec{
+			Node:       check.Node,
+			Absent:     check.Absent,
+			Properties: propertyNames,
+		})
+	}
+
+	encodedSpec, err := json.Marshal(spec)
+
+	if err != nil {
+		return probeResult{}, "", err
+	}
+
 	arguments := []string{
 		"--headless",
 		"--path",
@@ -175,14 +203,8 @@ func verifySavedScene(
 		verifierPath,
 		"--",
 		verification.Scene,
-		verification.Node,
+		string(encodedSpec),
 	}
-	propertyNames := make([]string, 0, len(verification.Properties))
-	for name := range verification.Properties {
-		propertyNames = append(propertyNames, name)
-	}
-	sort.Strings(propertyNames)
-	arguments = append(arguments, propertyNames...)
 
 	command := exec.CommandContext(ctx, godotPath, arguments...)
 

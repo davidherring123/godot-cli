@@ -23,6 +23,8 @@ Common node work:
 ```shell
 godot-cli node inspect <node> --property <name> --expect-scene <scene>
 godot-cli node set <node> '{"position":{"x":64,"y":96}}' --save --expect-scene <scene>
+godot-cli node add <type> <parent> --name <name> --properties '{"position":{"x":64,"y":96}}' --save --expect-scene <scene>
+godot-cli node delete <node> --save --expect-scene <scene>
 ```
 
 `node set` takes a JSON object of property names to values. Vectors are
@@ -30,11 +32,17 @@ godot-cli node set <node> '{"position":{"x":64,"y":96}}' --save --expect-scene <
 and rectangles `{"position":{...},"size":{...}}`; other scalars and strings are
 literal.
 
+Resource-valued properties (textures, materials, scripts) use
+`{"resource": "res://..."}` references, for example
+`'{"script":{"resource":"res://player.gd"}}'`. `node inspect` returns resources
+in the same shape with their type. `node add` reports the final node path, name,
+type, and resulting property values; omit `--name` for a generated unique name.
+
 Try the targeted command directly when using `--expect-scene`; open the scene
 only if it reports a different scene is active. `--save` persists the scene and
 groups the change into one editor undo step. A mutation response that reports the
-resulting values with `saved: true` is enough validation, including when asked to
-verify the result; do not re-inspect solely to confirm it.
+resulting values or state with `saved: true` is enough validation, including when
+asked to verify the result; do not re-inspect solely to confirm it.
 
 Scene and node commands print JSON; setup, status, and help print text. Failures
 use stderr and a nonzero exit status. `status` only prints the project root.

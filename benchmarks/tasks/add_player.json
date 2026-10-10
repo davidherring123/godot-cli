@@ -1,0 +1,17 @@
+{
+  "id": "add_player",
+  "goal": "In res://main.tscn, add a CharacterBody2D named Player as a sibling of the SpawnPoint marker, attach res://scripts/player.gd to it, place it at the SpawnPoint's position, and set its speed to 400. Then save the scene.",
+  "initialScene": "res://main.tscn",
+  "verify": {
+    "scene": "res://main.tscn",
+    "node": "World/Entities/Player",
+    "properties": {
+      "position": {
+        "x": 64,
+        "y": 96
+      },
+      "speed": 400,
+      "script": "res://scripts/player.gd"
+    }
+  }
+}

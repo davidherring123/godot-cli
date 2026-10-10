@@ -11,8 +11,30 @@ type taskDefinition struct {
 
 type verification struct {
 	Scene      string         `json:"scene"`
+	Node       string         `json:"node,omitempty"`
+	Absent     bool           `json:"absent,omitempty"`
+	Properties map[string]any `json:"properties,omitempty"`
+	Nodes      []nodeCheck    `json:"nodes,omitempty"`
+}
+
+type nodeCheck struct {
 	Node       string         `json:"node"`
-	Properties map[string]any `json:"properties"`
+	Absent     bool           `json:"absent,omitempty"`
+	Properties map[string]any `json:"properties,omitempty"`
+}
+
+func (v verification) checks() []nodeCheck {
+	checks := make([]nodeCheck, 0, 1+len(v.Nodes))
+
+	if v.Node != "" {
+		checks = append(checks, nodeCheck{
+			Node:       v.Node,
+			Absent:     v.Absent,
+			Properties: v.Properties,
+		})
+	}
+
+	return append(checks, v.Nodes...)
 }
 
 type benchmarkResult struct {
@@ -63,8 +85,13 @@ type toolCall struct {
 }
 
 type probeResult struct {
-	Loaded     bool           `json:"loaded"`
-	NodeFound  bool           `json:"nodeFound"`
-	Error      string         `json:"error,omitempty"`
-	Properties map[string]any `json:"properties"`
+	Loaded bool         `json:"loaded"`
+	Error  string       `json:"error,omitempty"`
+	Checks []probeCheck `json:"checks"`
+}
+
+type probeCheck struct {
+	Node       string         `json:"node"`
+	Found      bool           `json:"found"`
+	Properties map[string]any `json:"properties,omitempty"`
 }

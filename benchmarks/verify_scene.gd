@@ -6,7 +6,7 @@ func _initialize() -> void:
     var args := OS.get_cmdline_user_args()
 
     if args.size() < 2:
-        _finish({"loaded": false, "error": "Expected scene and node arguments"}, 1)
+        _finish({"loaded": false, "error": "Expected scene and checks arguments"}, 1)
         return
 
     var resource = ResourceLoader.load(args[0], "PackedScene")
@@ -15,25 +15,41 @@ func _initialize() -> void:
         _finish({"loaded": false, "error": "Could not load scene"}, 1)
         return
 
-    var root: Node = resource.instantiate()
-    var node: Node = root.get_node_or_null(NodePath(args[1]))
+    var checks = JSON.parse_string(args[1])
 
-    if node == null:
-        root.queue_free()
-        _finish({"loaded": true, "nodeFound": false}, 1)
+    if not checks is Array:
+        _finish({"loaded": false, "error": "Checks must be a JSON array"}, 1)
         return
 
-    var properties := {}
+    var root: Node = resource.instantiate()
+    var results: Array[Dictionary] = []
 
-    for property_name in args.slice(2):
-        properties[property_name] = _serialize(node.get(property_name))
+    for check in checks:
+        if not check is Dictionary:
+            continue
+
+        var path := str(check.get("node", ""))
+        var node: Node = root.get_node_or_null(NodePath(path))
+        var entry := {
+            "node": path,
+            "found": node != null,
+        }
+
+        if node != null:
+            var properties := {}
+
+            for property_name in check.get("properties", []):
+                properties[str(property_name)] = _serialize(node.get(str(property_name)))
+
+            entry["properties"] = properties
+
+        results.append(entry)
 
     root.queue_free()
 
     _finish({
         "loaded": true,
-        "nodeFound": true,
-        "properties": properties,
+        "checks": results,
     }, 0)
 
 func _serialize(value: Variant) -> Variant:
@@ -57,6 +73,9 @@ func _serialize(value: Variant) -> Variant:
             "position": _serialize(value.position),
             "size": _serialize(value.size),
         }
+
+    if value is Resource:
+        return value.resource_path
 
     if value is Object:
         return str(value)

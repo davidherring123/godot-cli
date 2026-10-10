@@ -350,14 +350,36 @@ func evaluateResult(
 	}
 	if !probe.Loaded {
 		failures = append(failures, "scene did not load")
+	} else {
+		for _, check := range task.Verify.checks() {
+			probeCheck, ok := findProbeCheck(probe, check.Node)
+
+			if !ok {
+				failures = append(
+					failures,
+					"verification did not report node: "+check.Node,
+				)
+				continue
+			}
+
+			if check.Absent {
+				if probeCheck.Found {
+					failures = append(failures, "node still exists: "+check.Node)
+				}
+				continue
+			}
+
+			if !probeCheck.Found {
+				failures = append(failures, "node was not found: "+check.Node)
+				continue
+			}
+
+			failures = append(
+				failures,
+				compareProperties(check.Node, check.Properties, probeCheck.Properties)...,
+			)
+		}
 	}
-	if !probe.NodeFound {
-		failures = append(failures, "target node was not found")
-	}
-	failures = append(
-		failures,
-		compareProperties(task.Verify.Properties, probe.Properties)...,
-	)
 	if result.Approach == approachCLI {
 		if !usedCLI {
 			failures = append(failures, "agent did not invoke godot-cli")
@@ -419,13 +441,29 @@ func projectRelativePath(projectRoot, path string) (string, bool) {
 	return filepath.ToSlash(relative), true
 }
 
-func compareProperties(expected, actual map[string]any) []string {
+func findProbeCheck(probe probeResult, node string) (probeCheck, bool) {
+	for _, check := range probe.Checks {
+		if check.Node == node {
+			return check, true
+		}
+	}
+	return probeCheck{}, false
+}
+
+func compareProperties(
+	node string,
+	expected, actual map[string]any,
+) []string {
 	var failures []string
 
 	for name, want := range expected {
 		got, ok := actual[name]
+
 		if !ok {
-			failures = append(failures, "property was not reported: "+name)
+			failures = append(
+				failures,
+				node+" property was not reported: "+name,
+			)
 			continue
 		}
 		if !reflect.DeepEqual(want, got) {
@@ -433,7 +471,8 @@ func compareProperties(expected, actual map[string]any) []string {
 			gotJSON, _ := json.Marshal(got)
 
 			failures = append(failures, fmt.Sprintf(
-				"expected %s %s, got %s",
+				"expected %s property %s to be %s, got %s",
+				node,
 				name,
 				wantJSON,
 				gotJSON,

@@ -1,7 +1,12 @@
 class_name VariantDeserializer
 extends RefCounted
 
-static func deserialize(value: Variant, type: int) -> Dictionary:
+static func deserialize(
+    value: Variant,
+    type: int,
+    hint: int = PROPERTY_HINT_NONE,
+    hint_string: String = ""
+) -> Dictionary:
     match type:
         TYPE_BOOL:
             if value is bool:
@@ -95,6 +100,9 @@ static func deserialize(value: Variant, type: int) -> Dictionary:
                 )
             }
 
+        TYPE_OBJECT:
+            return _object(value, hint, hint_string)
+
         _:
             return {
                 "code": ErrorCode.UNSUPPORTED,
@@ -102,6 +110,100 @@ static func deserialize(value: Variant, type: int) -> Dictionary:
             }
 
     return {"error": "Expected a JSON value matching %s" % type_string(type)}
+
+static func _object(
+    value: Variant,
+    hint: int,
+    hint_string: String
+) -> Dictionary:
+    if value == null:
+        return {"value": null}
+
+    if not value is Dictionary or not value.has("resource"):
+        return {
+            "code": ErrorCode.INVALID_ARGUMENT,
+            "error": (
+                "Expected null or a resource reference "
+                + "like {\"resource\": \"res://...\"}"
+            )
+        }
+
+    var path = value["resource"]
+
+    if not path is String or not path.begins_with("res://"):
+        return {
+            "code": ErrorCode.INVALID_ARGUMENT,
+            "error": "A resource reference requires a res:// path"
+        }
+
+    if not ResourceLoader.exists(path):
+        return {
+            "code": ErrorCode.NOT_FOUND,
+            "error": "Resource not found: %s" % path
+        }
+
+    var resource = ResourceLoader.load(path)
+
+    if resource == null:
+        return {
+            "code": ErrorCode.ACTION_FAILED,
+            "error": "Could not load resource: %s" % path
+        }
+
+    if not resource is Resource:
+        return {
+            "code": ErrorCode.INVALID_ARGUMENT,
+            "error": "Not a resource: %s" % path
+        }
+
+    var type_error := _resource_type_error(resource, hint, hint_string)
+
+    if not type_error.is_empty():
+        return {
+            "code": ErrorCode.INVALID_ARGUMENT,
+            "error": type_error
+        }
+
+    return {"value": resource}
+
+static func _resource_type_error(
+    resource: Resource,
+    hint: int,
+    hint_string: String
+) -> String:
+    if hint != PROPERTY_HINT_RESOURCE_TYPE or hint_string.is_empty():
+        return ""
+
+    var expected: PackedStringArray = []
+
+    for raw_type in hint_string.split(",", false):
+        var type_name := raw_type.strip_edges()
+
+        if not type_name.is_empty():
+            expected.append(type_name)
+
+    if expected.is_empty():
+        return ""
+
+    for type_name in expected:
+        if _resource_matches(resource, type_name):
+            return ""
+
+    return "Expected %s, got %s" % [" or ".join(expected), resource.get_class()]
+
+static func _resource_matches(resource: Resource, type_name: String) -> bool:
+    if resource.is_class(type_name):
+        return true
+
+    var script: Script = resource.get_script()
+
+    while script != null:
+        if script.get_global_name() == type_name:
+            return true
+
+        script = script.get_base_script()
+
+    return false
 
 static func _number(value: Variant) -> bool:
     return (value is int or value is float) and is_finite(float(value))
