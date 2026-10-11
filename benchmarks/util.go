@@ -33,6 +33,12 @@ func loadTask(repositoryRoot, name string) (taskDefinition, error) {
 	if task.ID == "" || task.Goal == "" || task.InitialScene == "" {
 		return taskDefinition{}, errors.New("benchmark task is incomplete")
 	}
+	if task.Verify.Scene == "" {
+		return taskDefinition{}, errors.New("benchmark task is missing a verification scene")
+	}
+	if len(task.Verify.Nodes) == 0 {
+		return taskDefinition{}, errors.New("benchmark task has no node checks")
+	}
 	return task, nil
 }
 

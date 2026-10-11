@@ -1,0 +1,21 @@
+{
+  "id": "delete_player",
+  "goal": "In res://main.tscn, the old player rig has been retired. Delete the obsolete Player node and the now-unused SpawnPoint marker under Entities, keep the Environment node intact, and save the scene.",
+  "initialScene": "res://main.tscn",
+  "verify": {
+    "scene": "res://main.tscn",
+    "nodes": [
+      {
+        "node": "World/Entities/Player",
+        "absent": true
+      },
+      {
+        "node": "World/Entities/SpawnPoint",
+        "absent": true
+      },
+      {
+        "node": "World/Entities/Environment"
+      }
+    ]
+  }
+}

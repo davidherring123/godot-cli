@@ -47,8 +47,20 @@ static func serialize(value: Variant) -> Variant:
                 "size": serialize(value.size)
             }
 
+        TYPE_OBJECT:
+            return _serialize_object(value)
+
         TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING:
             return value
 
         _:
             return str(value)
+
+static func _serialize_object(value: Object) -> Variant:
+    if value is Resource:
+        return {
+            "resource": value.resource_path,
+            "type": value.get_class()
+        }
+
+    return str(value)
