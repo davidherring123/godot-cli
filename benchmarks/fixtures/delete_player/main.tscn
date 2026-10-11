@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[node name="Main" type="Node2D"]
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Entities" type="Node2D" parent="World"]
+
+[node name="Player" type="CharacterBody2D" parent="World/Entities"]
+position = Vector2(64, 96)
+
+[node name="SpawnPoint" type="Marker2D" parent="World/Entities"]
+position = Vector2(64, 96)
+
+[node name="Environment" type="Node2D" parent="World/Entities"]

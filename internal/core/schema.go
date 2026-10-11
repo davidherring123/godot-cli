@@ -34,10 +34,12 @@ var (
 	SceneTree    = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show the active editor scene's node tree")
 	NodeInspect  = define[node.InspectParams, node.InspectResult](node.InspectName, "Inspect a node in the active editor scene")
 	NodeSet      = define[node.SetParams, node.SetResult](node.SetName, "Set node properties as one undoable editor action")
+	NodeAdd      = define[node.AddParams, node.AddResult](node.AddName, "Add a node to the active editor scene as one undoable editor action")
+	NodeDelete   = define[node.DeleteParams, node.DeleteResult](node.DeleteName, "Delete a node from the active editor scene as one undoable editor action")
 )
 
 func All() []ActionDefinition {
-	return []ActionDefinition{SceneList, SceneCurrent, SceneOpen, SceneSave, SceneTree, NodeInspect, NodeSet}
+	return []ActionDefinition{SceneList, SceneCurrent, SceneOpen, SceneSave, SceneTree, NodeInspect, NodeSet, NodeAdd, NodeDelete}
 }
 
 func Lookup(name string) (ActionDefinition, bool) {

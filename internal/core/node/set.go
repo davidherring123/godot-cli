@@ -1,9 +1,6 @@
 package node
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/davidherring123/godot-cli/internal/bridge"
 )
 
@@ -20,17 +17,6 @@ func Set(projectRoot string, params SetParams) (SetResult, error) {
 		return SetResult{}, &bridge.APIError{
 			Code:    bridge.ErrorCodeInvalidArgument,
 			Message: "At least one property is required",
-		}
-	}
-	for name, value := range params.Properties {
-		if name == "" || !json.Valid(value) {
-			return SetResult{}, &bridge.APIError{
-				Code: bridge.ErrorCodeInvalidArgument,
-				Message: fmt.Sprintf(
-					"%q requires a name and valid JSON value",
-					name,
-				),
-			}
 		}
 	}
 	client, err := bridge.Connect(projectRoot)

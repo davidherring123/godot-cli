@@ -2,19 +2,6 @@ package main
 
 import "encoding/json"
 
-type taskDefinition struct {
-	ID           string       `json:"id"`
-	Goal         string       `json:"goal"`
-	InitialScene string       `json:"initialScene"`
-	Verify       verification `json:"verify"`
-}
-
-type verification struct {
-	Scene      string         `json:"scene"`
-	Node       string         `json:"node"`
-	Properties map[string]any `json:"properties"`
-}
-
 type benchmarkResult struct {
 	Task      string         `json:"task"`
 	Approach  string         `json:"approach"`
@@ -60,11 +47,4 @@ type contextMetrics struct {
 type toolCall struct {
 	Name  string          `json:"name"`
 	Input json.RawMessage `json:"input"`
-}
-
-type probeResult struct {
-	Loaded     bool           `json:"loaded"`
-	NodeFound  bool           `json:"nodeFound"`
-	Error      string         `json:"error,omitempty"`
-	Properties map[string]any `json:"properties"`
 }
