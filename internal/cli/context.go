@@ -1,3 +1,4 @@
+// Package cli implements the godot-cli command tree.
 package cli
 
 import (

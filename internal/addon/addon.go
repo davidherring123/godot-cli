@@ -1,3 +1,4 @@
+// Package addon installs the embedded Godot editor addon into a project.
 package addon
 
 import (
@@ -8,7 +9,7 @@ import (
 	"strings"
 )
 
-const ADDON_PATH = "addons/godot_cli"
+const addonPath = "addons/godot_cli"
 
 //go:embed godot_cli
 var embeddedFiles embed.FS
@@ -16,7 +17,7 @@ var embeddedFiles embed.FS
 func IsInstalled(projectRoot string) bool {
 	pluginPath := filepath.Join(
 		projectRoot,
-		ADDON_PATH,
+		addonPath,
 		"plugin.cfg",
 	)
 
@@ -30,7 +31,7 @@ func Install(projectRoot string) error {
 		return err
 	}
 
-	destination := filepath.Join(projectRoot, ADDON_PATH)
+	destination := filepath.Join(projectRoot, addonPath)
 
 	err = fs.WalkDir(source, ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -63,7 +64,7 @@ func Install(projectRoot string) error {
 }
 
 func Path(projectRoot string) string {
-	return filepath.Join(projectRoot, ADDON_PATH)
+	return filepath.Join(projectRoot, addonPath)
 }
 
 func DisplayPath(projectRoot string) string {

@@ -12,7 +12,7 @@ func NewSceneCommand() *cobra.Command {
 		Use:   "scene",
 		Short: "Inspect and manage scenes",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
 	}
@@ -40,7 +40,7 @@ func newSceneListCommand() *cobra.Command {
 	}
 }
 
-func runSceneList(cmd *cobra.Command, args []string) error {
+func runSceneList(_ *cobra.Command, _ []string) error {
 	project, err := FetchProjectContext()
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func newSceneTreeCommand() *cobra.Command {
 		Example:     "godot-cli scene tree\ngodot-cli scene tree --expect-scene res://main.tscn",
 		Annotations: map[string]string{skill.ActionKey: core.SceneTree.Name},
 		Args:        cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runSceneTree(flags.expectedScene)
 		},
 	}
@@ -90,7 +90,7 @@ func newSceneCurrentCommand() *cobra.Command {
 		Example:     "godot-cli scene current\ngodot-cli scene current --expect-scene res://main.tscn",
 		Annotations: map[string]string{skill.ActionKey: core.SceneCurrent.Name},
 		Args:        cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			project, err := FetchProjectContext()
 			if err != nil {
 				return err
@@ -116,7 +116,7 @@ func newSceneOpenCommand() *cobra.Command {
 		Example:     "godot-cli scene open res://main.tscn",
 		Annotations: map[string]string{skill.ActionKey: core.SceneOpen.Name},
 		Args:        cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			project, err := FetchProjectContext()
 			if err != nil {
 				return err
@@ -139,7 +139,7 @@ func newSceneSaveCommand() *cobra.Command {
 		Example:     "godot-cli scene save --expect-scene res://main.tscn",
 		Annotations: map[string]string{skill.ActionKey: core.SceneSave.Name},
 		Args:        cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			project, err := FetchProjectContext()
 			if err != nil {
 				return err

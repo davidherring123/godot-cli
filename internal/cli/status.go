@@ -18,8 +18,8 @@ func NewStatusCommand() *cobra.Command {
 }
 
 func runStatus(
-	cmd *cobra.Command,
-	args []string,
+	_ *cobra.Command,
+	_ []string,
 ) error {
 	context, err := FetchProjectContext()
 	if err != nil {

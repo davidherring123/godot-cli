@@ -1,3 +1,4 @@
+// Command godot-cli controls a running Godot editor from the command line.
 package main
 
 import (

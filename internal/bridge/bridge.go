@@ -1,3 +1,4 @@
+// Package bridge connects to the TCP bridge exposed by a running Godot editor.
 package bridge
 
 import (

@@ -18,7 +18,7 @@ func smokeOpenCodeAPI(requestedPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	environment, err := isolatedOpenCodeEnvironment(
 		os.Environ(),
@@ -35,7 +35,7 @@ func smokeOpenCodeAPI(requestedPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	sessionID, err := server.createSession(
 		ctx,

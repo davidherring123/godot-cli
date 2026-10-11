@@ -19,11 +19,16 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Install golangci-lint
+        run: |
+          VERSION=$(cat .golangci-lint-version)
+          curl -sSfL https://golangci-lint.run/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" "$VERSION"
+
       - name: Run checks
         run: make check
 
   core-tests:
-    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

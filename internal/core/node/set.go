@@ -23,6 +23,6 @@ func Set(projectRoot string, params SetParams) (SetResult, error) {
 	if err != nil {
 		return SetResult{}, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	return bridge.Call[SetParams, SetResult](client, SetName, params)
 }

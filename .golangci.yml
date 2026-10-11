@@ -1,0 +1,27 @@
+version: '2'
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false
+
+linters:
+  default: standard
+  enable:
+    - gocognit
+    - gocyclo
+    - dupl
+    - revive
+
+  settings:
+    revive:
+      enable-default-rules: true
+      rules:
+        - name: exported
+          disabled: true
+    gocognit:
+      min-complexity: 30
+    gocyclo:
+      min-complexity: 20
+    dupl:
+      threshold: 150

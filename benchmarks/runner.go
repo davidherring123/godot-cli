@@ -74,102 +74,15 @@ func runBenchmark(
 		return "", err
 	}
 	if !options.KeepProject {
-		defer os.RemoveAll(tempDir)
+		defer func() { _ = os.RemoveAll(tempDir) }()
 	} else {
 		logf("Keeping benchmark workspace at %s", tempDir)
 	}
-	projectRoot := filepath.Join(tempDir, "project")
-	fixture := filepath.Join(
-		repositoryRoot,
-		"benchmarks",
-		"fixtures",
-		task.ID,
-	)
-
-	logf("Copying task fixture")
-
-	if err := copyDirectory(fixture, projectRoot); err != nil {
-		return "", err
-	}
-	toolsDir := filepath.Join(tempDir, "bin")
-	if err := os.MkdirAll(toolsDir, 0755); err != nil {
-		return "", err
-	}
-	proxyCLI := filepath.Join(toolsDir, "godot-cli")
-
-	logf("Building benchmark proxy")
-
-	if err := buildBinary(
-		repositoryRoot,
-		proxyCLI,
-		"./benchmarks/cmd/godot-cli-proxy",
-	); err != nil {
-		return "", err
-	}
-	realCLI := ""
-
-	if options.Approach == approachCLI {
-		realCLI = filepath.Join(toolsDir, "godot-cli-real")
-
-		logf("Building godot-cli")
-
-		if err := buildBinary(repositoryRoot, realCLI, "./cmd/godot-cli"); err != nil {
-			return "", err
-		}
-		if err := addon.Install(projectRoot); err != nil {
-			return "", fmt.Errorf("installing addon: %w", err)
-		}
-		if _, err := skill.Install(
-			projectRoot,
-			cli.NewRootCommand("benchmark"),
-		); err != nil {
-			return "", fmt.Errorf("installing OpenCode skill: %w", err)
-		}
-		if err := enableAddon(projectRoot); err != nil {
-			return "", err
-		}
-	}
-	godotPath, err := findExecutable(
-		options.GodotPath,
-		os.Getenv("GODOT_BIN"),
-		"godot",
-		"godot4",
-	)
+	prepared, err := prepareRun(repositoryRoot, options, task, tempDir, logf)
 	if err != nil {
 		return "", err
 	}
-	opencodePath, err := findExecutable(options.OpenCodePath)
-	if err != nil {
-		return "", err
-	}
-	invocationLog := filepath.Join(tempDir, "godot-cli-invocations")
-	environmentValues := map[string]string{
-		"PATH":             toolsDir + string(os.PathListSeparator) + os.Getenv("PATH"),
-		"GODOT_CLI_MARKER": invocationLog,
-	}
-	if options.Approach == approachCLI {
-		environmentValues["GODOT_CLI_REAL"] = realCLI
-	} else {
-		environmentValues["GODOT_CLI_BLOCK"] = "1"
-	}
-	environment, err := isolatedOpenCodeEnvironment(
-		os.Environ(),
-		tempDir,
-		environmentValues,
-	)
-	if err != nil {
-		return "", fmt.Errorf("isolating OpenCode configuration: %w", err)
-	}
-	logf("Importing project resources")
-	importContext, cancelImport := context.WithTimeout(
-		context.Background(),
-		60*time.Second,
-	)
-	err = importProject(importContext, godotPath, projectRoot)
-	cancelImport()
-	if err != nil {
-		return "", err
-	}
+
 	result := benchmarkResult{
 		Task:     task.ID,
 		Approach: options.Approach,
@@ -186,15 +99,15 @@ func runBenchmark(
 
 		editor, err = startGodotEditor(
 			startupContext,
-			godotPath,
-			projectRoot,
+			prepared.godotPath,
+			prepared.projectRoot,
 			task.InitialScene,
 		)
 		cancelStartup()
 		if err != nil {
 			return "", err
 		}
-		defer editor.Close()
+		defer func() { _ = editor.Close() }()
 	}
 	logf("Starting dedicated OpenCode server")
 	startupContext, cancelStartup := context.WithTimeout(
@@ -204,17 +117,15 @@ func runBenchmark(
 
 	server, err := startOpenCodeServer(
 		startupContext,
-		opencodePath,
-		environment,
+		prepared.opencodePath,
+		prepared.environment,
 	)
 	cancelStartup()
 	if err != nil {
-		if editor != nil {
-			_ = editor.Close()
-		}
+		closeEditor(editor)
 		return "", err
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	sessionContext, cancelSession := context.WithTimeout(
 		context.Background(),
@@ -222,16 +133,14 @@ func runBenchmark(
 	)
 	sessionID, err := server.createSession(
 		sessionContext,
-		projectRoot,
+		prepared.projectRoot,
 		options.Agent,
 		options.Approach,
 		"godot-cli benchmark: "+task.ID,
 	)
 	if err != nil {
 		cancelSession()
-		if editor != nil {
-			_ = editor.Close()
-		}
+		closeEditor(editor)
 		return "", err
 	}
 	cancelSession()
@@ -249,13 +158,13 @@ func runBenchmark(
 
 	runErr := server.run(
 		runContext,
-		opencodePath,
-		projectRoot,
+		prepared.opencodePath,
+		prepared.projectRoot,
 		sessionID,
 		options.Model,
 		options.Agent,
 		prompt,
-		environment,
+		prepared.environment,
 	)
 	cancelRun()
 	result.AgentMS = time.Since(agentStartedAt).Milliseconds()
@@ -277,14 +186,7 @@ func runBenchmark(
 	result.Context = contextMetrics
 	result.Tools = summarizeMessages(messages)
 
-	if editor != nil {
-		if err := editor.Close(); err != nil && runErr == nil {
-			runErr = err
-		}
-	}
-	if err := server.Close(); err != nil && runErr == nil {
-		runErr = err
-	}
+	runErr = closeRunResources(editor, server, runErr)
 	logf("Verifying persisted project state")
 
 	verifyContext, cancelVerify := context.WithTimeout(
@@ -295,8 +197,8 @@ func runBenchmark(
 
 	probe, verifyOutput, verifyErr := verifySavedScene(
 		verifyContext,
-		godotPath,
-		projectRoot,
+		prepared.godotPath,
+		prepared.projectRoot,
 		filepath.Join(repositoryRoot, "benchmarks", "verify_scene.gd"),
 		task.Verify,
 	)
@@ -305,14 +207,14 @@ func runBenchmark(
 		logf("Godot verifier output:\n%s", verifyOutput)
 	}
 
-	usedCLI, err := invocationRecorded(invocationLog)
+	usedCLI, err := invocationRecorded(prepared.invocationLog)
 	if err != nil {
 		return "", err
 	}
 	result.Success, result.Failure = evaluateResult(
 		task,
 		result,
-		projectRoot,
+		prepared.projectRoot,
 		session.Outcome,
 		probe,
 		usedCLI,
@@ -329,6 +231,148 @@ func runBenchmark(
 		logf("Benchmark failed: %s", result.Failure)
 	}
 	return resultPath, nil
+}
+
+type preparedRun struct {
+	projectRoot   string
+	godotPath     string
+	opencodePath  string
+	environment   []string
+	invocationLog string
+}
+
+func prepareRun(
+	repositoryRoot string,
+	options runOptions,
+	task taskDefinition,
+	tempDir string,
+	logf func(format string, args ...any),
+) (preparedRun, error) {
+	projectRoot := filepath.Join(tempDir, "project")
+	fixture := filepath.Join(
+		repositoryRoot,
+		"benchmarks",
+		"fixtures",
+		task.ID,
+	)
+
+	logf("Copying task fixture")
+
+	if err := copyDirectory(fixture, projectRoot); err != nil {
+		return preparedRun{}, err
+	}
+	toolsDir := filepath.Join(tempDir, "bin")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		return preparedRun{}, err
+	}
+	proxyCLI := filepath.Join(toolsDir, "godot-cli")
+
+	logf("Building benchmark proxy")
+
+	if err := buildBinary(
+		repositoryRoot,
+		proxyCLI,
+		"./benchmarks/cmd/godot-cli-proxy",
+	); err != nil {
+		return preparedRun{}, err
+	}
+	realCLI := ""
+
+	if options.Approach == approachCLI {
+		realCLI = filepath.Join(toolsDir, "godot-cli-real")
+
+		logf("Building godot-cli")
+
+		if err := buildBinary(repositoryRoot, realCLI, "./cmd/godot-cli"); err != nil {
+			return preparedRun{}, err
+		}
+		if err := addon.Install(projectRoot); err != nil {
+			return preparedRun{}, fmt.Errorf("installing addon: %w", err)
+		}
+		if _, err := skill.Install(
+			projectRoot,
+			cli.NewRootCommand("benchmark"),
+		); err != nil {
+			return preparedRun{}, fmt.Errorf("installing OpenCode skill: %w", err)
+		}
+		if err := enableAddon(projectRoot); err != nil {
+			return preparedRun{}, err
+		}
+	}
+	godotPath, err := findExecutable(
+		options.GodotPath,
+		os.Getenv("GODOT_BIN"),
+		"godot",
+		"godot4",
+	)
+	if err != nil {
+		return preparedRun{}, err
+	}
+	opencodePath, err := findExecutable(options.OpenCodePath)
+	if err != nil {
+		return preparedRun{}, err
+	}
+	invocationLog := filepath.Join(tempDir, "godot-cli-invocations")
+	environmentValues := map[string]string{
+		"PATH":             toolsDir + string(os.PathListSeparator) + os.Getenv("PATH"),
+		"GODOT_CLI_MARKER": invocationLog,
+	}
+	if options.Approach == approachCLI {
+		environmentValues["GODOT_CLI_REAL"] = realCLI
+	} else {
+		environmentValues["GODOT_CLI_BLOCK"] = "1"
+	}
+	environment, err := isolatedOpenCodeEnvironment(
+		os.Environ(),
+		tempDir,
+		environmentValues,
+	)
+	if err != nil {
+		return preparedRun{}, fmt.Errorf("isolating OpenCode configuration: %w", err)
+	}
+	logf("Importing project resources")
+	importContext, cancelImport := context.WithTimeout(
+		context.Background(),
+		60*time.Second,
+	)
+	err = importProject(importContext, godotPath, projectRoot)
+	cancelImport()
+	if err != nil {
+		return preparedRun{}, err
+	}
+	return preparedRun{
+		projectRoot:   projectRoot,
+		godotPath:     godotPath,
+		opencodePath:  opencodePath,
+		environment:   environment,
+		invocationLog: invocationLog,
+	}, nil
+}
+
+func closeEditor(editor *godotEditor) {
+	if editor == nil {
+		return
+	}
+
+	_ = editor.Close()
+}
+
+func closeRunResources(
+	editor *godotEditor,
+	server *openCodeServer,
+	runErr error,
+) error {
+	if editor != nil {
+		if err := editor.Close(); err != nil && runErr == nil {
+			runErr = err
+		}
+	}
+
+	if err := server.Close(); err != nil && runErr == nil {
+		runErr = err
+	}
+
+	return runErr
 }
 
 func evaluateResult(

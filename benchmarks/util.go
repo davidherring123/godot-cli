@@ -48,14 +48,16 @@ func enableAddon(projectRoot string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-
 	_, err = file.WriteString(
 		"\n[editor_plugins]\n\n" +
 			"enabled=PackedStringArray(\"res://addons/godot_cli/plugin.cfg\")\n",
 	)
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
 
-	return err
+	return file.Close()
 }
 
 func findRepositoryRoot() (string, error) {
@@ -190,7 +192,7 @@ func copyDirectory(source, destination string) error {
 			if err != nil {
 				return err
 			}
-			defer input.Close()
+			defer func() { _ = input.Close() }()
 
 			output, err := os.OpenFile(
 				target,

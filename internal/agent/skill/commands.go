@@ -1,3 +1,4 @@
+// Package skill installs the portable agent skill and command reference into a project.
 package skill
 
 import (
