@@ -15,6 +15,6 @@ func Delete(projectRoot string, params DeleteParams) (DeleteResult, error) {
 	if err != nil {
 		return DeleteResult{}, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	return bridge.Call[DeleteParams, DeleteResult](client, DeleteName, params)
 }

@@ -9,6 +9,6 @@ func Save(projectRoot string, params SaveParams) (SaveResult, error) {
 	if err != nil {
 		return SaveResult{}, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	return bridge.Call[SaveParams, SaveResult](client, SaveName, params)
 }

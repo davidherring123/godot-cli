@@ -25,7 +25,7 @@ const (
 	shutdownTimeout = 5 * time.Second
 )
 
-var ErrGodotNotFound = errors.New("Godot executable not found")
+var ErrGodotNotFound = errors.New("godot executable not found")
 
 type Session struct {
 	Client *bridge.Client
@@ -184,7 +184,7 @@ func (session *Session) connect(ctx context.Context) (*bridge.Client, error) {
 			session.done = nil
 
 			return nil, fmt.Errorf(
-				"Godot editor exited before its bridge became ready: %v\n%s",
+				"godot editor exited before its bridge became ready: %v\n%s",
 				processErr,
 				session.logs(),
 			)
@@ -346,7 +346,7 @@ func copyDirectory(source, destination string) error {
 			if err != nil {
 				return err
 			}
-			defer input.Close()
+			defer func() { _ = input.Close() }()
 
 			output, err := os.OpenFile(
 				target,

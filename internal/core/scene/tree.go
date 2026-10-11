@@ -9,7 +9,7 @@ func Tree(projectRoot string, params TreeParams) (TreeResult, error) {
 	if err != nil {
 		return TreeResult{}, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	return bridge.Call[TreeParams, TreeResult](client, TreeName, params)
 }

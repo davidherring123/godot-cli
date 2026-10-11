@@ -86,17 +86,17 @@ func verifySavedScene(
 			return probeResult{}, text, decodeErr
 		}
 		if err != nil {
-			return result, text, fmt.Errorf("Godot verifier failed: %w", err)
+			return result, text, fmt.Errorf("godot verifier failed: %w", err)
 		}
 		return result, text, nil
 	}
 	if err != nil {
 		return probeResult{}, text, fmt.Errorf(
-			"Godot verifier failed: %w",
+			"godot verifier failed: %w",
 			err,
 		)
 	}
 	return probeResult{}, text, errors.New(
-		"Godot verifier did not produce a result",
+		"godot verifier did not produce a result",
 	)
 }

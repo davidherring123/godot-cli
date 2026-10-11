@@ -8,7 +8,7 @@ import (
 
 const ListName = "scene.list"
 
-func List(projectRoot string, params ListParams) (ListResult, error) {
+func List(projectRoot string, _ ListParams) (ListResult, error) {
 	var scenes []string
 
 	err := filepath.WalkDir(

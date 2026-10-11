@@ -1,3 +1,4 @@
+// Package node inspects and modifies nodes in the active editor scene.
 package node
 
 import (
@@ -23,6 +24,6 @@ func Add(projectRoot string, params AddParams) (AddResult, error) {
 	if err != nil {
 		return AddResult{}, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	return bridge.Call[AddParams, AddResult](client, AddName, params)
 }

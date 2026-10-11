@@ -25,7 +25,7 @@ endif
 
 export GOBIN = $(INSTALL_DIR)
 
-.PHONY: build install run format format-check vet test check clean benchmark benchmark-smoke
+.PHONY: build install run format format-check vet lint test check clean benchmark benchmark-smoke
 
 build:
 ifeq ($(OS),Windows_NT)
@@ -55,10 +55,13 @@ endif
 vet:
 	go vet ./...
 
+lint:
+	golangci-lint run ./...
+
 test:
 	go test -count=1 $(TEST_ARGS) $(TEST_PACKAGES)
 
-check: format-check vet
+check: format-check vet lint
 
 benchmark:
 	go run ./benchmarks \

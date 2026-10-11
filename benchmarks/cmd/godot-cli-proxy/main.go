@@ -1,3 +1,4 @@
+// Command godot-cli-proxy records godot-cli invocations and forwards them to the real binary during benchmark runs.
 package main
 
 import (
@@ -44,7 +45,7 @@ func recordInvocation() {
 	if err != nil {
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	_, _ = fmt.Fprintln(file, strings.Join(os.Args[1:], " "))
 }

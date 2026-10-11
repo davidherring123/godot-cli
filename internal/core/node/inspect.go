@@ -23,7 +23,7 @@ func Inspect(projectRoot string, params InspectParams) (InspectResult, error) {
 	if err != nil {
 		return InspectResult{}, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	return bridge.Call[InspectParams, InspectResult](client, InspectName, params)
 }

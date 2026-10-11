@@ -1,3 +1,4 @@
+// Command benchmarks runs agent benchmarks against disposable Godot projects.
 package main
 
 import (
@@ -80,7 +81,7 @@ func startGodotEditor(
 			editor.done = nil
 
 			return nil, fmt.Errorf(
-				"Godot exited before bridge startup: %v\n%s",
+				"godot exited before bridge startup: %v\n%s",
 				processErr,
 				editor.logs(),
 			)

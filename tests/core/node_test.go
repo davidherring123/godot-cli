@@ -7,6 +7,7 @@ import (
 
 	"github.com/davidherring123/godot-cli/internal/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/node"
+	"github.com/davidherring123/godot-cli/tests/harness"
 )
 
 func TestNodeInspectSucceeds(t *testing.T) {
@@ -57,24 +58,15 @@ func TestNodeSetSucceeds(t *testing.T) {
 
 	openFixtureScene(t, session, path)
 
-	result, err := bridge.Call[node.SetParams, node.SetResult](
-		session.Client,
-		node.SetName,
-		node.SetParams{
-			Node:          "Player",
-			ExpectedScene: path,
-			Properties: map[string]json.RawMessage{
-				"position": json.RawMessage(`{"x":64,"y":96}`),
-			},
+	result := setNodeProperties(
+		t,
+		session,
+		path,
+		"Player",
+		map[string]json.RawMessage{
+			"position": json.RawMessage(`{"x":64,"y":96}`),
 		},
 	)
-	if err != nil {
-		t.Fatalf("expected node.set to succeed: %v", err)
-	}
-
-	if !result.Changed {
-		t.Fatal("expected node.set to report a change")
-	}
 
 	if err := session.LogJSON(node.SetName, result); err != nil {
 		t.Fatal(err)
@@ -108,38 +100,23 @@ func TestNodeSetResourceSucceeds(t *testing.T) {
 
 	openFixtureScene(t, session, path)
 
-	result, err := bridge.Call[node.SetParams, node.SetResult](
-		session.Client,
-		node.SetName,
-		node.SetParams{
-			Node:          "Sprite",
-			ExpectedScene: path,
-			Properties: map[string]json.RawMessage{
-				"texture": json.RawMessage(`{"resource":"res://assets/placeholder_texture.tres"}`),
-			},
+	result := setNodeProperties(
+		t,
+		session,
+		path,
+		"Sprite",
+		map[string]json.RawMessage{
+			"texture": json.RawMessage(`{"resource":"res://assets/placeholder_texture.tres"}`),
 		},
 	)
-	if err != nil {
-		t.Fatalf("expected node.set to succeed: %v", err)
-	}
 
-	if !result.Changed {
-		t.Fatal("expected node.set to report a change")
-	}
-
-	var texture map[string]any
-
-	if err := json.Unmarshal(result.Properties["texture"], &texture); err != nil {
-		t.Fatalf("decoding texture property: %v", err)
-	}
-
-	if texture["resource"] != "res://assets/placeholder_texture.tres" {
-		t.Fatalf("expected texture resource path, got %v", texture["resource"])
-	}
-
-	if texture["type"] != "PlaceholderTexture2D" {
-		t.Fatalf("expected PlaceholderTexture2D, got %v", texture["type"])
-	}
+	assertResourceProperty(
+		t,
+		result.Properties,
+		"texture",
+		"res://assets/placeholder_texture.tres",
+		"PlaceholderTexture2D",
+	)
 
 	if err := session.LogJSON(node.SetName, result); err != nil {
 		t.Fatal(err)
@@ -152,38 +129,23 @@ func TestNodeSetScriptSucceeds(t *testing.T) {
 
 	openFixtureScene(t, session, path)
 
-	result, err := bridge.Call[node.SetParams, node.SetResult](
-		session.Client,
-		node.SetName,
-		node.SetParams{
-			Node:          "Player",
-			ExpectedScene: path,
-			Properties: map[string]json.RawMessage{
-				"script": json.RawMessage(`{"resource":"res://scripts/player.gd"}`),
-			},
+	result := setNodeProperties(
+		t,
+		session,
+		path,
+		"Player",
+		map[string]json.RawMessage{
+			"script": json.RawMessage(`{"resource":"res://scripts/player.gd"}`),
 		},
 	)
-	if err != nil {
-		t.Fatalf("expected node.set to succeed: %v", err)
-	}
 
-	if !result.Changed {
-		t.Fatal("expected node.set to report a change")
-	}
-
-	var script map[string]any
-
-	if err := json.Unmarshal(result.Properties["script"], &script); err != nil {
-		t.Fatalf("decoding script property: %v", err)
-	}
-
-	if script["resource"] != "res://scripts/player.gd" {
-		t.Fatalf("expected script resource res://scripts/player.gd, got %v", script["resource"])
-	}
-
-	if script["type"] != "GDScript" {
-		t.Fatalf("expected script type GDScript, got %v", script["type"])
-	}
+	assertResourceProperty(
+		t,
+		result.Properties,
+		"script",
+		"res://scripts/player.gd",
+		"GDScript",
+	)
 
 	if err := session.LogJSON(node.SetName, result); err != nil {
 		t.Fatal(err)
@@ -378,19 +340,13 @@ func TestNodeAddWithScriptResource(t *testing.T) {
 		t.Fatalf("expected type CharacterBody2D, got %s", result.Type)
 	}
 
-	var script map[string]any
-
-	if err := json.Unmarshal(result.Properties["script"], &script); err != nil {
-		t.Fatalf("decoding script property: %v", err)
-	}
-
-	if script["resource"] != "res://scripts/player.gd" {
-		t.Fatalf("expected script resource res://scripts/player.gd, got %v", script["resource"])
-	}
-
-	if script["type"] != "GDScript" {
-		t.Fatalf("expected script type GDScript, got %v", script["type"])
-	}
+	assertResourceProperty(
+		t,
+		result.Properties,
+		"script",
+		"res://scripts/player.gd",
+		"GDScript",
+	)
 
 	var speed float64
 
@@ -510,4 +466,67 @@ func TestNodeDeleteMissingReturnsNotFound(t *testing.T) {
 	)
 
 	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+}
+
+func setNodeProperties(
+	t *testing.T,
+	session *harness.Session,
+	path string,
+	nodePath string,
+	properties map[string]json.RawMessage,
+) node.SetResult {
+	t.Helper()
+
+	result, err := bridge.Call[node.SetParams, node.SetResult](
+		session.Client,
+		node.SetName,
+		node.SetParams{
+			Node:          nodePath,
+			ExpectedScene: path,
+			Properties:    properties,
+		},
+	)
+	if err != nil {
+		t.Fatalf("expected node.set to succeed: %v", err)
+	}
+
+	if !result.Changed {
+		t.Fatal("expected node.set to report a change")
+	}
+
+	return result
+}
+
+func assertResourceProperty(
+	t *testing.T,
+	properties map[string]json.RawMessage,
+	name string,
+	resource string,
+	resourceType string,
+) {
+	t.Helper()
+
+	var property map[string]any
+
+	if err := json.Unmarshal(properties[name], &property); err != nil {
+		t.Fatalf("decoding %s property: %v", name, err)
+	}
+
+	if property["resource"] != resource {
+		t.Fatalf(
+			"expected %s resource %s, got %v",
+			name,
+			resource,
+			property["resource"],
+		)
+	}
+
+	if property["type"] != resourceType {
+		t.Fatalf(
+			"expected %s type %s, got %v",
+			name,
+			resourceType,
+			property["type"],
+		)
+	}
 }

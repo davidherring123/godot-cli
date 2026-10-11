@@ -17,7 +17,7 @@ func NewInitCommand() *cobra.Command {
 		Long:    "Install the Godot addon. With --agent, also install or refresh the portable skill and command reference. Prints setup instructions as text.",
 		Example: "godot-cli init\ngodot-cli init --agent codex,opencode",
 		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runInit(cmd, agents)
 		},
 	}

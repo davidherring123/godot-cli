@@ -15,7 +15,7 @@ func NewNodeCommand() *cobra.Command {
 		Use:   "node",
 		Short: "Inspect and modify nodes",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
 	}
@@ -40,7 +40,7 @@ func newNodeInspectCommand() *cobra.Command {
 		Example:     "godot-cli node inspect .\ngodot-cli node inspect Player --property position --property visible --expect-scene res://main.tscn",
 		Annotations: map[string]string{skill.ActionKey: core.NodeInspect.Name},
 		Args:        cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return runNodeInspect(args[0], properties, sceneFlags.expectedScene)
 		},
 	}
@@ -75,7 +75,7 @@ func newNodeSetCommand() *cobra.Command {
 		Example:     `godot-cli node set Player --properties '{"position":{"x":100,"y":50},"visible":true}' --save --expect-scene res://main.tscn`,
 		Annotations: map[string]string{skill.ActionKey: core.NodeSet.Name},
 		Args:        cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			var properties map[string]json.RawMessage
 
 			if err := json.Unmarshal([]byte(rawProperties), &properties); err != nil {
@@ -119,7 +119,7 @@ func newNodeAddCommand() *cobra.Command {
 		Example:     `godot-cli node add Sprite2D World --name Sprite --properties '{"position":{"x":10,"y":20},"texture":{"resource":"res://icon.svg"}}' --save --expect-scene res://main.tscn`,
 		Annotations: map[string]string{skill.ActionKey: core.NodeAdd.Name},
 		Args:        cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			var properties map[string]json.RawMessage
 
 			if rawProperties != "" {
@@ -163,7 +163,7 @@ func newNodeDeleteCommand() *cobra.Command {
 		Example:     `godot-cli node delete Player --save --expect-scene res://main.tscn`,
 		Annotations: map[string]string{skill.ActionKey: core.NodeDelete.Name},
 		Args:        cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			project, err := FetchProjectContext()
 			if err != nil {
 				return err

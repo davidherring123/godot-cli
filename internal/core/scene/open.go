@@ -15,6 +15,6 @@ func Open(projectRoot string, params OpenParams) (OpenResult, error) {
 	if err != nil {
 		return OpenResult{}, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	return bridge.Call[OpenParams, OpenResult](client, OpenName, params)
 }

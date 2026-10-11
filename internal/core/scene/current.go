@@ -1,3 +1,4 @@
+// Package scene inspects and manages scenes in a running Godot editor.
 package scene
 
 import "github.com/davidherring123/godot-cli/internal/bridge"
@@ -9,6 +10,6 @@ func Current(projectRoot string, params CurrentParams) (CurrentResult, error) {
 	if err != nil {
 		return CurrentResult{}, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	return bridge.Call[CurrentParams, CurrentResult](client, CurrentName, params)
 }
