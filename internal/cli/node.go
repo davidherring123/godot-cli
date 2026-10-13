@@ -2,7 +2,6 @@ package cli
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
@@ -46,7 +45,7 @@ func newNodeInspectCommand() *cobra.Command {
 		Annotations: map[string]string{skill.ActionKey: core.NodeInspect.Name},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return runNodeParams("", func(
+			return runProperties("", func(
 				project *core.Project,
 				_ map[string]json.RawMessage,
 			) (any, error) {
@@ -129,7 +128,7 @@ func newNodeCommand(spec nodeCommandSpec) *cobra.Command {
 		Annotations: map[string]string{skill.ActionKey: spec.action},
 		Args:        cobra.ExactArgs(strings.Count(spec.use, " ")),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runNodeParams(rawProperties, spec.parameters(cmd, args, name, flags))
+			return runProperties(rawProperties, spec.parameters(cmd, args, name, flags))
 		},
 	}
 	flags.bind(cmd)
@@ -312,31 +311,6 @@ func newNodeMoveCommand() *cobra.Command {
 	)
 
 	return cmd
-}
-
-func runNodeParams(
-	rawProperties string,
-	call func(*core.Project, map[string]json.RawMessage) (any, error),
-) error {
-	var properties map[string]json.RawMessage
-
-	if rawProperties != "" {
-		if err := json.Unmarshal([]byte(rawProperties), &properties); err != nil {
-			return fmt.Errorf("properties must be a JSON object: %w", err)
-		}
-	}
-
-	project, err := FetchProjectContext()
-	if err != nil {
-		return err
-	}
-
-	result, err := call(project, properties)
-	if err != nil {
-		return err
-	}
-
-	return PrintJSON(result)
 }
 
 func newNodeDeleteCommand() *cobra.Command {

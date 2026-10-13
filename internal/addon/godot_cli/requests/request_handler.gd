@@ -6,6 +6,7 @@ var actions: Dictionary = {}
 var scene_context: EditorSceneContext
 var scene_service: SceneService
 var node_service: NodeService
+var resource_service: ResourceService
 var busy := false
 
 func _init(editor_interface: EditorInterface, undo_redo: EditorUndoRedoManager) -> void:
@@ -13,9 +14,11 @@ func _init(editor_interface: EditorInterface, undo_redo: EditorUndoRedoManager) 
 
     scene_service = SceneService.new(scene_context)
     node_service = NodeService.new(scene_context, undo_redo)
+    resource_service = ResourceService.new(editor_interface)
 
     _register_service(scene_service)
     _register_service(node_service)
+    _register_service(resource_service)
 
 func _register_service(service: ActionService) -> void:
     var service_actions := service.get_actions()

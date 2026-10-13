@@ -17,6 +17,7 @@ func NewRootCommand(version string) *cobra.Command {
 		NewStatusCommand(),
 		NewSceneCommand(),
 		NewNodeCommand(),
+		NewResourceCommand(),
 	)
 
 	return cmd

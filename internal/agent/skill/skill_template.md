@@ -1,6 +1,6 @@
 ---
 name: godot-cli
-description: Work with Godot projects through godot-cli.
+description: Work with Godot projects through godot-cli: scenes, nodes, resources, editor state, and gameplay scaffolding.
 ---
 
 # godot-cli
@@ -18,6 +18,31 @@ already supplied:
 - When the scene or node location is unknown, start with `scene tree`; it reports
   the active scene and every node path in one call.
 
+Structure defaults for new or extended gameplay:
+
+Match structure to the request, not to file or node count. Prefer, where
+appropriate: reusable objects as scenes (`Player.tscn`, `Platform.tscn`) that
+you instantiate with `node instantiate` instead of rebuilding them in code;
+standard nodes for behavior and collisions (`CharacterBody2D` for the player,
+`StaticBody2D` for fixed platforms, `AnimatableBody2D` for moving ones,
+`CollisionShape2D`, `Camera2D`, `CanvasLayer` for HUD); configuration as
+exported properties or `.tres` resources created with `resource create`, not
+magic numbers in code; signals or a small manager to decouple objects; scripts
+for behavior and procedural spawning.
+
+Avoid these shapes unless asked: one script that `_draw()`s all visuals; one
+script owning player, platforms, generation, camera, and HUD; hand-rolled
+physics instead of `CharacterBody2D` + `CollisionShape2D`; runtime-built node
+trees that could be `.tscn` files.
+
+Read "small", "quick", or "minimal" as less scope — fewer features, boxes
+instead of art, fewer levels — not fewer files or nodes. Keep architecture
+proportional; do not create scenes for trivial one-off nodes. Code-only or
+custom `_draw()` implementations are fine when explicitly requested or clearly
+better (custom rendering, heavy procedural work, throwaway experiments); if
+you deviate, say why in one line before building, and do not restructure an
+existing project's intentional design just to match this.
+
 Common scene and node work:
 
 ```shell
@@ -32,6 +57,24 @@ godot-cli node move <node> <parent> --index <n> --expect-scene <scene>
 godot-cli node delete <node> --expect-scene <scene>
 godot-cli scene save --expect-scene <scene>
 ```
+
+Common resource file work:
+
+```shell
+godot-cli resource create <path> --type <type> --properties '{"...":"..."}'
+godot-cli resource inspect <path> --property <name>
+godot-cli resource set <path> --properties '{"...":"..."}'
+godot-cli resource delete <path>
+```
+
+`resource` commands manage `.tres` and `.res` files on disk and need no active
+scene. Mutations are written immediately and are not editor undo steps, so there
+is no `--save` and no reason to re-inspect to confirm a change. `resource
+create` accepts native resource classes such as `StandardMaterial3D` and global
+script classes extending `Resource`; unknown, abstract, and non-resource types
+are rejected, and an existing file is never overwritten. `resource delete`
+fails and lists the project files that still reference the resource, so clear
+those references first.
 
 Every mutation applies to the live editor scene immediately, so run related
 edits back to back and save once when they are done: add `--save` to the scene's

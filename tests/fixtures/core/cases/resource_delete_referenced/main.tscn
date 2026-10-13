@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Material" path="res://cases/resource_delete_referenced/metal.tres" id="1_metal"]
+
+[node name="Main" type="Node2D"]
+material = ExtResource("1_metal")

@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/davidherring123/godot-cli/internal/core/node"
+	"github.com/davidherring123/godot-cli/internal/core/resource"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
 	"github.com/invopop/jsonschema"
 )
@@ -40,10 +41,26 @@ var (
 		node.InstantiateName,
 		"Add a linked instance of a PackedScene to the active editor scene as one undoable editor action",
 	)
-	NodeRename    = define[node.RenameParams, node.RenameResult](node.RenameName, "Rename a node as one undoable editor action")
-	NodeDuplicate = define[node.DuplicateParams, node.DuplicateResult](node.DuplicateName, "Duplicate a node and its children as one undoable editor action")
-	NodeMove      = define[node.MoveParams, node.MoveResult](node.MoveName, "Move a node to a new parent or position as one undoable editor action")
-	NodeDelete    = define[node.DeleteParams, node.DeleteResult](node.DeleteName, "Delete a node from the active editor scene as one undoable editor action")
+	NodeRename     = define[node.RenameParams, node.RenameResult](node.RenameName, "Rename a node as one undoable editor action")
+	NodeDuplicate  = define[node.DuplicateParams, node.DuplicateResult](node.DuplicateName, "Duplicate a node and its children as one undoable editor action")
+	NodeMove       = define[node.MoveParams, node.MoveResult](node.MoveName, "Move a node to a new parent or position as one undoable editor action")
+	NodeDelete     = define[node.DeleteParams, node.DeleteResult](node.DeleteName, "Delete a node from the active editor scene as one undoable editor action")
+	ResourceCreate = define[resource.CreateParams, resource.CreateResult](
+		resource.CreateName,
+		"Create a resource file and write it to disk immediately",
+	)
+	ResourceInspect = define[resource.InspectParams, resource.InspectResult](
+		resource.InspectName,
+		"Inspect a resource file's editor-visible properties",
+	)
+	ResourceSet = define[resource.SetParams, resource.SetResult](
+		resource.SetName,
+		"Set resource file properties and save the file immediately",
+	)
+	ResourceDelete = define[resource.DeleteParams, resource.DeleteResult](
+		resource.DeleteName,
+		"Delete a resource file that nothing else references",
+	)
 )
 
 func All() []ActionDefinition {
@@ -62,6 +79,10 @@ func All() []ActionDefinition {
 		NodeDuplicate,
 		NodeMove,
 		NodeDelete,
+		ResourceCreate,
+		ResourceInspect,
+		ResourceSet,
+		ResourceDelete,
 	}
 }
 

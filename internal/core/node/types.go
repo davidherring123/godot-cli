@@ -1,6 +1,10 @@
 package node
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/davidherring123/godot-cli/internal/core/property"
+)
 
 type InspectParams struct {
 	Node          string   `json:"node" jsonschema:"minLength=1,description=Node path relative to the active editor scene root; use a dot for the root."`
@@ -134,22 +138,8 @@ type InspectResult struct {
 	Properties []Property `json:"properties"`
 }
 
-type Property struct {
-	Name  string          `json:"name"`
-	Type  string          `json:"type"`
-	Hint  *PropertyHint   `json:"hint,omitempty"`
-	Value json.RawMessage `json:"value" jsonschema:"description=Serialized Godot Variant; its JSON shape depends on the property type."`
-}
+type Property = property.Property
 
-type PropertyHint struct {
-	Type     string   `json:"type"`
-	Options  []string `json:"options,omitempty"`
-	Types    []string `json:"types,omitempty"`
-	Value    string   `json:"value,omitempty"`
-	Selected []Layer  `json:"selected,omitempty"`
-}
+type PropertyHint = property.Hint
 
-type Layer struct {
-	Index int    `json:"index"`
-	Name  string `json:"name"`
-}
+type Layer = property.Layer

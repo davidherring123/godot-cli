@@ -67,7 +67,7 @@ func newSceneCreateCommand() *cobra.Command {
 		Annotations: map[string]string{skill.ActionKey: core.SceneCreate.Name},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return runNodeParams(rawProperties, func(
+			return runProperties(rawProperties, func(
 				project *core.Project,
 				properties map[string]json.RawMessage,
 			) (any, error) {

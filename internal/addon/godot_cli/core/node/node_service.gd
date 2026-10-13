@@ -66,7 +66,7 @@ func inspect(request: Request) -> Response:
         "path": str(root.get_path_to(node)),
         "name": str(node.name),
         "type": node.get_class(),
-        "properties": _get_properties(node, filters)
+        "properties": PropertyCodec.collect_properties(node, filters)
     }
 
     for property_name in filters:
@@ -106,7 +106,7 @@ func set_properties(request: Request) -> Response:
     if editable_error != null:
         return editable_error
 
-    var decoded := NodeBuilder.decode_properties(node, values)
+    var decoded := PropertyCodec.decode_properties(node, values)
 
     if decoded.error != null:
         return decoded.error
@@ -212,7 +212,7 @@ func add(request: Request) -> Response:
     node.name = requested_name if not requested_name.is_empty() else node_type
 
     if values.has("script"):
-        var decoded_script := NodeBuilder.decode_properties(
+        var decoded_script := PropertyCodec.decode_properties(
             node,
             {"script": values["script"]}
         )
@@ -228,7 +228,7 @@ func add(request: Request) -> Response:
 
     remaining.erase("script")
 
-    var decoded := NodeBuilder.decode_properties(node, remaining)
+    var decoded := PropertyCodec.decode_properties(node, remaining)
 
     if decoded.error != null:
         node.free()
@@ -367,7 +367,7 @@ func instantiate_scene(request: Request) -> Response:
     if not requested_name.is_empty():
         instance.name = requested_name
 
-    var decoded := NodeBuilder.decode_properties(instance, values)
+    var decoded := PropertyCodec.decode_properties(instance, values)
 
     if decoded.error != null:
         instance.free()
@@ -1216,48 +1216,3 @@ func _editable_error(node: Node, root: Node, operation: String) -> Response:
         )
 
     return null
-
-func _get_properties(node: Node, filters: Dictionary = {}) -> Array[Dictionary]:
-    var properties: Array[Dictionary] = []
-
-    for property in node.get_property_list():
-        var usage: int = property.get("usage", 0)
-        var property_type: int = property.get("type", TYPE_NIL)
-
-        if (usage & PROPERTY_USAGE_EDITOR) == 0:
-            continue
-
-        if property_type == TYPE_NIL:
-            continue
-
-        var property_name: String = property.get("name", "")
-
-        if not filters.is_empty() and not filters.has(property_name):
-            continue
-
-        if filters.has(property_name):
-            filters[property_name] = true
-
-        var value = node.get(property_name)
-
-        var property_hint: int = property.get("hint", PROPERTY_HINT_NONE)
-        var hint_string: String = property.get("hint_string", "")
-
-        var serialized_hint := PropertyHintSerializer.serialize(
-            property_hint,
-            hint_string,
-            value
-        )
-
-        var serialized_property := {
-            "name": property_name,
-            "type": type_string(property_type),
-            "value": VariantSerializer.serialize(value)
-        }
-
-        if serialized_hint != null:
-            serialized_property["hint"] = serialized_hint
-
-        properties.append(serialized_property)
-
-    return properties
