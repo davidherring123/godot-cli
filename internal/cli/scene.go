@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
 	"github.com/davidherring123/godot-cli/internal/core"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
@@ -21,6 +23,7 @@ func NewSceneCommand() *cobra.Command {
 		newSceneListCommand(),
 		newSceneCurrentCommand(),
 		newSceneOpenCommand(),
+		newSceneCreateCommand(),
 		newSceneTreeCommand(),
 		newSceneSaveCommand(),
 	)
@@ -50,6 +53,40 @@ func runSceneList(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	return PrintJSON(result)
+}
+
+func newSceneCreateCommand() *cobra.Command {
+	var rootType string
+	var sceneName string
+	var rawProperties string
+	cmd := &cobra.Command{
+		Use:         "create <scene>",
+		Short:       core.SceneCreate.Description,
+		Long:        "Create a new scene file containing one root node and open it as the active editor scene. The path must end in .tscn or .scn, missing directories are created, and an existing file is rejected. The root type accepts Godot classes such as Node2D and global script classes. Omit --name to derive the root name from the file name. Resources such as scripts, textures, and materials are assigned with {\"resource\": \"res://...\"} references. All values are validated before the file is written. The file is written once and opened; it is not an editor undo step.",
+		Example:     `godot-cli scene create res://levels/arena.tscn --root-type Node2D --name Arena`,
+		Annotations: map[string]string{skill.ActionKey: core.SceneCreate.Name},
+		Args:        cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			return runNodeParams(rawProperties, func(
+				project *core.Project,
+				properties map[string]json.RawMessage,
+			) (any, error) {
+				return scene.Create(project.Root, scene.CreateParams{
+					Scene:      args[0],
+					RootType:   rootType,
+					Name:       sceneName,
+					Properties: properties,
+				})
+			})
+		},
+	}
+	cmd.Flags().StringVar(&rootType, "root-type", "", "Root node class such as Node2D; global script classes are supported")
+	cmd.Flags().StringVar(&sceneName, "name", "", "Root node name; defaults to the file name without its extension")
+	cmd.Flags().StringVar(&rawProperties, "properties", "", "JSON object of root properties to apply when the scene is created")
+
+	_ = cmd.MarkFlagRequired("root-type")
+
+	return cmd
 }
 
 func newSceneTreeCommand() *cobra.Command {
@@ -86,7 +123,7 @@ func newSceneCurrentCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "current",
 		Short:       core.SceneCurrent.Description,
-		Long:        "Identify the active editor scene and whether it has unsaved changes. An empty scene path means it has never been saved. Fails if no scene is being edited.",
+		Long:        "Identify the active editor scene and whether it has unsaved changes. Succeeds with active:false when no scene is being edited; an empty scene path with active:true means the scene has never been saved. --expect-scene fails when a different scene is active or no scene is open.",
 		Example:     "godot-cli scene current\ngodot-cli scene current --expect-scene res://main.tscn",
 		Annotations: map[string]string{skill.ActionKey: core.SceneCurrent.Name},
 		Args:        cobra.NoArgs,

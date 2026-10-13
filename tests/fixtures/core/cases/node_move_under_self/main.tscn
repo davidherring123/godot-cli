@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="Main" type="Node2D"]
+
+[node name="Parent" type="Node2D" parent="."]
+
+[node name="Child" type="Node2D" parent="Parent"]
