@@ -124,7 +124,7 @@ func create_scene(request: Request) -> Response:
 
     root.name = requested_name
 
-    var property_error := NodeBuilder.apply_properties(root, values)
+    var property_error := PropertyCodec.apply_properties(root, values)
 
     if property_error != null:
         root.free()
