@@ -27,19 +27,42 @@ func define[P, R any](name, description string) ActionDefinition {
 }
 
 var (
-	SceneList    = define[scene.ListParams, scene.ListResult](scene.ListName, "List scenes in the project")
-	SceneCurrent = define[scene.CurrentParams, scene.CurrentResult](scene.CurrentName, "Show the active editor scene")
-	SceneOpen    = define[scene.OpenParams, scene.OpenResult](scene.OpenName, "Open or activate an editor scene")
-	SceneSave    = define[scene.SaveParams, scene.SaveResult](scene.SaveName, "Save the active editor scene")
-	SceneTree    = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show the active editor scene's node tree")
-	NodeInspect  = define[node.InspectParams, node.InspectResult](node.InspectName, "Inspect a node in the active editor scene")
-	NodeSet      = define[node.SetParams, node.SetResult](node.SetName, "Set node properties as one undoable editor action")
-	NodeAdd      = define[node.AddParams, node.AddResult](node.AddName, "Add a node to the active editor scene as one undoable editor action")
-	NodeDelete   = define[node.DeleteParams, node.DeleteResult](node.DeleteName, "Delete a node from the active editor scene as one undoable editor action")
+	SceneList       = define[scene.ListParams, scene.ListResult](scene.ListName, "List scenes in the project")
+	SceneCurrent    = define[scene.CurrentParams, scene.CurrentResult](scene.CurrentName, "Show the active editor scene")
+	SceneOpen       = define[scene.OpenParams, scene.OpenResult](scene.OpenName, "Open or activate an editor scene")
+	SceneCreate     = define[scene.CreateParams, scene.CreateResult](scene.CreateName, "Create a new scene file and open it in the editor")
+	SceneSave       = define[scene.SaveParams, scene.SaveResult](scene.SaveName, "Save the active editor scene")
+	SceneTree       = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show the active editor scene's node tree")
+	NodeInspect     = define[node.InspectParams, node.InspectResult](node.InspectName, "Inspect a node in the active editor scene")
+	NodeSet         = define[node.SetParams, node.SetResult](node.SetName, "Set node properties as one undoable editor action")
+	NodeAdd         = define[node.AddParams, node.AddResult](node.AddName, "Add a node to the active editor scene as one undoable editor action")
+	NodeInstantiate = define[node.InstantiateParams, node.InstantiateResult](
+		node.InstantiateName,
+		"Add a linked instance of a PackedScene to the active editor scene as one undoable editor action",
+	)
+	NodeRename    = define[node.RenameParams, node.RenameResult](node.RenameName, "Rename a node as one undoable editor action")
+	NodeDuplicate = define[node.DuplicateParams, node.DuplicateResult](node.DuplicateName, "Duplicate a node and its children as one undoable editor action")
+	NodeMove      = define[node.MoveParams, node.MoveResult](node.MoveName, "Move a node to a new parent or position as one undoable editor action")
+	NodeDelete    = define[node.DeleteParams, node.DeleteResult](node.DeleteName, "Delete a node from the active editor scene as one undoable editor action")
 )
 
 func All() []ActionDefinition {
-	return []ActionDefinition{SceneList, SceneCurrent, SceneOpen, SceneSave, SceneTree, NodeInspect, NodeSet, NodeAdd, NodeDelete}
+	return []ActionDefinition{
+		SceneList,
+		SceneCurrent,
+		SceneOpen,
+		SceneCreate,
+		SceneSave,
+		SceneTree,
+		NodeInspect,
+		NodeSet,
+		NodeAdd,
+		NodeInstantiate,
+		NodeRename,
+		NodeDuplicate,
+		NodeMove,
+		NodeDelete,
+	}
 }
 
 func Lookup(name string) (ActionDefinition, bool) {

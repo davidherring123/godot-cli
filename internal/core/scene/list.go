@@ -9,7 +9,7 @@ import (
 const ListName = "scene.list"
 
 func List(projectRoot string, _ ListParams) (ListResult, error) {
-	var scenes []string
+	scenes := []string{}
 
 	err := filepath.WalkDir(
 		projectRoot,

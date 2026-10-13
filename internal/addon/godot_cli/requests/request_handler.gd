@@ -65,7 +65,7 @@ func handle(request: Request) -> Response:
     return response
 
 func _validate_options(request: Request, action: ActionHandler) -> Response:
-    if request.params.has("expected_scene") and not action.requires_scene:
+    if request.params.has("expected_scene") and not action.supports_expected_scene:
         return Response.failure(
             ErrorCode.INVALID_ARGUMENT,
             "This action does not support expected_scene"

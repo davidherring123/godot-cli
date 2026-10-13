@@ -8,13 +8,28 @@ func _init(context: EditorSceneContext) -> void:
 
 func get_actions() -> Dictionary:
     return {
-        "scene.current": ActionHandler.new(current, true, false),
-        "scene.open": ActionHandler.new(open_scene, false, false),
-        "scene.tree": ActionHandler.new(get_tree, true, false),
-        "scene.save": ActionHandler.new(save, true, false),
+        "scene.current": ActionHandler.new(current, false, false, true),
+        "scene.open": ActionHandler.new(open_scene, false, false, false),
+        "scene.create": ActionHandler.new(create_scene, false, false, false),
+        "scene.tree": ActionHandler.new(get_tree, true, false, true),
+        "scene.save": ActionHandler.new(save, true, false, true),
     }
 
-func current(_request: Request) -> Response:
+func current(request: Request) -> Response:
+    var expected = request.params.get("expected_scene", "")
+
+    if not expected is String:
+        return Response.failure(
+            ErrorCode.INVALID_ARGUMENT,
+            "expected_scene must be a string"
+        )
+
+    var root := scene_context.editor.get_edited_scene_root()
+    var error := scene_context.expected_scene_error(root, expected)
+
+    if error != null:
+        return error
+
     return Response.success(scene_context.describe())
 
 func open_scene(request: Request) -> Response:
@@ -34,6 +49,135 @@ func open_scene(request: Request) -> Response:
             "Scene must be inside the project"
         )
 
+    return await _activate_scene(path)
+
+func create_scene(request: Request) -> Response:
+    var path = request.params.get("scene")
+
+    if not path is String or not path.begins_with("res://"):
+        return Response.failure(
+            ErrorCode.INVALID_ARGUMENT,
+            "A res:// scene path is required"
+        )
+
+    path = path.simplify_path()
+
+    if not path.begins_with("res://"):
+        return Response.failure(
+            ErrorCode.INVALID_ARGUMENT,
+            "Scene must be inside the project"
+        )
+
+    var extension: String = path.get_extension().to_lower()
+
+    if extension != "tscn" and extension != "scn":
+        return Response.failure(
+            ErrorCode.INVALID_ARGUMENT,
+            "Scene path must end with .tscn or .scn: %s" % path
+        )
+
+    var root_type = request.params.get("root_type")
+
+    if not root_type is String or root_type.is_empty():
+        return Response.failure(
+            ErrorCode.INVALID_ARGUMENT,
+            "A root node type is required"
+        )
+
+    var requested_name = request.params.get("name", "")
+
+    if not requested_name is String:
+        return Response.failure(ErrorCode.INVALID_ARGUMENT, "name must be a string")
+
+    var values = request.params.get("properties", {})
+
+    if not values is Dictionary:
+        return Response.failure(
+            ErrorCode.INVALID_ARGUMENT,
+            "properties must be an object"
+        )
+
+    if FileAccess.file_exists(path):
+        return Response.failure(
+            ErrorCode.CONFLICT,
+            "A file already exists at: %s" % path
+        )
+
+    var root := NodeBuilder.instantiate(root_type)
+
+    if root == null:
+        return Response.failure(
+            ErrorCode.INVALID_ARGUMENT,
+            "Unknown or non-instantiable node type: %s" % root_type
+        )
+
+    if requested_name.is_empty():
+        requested_name = path.get_file().get_basename().validate_node_name()
+
+    if requested_name.is_empty() or requested_name != requested_name.validate_node_name():
+        root.free()
+
+        return Response.failure(
+            ErrorCode.INVALID_ARGUMENT,
+            "Invalid root node name: %s" % requested_name
+        )
+
+    root.name = requested_name
+
+    var property_error := NodeBuilder.apply_properties(root, values)
+
+    if property_error != null:
+        root.free()
+
+        return property_error
+
+    var packed := PackedScene.new()
+    var pack_error := packed.pack(root)
+
+    root.free()
+
+    if pack_error != OK:
+        return Response.failure(
+            ErrorCode.ACTION_FAILED,
+            "Could not build scene: %s" % error_string(pack_error)
+        )
+
+    var directory: String = path.get_base_dir()
+
+    if not DirAccess.dir_exists_absolute(directory):
+        var directory_error := DirAccess.make_dir_recursive_absolute(directory)
+
+        if directory_error != OK:
+            return Response.failure(
+                ErrorCode.ACTION_FAILED,
+                "Could not create %s: %s" % [directory, error_string(directory_error)]
+            )
+
+    var save_error := ResourceSaver.save(packed, path)
+
+    if save_error != OK:
+        return Response.failure(
+            ErrorCode.ACTION_FAILED,
+            "Could not save scene %s: %s" % [path, error_string(save_error)]
+        )
+
+    var open_response = await _activate_scene(path)
+
+    if not open_response.code.is_empty():
+        return open_response
+
+    var active := scene_context.editor.get_edited_scene_root()
+    var serialized := {}
+
+    for property_name in values:
+        serialized[property_name] = VariantSerializer.serialize(active.get(property_name))
+
+    var result: Dictionary = open_response.result
+    result["properties"] = serialized
+
+    return Response.success(result)
+
+func _activate_scene(path: String) -> Response:
     var editor := scene_context.editor
     var root := editor.get_edited_scene_root()
 

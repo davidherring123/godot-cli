@@ -23,7 +23,19 @@ func validate(params: Dictionary) -> Response:
             "expected_scene must be a string"
         )
 
-    if not expected.is_empty() and root.scene_file_path != expected:
+    return expected_scene_error(root, expected)
+
+func expected_scene_error(root: Node, expected: String) -> Response:
+    if expected.is_empty():
+        return null
+
+    if root == null:
+        return Response.failure(
+            ErrorCode.FAILED_PRECONDITION,
+            "Expected %s, but no scene is being edited" % expected
+        )
+
+    if root.scene_file_path != expected:
         return Response.failure(
             ErrorCode.CONFLICT,
             "Expected %s, but the active scene is %s" % [expected, root.scene_file_path]
@@ -33,6 +45,16 @@ func validate(params: Dictionary) -> Response:
 
 func describe() -> Dictionary:
     var root := editor.get_edited_scene_root()
+
+    if root == null:
+        return {
+            "scene": "",
+            "name": "",
+            "type": "",
+            "unsaved": false,
+            "active": false,
+        }
+
     var unsaved := (
         root.scene_file_path.is_empty()
         or editor.get_unsaved_scenes().has(root.scene_file_path)
@@ -43,6 +65,7 @@ func describe() -> Dictionary:
         "name": str(root.name),
         "type": root.get_class(),
         "unsaved": unsaved,
+        "active": true,
     }
 
 func save() -> Response:

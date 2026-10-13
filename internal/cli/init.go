@@ -54,8 +54,19 @@ func runInit(
 
 func installAddon(cmd *cobra.Command, projectRoot string) error {
 	if addon.IsInstalled(projectRoot) {
+		if !addon.IsManaged(projectRoot) {
+			cmd.Println(
+				"Godot CLI is already installed in this project.",
+			)
+			return nil
+		}
+
+		if err := addon.Install(projectRoot); err != nil {
+			return fmt.Errorf("updating addon: %w", err)
+		}
+
 		cmd.Println(
-			"Godot CLI is already installed in this project.",
+			"✓ Updated addons/godot_cli to match this godot-cli version.",
 		)
 		return nil
 	}

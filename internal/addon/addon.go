@@ -25,6 +25,12 @@ func IsInstalled(projectRoot string) bool {
 	return err == nil
 }
 
+// IsManaged reports whether the installed addon was installed by godot-cli.
+func IsManaged(projectRoot string) bool {
+	_, err := os.Stat(filepath.Join(Path(projectRoot), ".godot-cli-managed"))
+	return err == nil
+}
+
 func Install(projectRoot string) error {
 	source, err := fs.Sub(embeddedFiles, "godot_cli")
 	if err != nil {

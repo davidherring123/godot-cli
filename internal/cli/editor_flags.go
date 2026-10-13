@@ -17,5 +17,5 @@ type mutationFlags struct {
 
 func (flags *mutationFlags) bind(cmd *cobra.Command) {
 	flags.editorSceneFlags.bind(cmd)
-	cmd.Flags().BoolVar(&flags.save, "save", false, "Save the active scene after applying the change")
+	cmd.Flags().BoolVar(&flags.save, "save", false, "Save the active scene after the change; use once when the edits are complete")
 }

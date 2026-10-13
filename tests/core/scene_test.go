@@ -1,7 +1,9 @@
 package core_test
 
 import (
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/davidherring123/godot-cli/internal/bridge"
@@ -126,6 +128,242 @@ func TestSceneSaveSucceeds(t *testing.T) {
 	}
 
 	if err := session.LogJSON(scene.SaveName, result); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSceneCreateSucceeds(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_create_succeeds/main.tscn"
+
+	openFixtureScene(t, session, path)
+
+	created := "res://cases/scene_create_succeeds/generated/arena.tscn"
+
+	result, err := bridge.Call[scene.CreateParams, scene.CreateResult](
+		session.Client,
+		scene.CreateName,
+		scene.CreateParams{
+			Scene:    created,
+			RootType: "Node2D",
+			Name:     "Arena",
+			Properties: map[string]json.RawMessage{
+				"position": json.RawMessage(`{"x":128,"y":256}`),
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("expected scene.create to succeed: %v", err)
+	}
+
+	if result.Scene != created {
+		t.Fatalf("expected scene %s, got %s", created, result.Scene)
+	}
+
+	if result.Name != "Arena" {
+		t.Fatalf("expected root name Arena, got %s", result.Name)
+	}
+
+	if result.Type != "Node2D" {
+		t.Fatalf("expected root type Node2D, got %s", result.Type)
+	}
+
+	if result.Unsaved {
+		t.Fatal("expected the created scene to be saved")
+	}
+
+	var position struct {
+		X float64 `json:"x"`
+		Y float64 `json:"y"`
+	}
+
+	if err := json.Unmarshal(result.Properties["position"], &position); err != nil {
+		t.Fatalf("decoding position property: %v", err)
+	}
+
+	if position.X != 128 || position.Y != 256 {
+		t.Fatalf("expected position (128, 256), got %+v", position)
+	}
+
+	savedText := readSavedScene(t, session, created)
+
+	if !strings.Contains(savedText, `[node name="Arena" type="Node2D"`) {
+		t.Fatalf("expected the created root in the saved scene:\n%s", savedText)
+	}
+
+	if _, err := bridge.Call[scene.CurrentParams, scene.CurrentResult](
+		session.Client,
+		scene.CurrentName,
+		scene.CurrentParams{ExpectedScene: created},
+	); err != nil {
+		t.Fatalf("expected the created scene to be active: %v", err)
+	}
+
+	if err := session.LogJSON(scene.CreateName, result); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSceneCreateWithScriptSucceeds(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_create_succeeds/main.tscn"
+
+	openFixtureScene(t, session, path)
+
+	created := "res://cases/scene_create_succeeds/generated/player.tscn"
+
+	result, err := bridge.Call[scene.CreateParams, scene.CreateResult](
+		session.Client,
+		scene.CreateName,
+		scene.CreateParams{
+			Scene:    created,
+			RootType: "CharacterBody2D",
+			Name:     "Player",
+			Properties: map[string]json.RawMessage{
+				"script": json.RawMessage(`{"resource":"res://scripts/player.gd"}`),
+				"speed":  json.RawMessage(`250`),
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("expected scene.create to succeed: %v", err)
+	}
+
+	if result.Type != "CharacterBody2D" {
+		t.Fatalf("expected root type CharacterBody2D, got %s", result.Type)
+	}
+
+	assertResourceProperty(
+		t,
+		result.Properties,
+		"script",
+		"res://scripts/player.gd",
+		"GDScript",
+	)
+
+	var speed float64
+
+	if err := json.Unmarshal(result.Properties["speed"], &speed); err != nil {
+		t.Fatalf("decoding speed property: %v", err)
+	}
+
+	if speed != 250 {
+		t.Fatalf("expected speed 250, got %v", speed)
+	}
+}
+
+func TestSceneCreateExistingFileConflict(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_create_succeeds/main.tscn"
+
+	openFixtureScene(t, session, path)
+
+	_, err := bridge.Call[scene.CreateParams, scene.CreateResult](
+		session.Client,
+		scene.CreateName,
+		scene.CreateParams{
+			Scene:    path,
+			RootType: "Node2D",
+		},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+}
+
+func TestSceneCreateUnknownTypeRejected(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_create_succeeds/main.tscn"
+
+	openFixtureScene(t, session, path)
+
+	_, err := bridge.Call[scene.CreateParams, scene.CreateResult](
+		session.Client,
+		scene.CreateName,
+		scene.CreateParams{
+			Scene:    "res://cases/scene_create_succeeds/generated/unknown.tscn",
+			RootType: "NotANodeType",
+		},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+}
+
+func TestSceneCreateInvalidExtensionRejected(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_create_succeeds/main.tscn"
+
+	openFixtureScene(t, session, path)
+
+	_, err := bridge.Call[scene.CreateParams, scene.CreateResult](
+		session.Client,
+		scene.CreateName,
+		scene.CreateParams{
+			Scene:    "res://cases/scene_create_succeeds/generated/notes.txt",
+			RootType: "Node2D",
+		},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+}
+
+func TestSceneListEmptyReturnsEmptyArray(t *testing.T) {
+	root := t.TempDir()
+
+	result, err := scene.List(root, scene.ListParams{})
+	if err != nil {
+		t.Fatalf("expected scene.list to succeed: %v", err)
+	}
+
+	if result.Scenes == nil {
+		t.Fatal("expected an empty slice, not nil")
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(data) != `{"scenes":[]}` {
+		t.Fatalf("expected scenes to marshal as [], got %s", data)
+	}
+}
+
+func TestSceneCurrentWithNoSceneSucceeds(t *testing.T) {
+	session, err := harness.Start(nil)
+	if errors.Is(err, harness.ErrGodotNotFound) {
+		t.Skip(err)
+	}
+	if err != nil {
+		t.Fatalf("starting an isolated editor session: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	result, err := bridge.Call[scene.CurrentParams, scene.CurrentResult](
+		session.Client,
+		scene.CurrentName,
+		scene.CurrentParams{},
+	)
+	if err != nil {
+		t.Fatalf("expected scene.current to succeed with no scene: %v", err)
+	}
+
+	if result.Active {
+		t.Fatal("expected active to be false when no scene is being edited")
+	}
+
+	if result.Scene != "" {
+		t.Fatalf("expected an empty scene path, got %s", result.Scene)
+	}
+
+	_, err = bridge.Call[scene.CurrentParams, scene.CurrentResult](
+		session.Client,
+		scene.CurrentName,
+		scene.CurrentParams{ExpectedScene: "res://main.tscn"},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+
+	if err := session.LogJSON(scene.CurrentName, result); err != nil {
 		t.Fatal(err)
 	}
 }
