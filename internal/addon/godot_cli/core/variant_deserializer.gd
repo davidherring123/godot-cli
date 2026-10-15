@@ -103,6 +103,48 @@ static func deserialize(
                 )
             )
 
+        TYPE_ARRAY:
+            if value is Array:
+                return Response.success(value)
+
+            return _expected(type)
+
+        TYPE_DICTIONARY:
+            if value is Dictionary:
+                return Response.success(value)
+
+            return _expected(type)
+
+        TYPE_PACKED_BYTE_ARRAY:
+            return _packed(value, type)
+
+        TYPE_PACKED_INT32_ARRAY:
+            return _packed(value, type)
+
+        TYPE_PACKED_INT64_ARRAY:
+            return _packed(value, type)
+
+        TYPE_PACKED_FLOAT32_ARRAY:
+            return _packed(value, type)
+
+        TYPE_PACKED_FLOAT64_ARRAY:
+            return _packed(value, type)
+
+        TYPE_PACKED_STRING_ARRAY:
+            return _packed(value, type)
+
+        TYPE_PACKED_VECTOR2_ARRAY:
+            return _packed(value, type)
+
+        TYPE_PACKED_VECTOR3_ARRAY:
+            return _packed(value, type)
+
+        TYPE_PACKED_VECTOR4_ARRAY:
+            return _packed(value, type)
+
+        TYPE_PACKED_COLOR_ARRAY:
+            return _packed(value, type)
+
         TYPE_OBJECT:
             return _object(value, hint, hint_string)
 
@@ -238,3 +280,101 @@ static func _components(value: Variant, names: Array, integers: bool = false) ->
             return false
 
     return true
+
+static func _expected(type: int) -> Response:
+    return Response.failure(
+        ErrorCode.INVALID_ARGUMENT,
+        "Expected a JSON value matching %s" % type_string(type)
+    )
+
+static func _packed(value: Variant, type: int) -> Response:
+    if not value is Array:
+        return _expected(type)
+
+    var items: Array = []
+
+    match type:
+        TYPE_PACKED_BYTE_ARRAY:
+            for item in value:
+                if not _integer(item) or item < 0 or item > 255:
+                    return _expected(type)
+
+                items.append(int(item))
+
+            return Response.success(PackedByteArray(items))
+
+        TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT64_ARRAY:
+            for item in value:
+                if not _integer(item):
+                    return _expected(type)
+
+                if type == TYPE_PACKED_INT32_ARRAY and (
+                    item < -2147483648 or item > 2147483647
+                ):
+                    return _expected(type)
+
+                items.append(int(item))
+
+            if type == TYPE_PACKED_INT32_ARRAY:
+                return Response.success(PackedInt32Array(items))
+
+            return Response.success(PackedInt64Array(items))
+
+        TYPE_PACKED_FLOAT32_ARRAY, TYPE_PACKED_FLOAT64_ARRAY:
+            for item in value:
+                if not _number(item):
+                    return _expected(type)
+
+                items.append(float(item))
+
+            if type == TYPE_PACKED_FLOAT32_ARRAY:
+                return Response.success(PackedFloat32Array(items))
+
+            return Response.success(PackedFloat64Array(items))
+
+        TYPE_PACKED_STRING_ARRAY:
+            for item in value:
+                if not item is String:
+                    return _expected(type)
+
+                items.append(item)
+
+            return Response.success(PackedStringArray(items))
+
+        TYPE_PACKED_VECTOR2_ARRAY:
+            for item in value:
+                if not _components(item, ["x", "y"]):
+                    return _expected(type)
+
+                items.append(Vector2(item.x, item.y))
+
+            return Response.success(PackedVector2Array(items))
+
+        TYPE_PACKED_VECTOR3_ARRAY:
+            for item in value:
+                if not _components(item, ["x", "y", "z"]):
+                    return _expected(type)
+
+                items.append(Vector3(item.x, item.y, item.z))
+
+            return Response.success(PackedVector3Array(items))
+
+        TYPE_PACKED_VECTOR4_ARRAY:
+            for item in value:
+                if not _components(item, ["x", "y", "z", "w"]):
+                    return _expected(type)
+
+                items.append(Vector4(item.x, item.y, item.z, item.w))
+
+            return Response.success(PackedVector4Array(items))
+
+        TYPE_PACKED_COLOR_ARRAY:
+            for item in value:
+                if not _components(item, ["r", "g", "b", "a"]):
+                    return _expected(type)
+
+                items.append(Color(item.r, item.g, item.b, item.a))
+
+            return Response.success(PackedColorArray(items))
+
+    return _expected(type)

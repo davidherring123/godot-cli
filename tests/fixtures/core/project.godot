@@ -6,6 +6,10 @@ config_version=5
 config/name="godot-cli Business Tests"
 config/features=PackedStringArray("4.4")
 
+[display]
+
+window/size/viewport_width=800
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot_cli/plugin.cfg")

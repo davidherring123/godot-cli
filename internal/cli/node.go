@@ -7,6 +7,7 @@ import (
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
 	"github.com/davidherring123/godot-cli/internal/core"
 	"github.com/davidherring123/godot-cli/internal/core/node"
+	"github.com/davidherring123/godot-cli/internal/core/project"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +47,7 @@ func newNodeInspectCommand() *cobra.Command {
 		Args:        cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return runProperties("", func(
-				project *core.Project,
+				project *project.Project,
 				_ map[string]json.RawMessage,
 			) (any, error) {
 				return node.Inspect(project.Root, node.InspectParams{
@@ -77,7 +78,7 @@ func newNodeSetCommand() *cobra.Command {
 			flags mutationFlags,
 		) nodeParamsFunc {
 			return func(
-				project *core.Project,
+				project *project.Project,
 				properties map[string]json.RawMessage,
 			) (any, error) {
 				return node.Set(project.Root, node.SetParams{
@@ -96,7 +97,7 @@ func newNodeSetCommand() *cobra.Command {
 }
 
 type nodeParamsFunc func(
-	project *core.Project,
+	project *project.Project,
 	properties map[string]json.RawMessage,
 ) (any, error)
 
@@ -160,7 +161,7 @@ func newNodeAddCommand() *cobra.Command {
 			flags mutationFlags,
 		) nodeParamsFunc {
 			return func(
-				project *core.Project,
+				project *project.Project,
 				properties map[string]json.RawMessage,
 			) (any, error) {
 				return node.Add(project.Root, node.AddParams{
@@ -192,7 +193,7 @@ func newNodeInstantiateCommand() *cobra.Command {
 			flags mutationFlags,
 		) nodeParamsFunc {
 			return func(
-				project *core.Project,
+				project *project.Project,
 				properties map[string]json.RawMessage,
 			) (any, error) {
 				return node.Instantiate(project.Root, node.InstantiateParams{
@@ -222,7 +223,7 @@ func newNodeRenameCommand() *cobra.Command {
 			flags mutationFlags,
 		) nodeParamsFunc {
 			return func(
-				project *core.Project,
+				project *project.Project,
 				_ map[string]json.RawMessage,
 			) (any, error) {
 				return node.Rename(project.Root, node.RenameParams{
@@ -251,7 +252,7 @@ func newNodeDuplicateCommand() *cobra.Command {
 			flags mutationFlags,
 		) nodeParamsFunc {
 			return func(
-				project *core.Project,
+				project *project.Project,
 				_ map[string]json.RawMessage,
 			) (any, error) {
 				return node.Duplicate(project.Root, node.DuplicateParams{
@@ -281,7 +282,7 @@ func newNodeMoveCommand() *cobra.Command {
 			flags mutationFlags,
 		) nodeParamsFunc {
 			return func(
-				project *core.Project,
+				project *project.Project,
 				_ map[string]json.RawMessage,
 			) (any, error) {
 				params := node.MoveParams{
@@ -327,7 +328,7 @@ func newNodeDeleteCommand() *cobra.Command {
 			flags mutationFlags,
 		) nodeParamsFunc {
 			return func(
-				project *core.Project,
+				project *project.Project,
 				_ map[string]json.RawMessage,
 			) (any, error) {
 				return node.Delete(project.Root, node.DeleteParams{

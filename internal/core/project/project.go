@@ -1,4 +1,5 @@
-package core
+// Package project locates and describes Godot project roots.
+package project
 
 import (
 	"errors"

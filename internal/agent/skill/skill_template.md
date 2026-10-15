@@ -1,6 +1,6 @@
 ---
 name: godot-cli
-description: Work with Godot projects through godot-cli: scenes, nodes, resources, editor state, and gameplay scaffolding.
+description: Work with Godot projects through godot-cli: scenes, nodes, resources, project settings, Input Map actions, editor state, and gameplay scaffolding.
 ---
 
 # godot-cli
@@ -76,6 +76,31 @@ are rejected, and an existing file is never overwritten. `resource delete`
 fails and lists the project files that still reference the resource, so clear
 those references first.
 
+Project settings and the Input Map:
+
+```shell
+godot-cli project settings list --prefix <group>
+godot-cli project settings get <setting>
+godot-cli project settings set <setting> --value '<json>'
+godot-cli project settings unset <setting>
+godot-cli input list
+godot-cli input inspect <action>
+godot-cli input add <action> --deadzone <0..1>
+godot-cli input set <action> --deadzone <0..1>
+godot-cli input rename <action> <new-name>
+godot-cli input delete <action>
+godot-cli input event add <action> --event '{"type":"key","physical_keycode":32}'
+godot-cli input event delete <action> --index <n>
+```
+
+`project settings` and `input` commands edit `project.godot` and save it
+immediately; they need no active scene and are not editor undo steps. `--value`
+and `--event` take JSON matching the setting's or event's Godot type. `project
+settings unset` removes an override and restores the engine default; binding
+indexes come from `input inspect`. `input event add` accepts `key`,
+`mouse_button`, `joypad_button`, and `joypad_motion`, for example
+`'{"type":"joypad_motion","axis":0,"axis_value":-1}'`.
+
 Every mutation applies to the live editor scene immediately, so run related
 edits back to back and save once when they are done: add `--save` to the scene's
 final mutation, or run `scene save` afterwards. Do not save between steps. Each
@@ -115,7 +140,7 @@ only if it reports a different scene is active. A mutation response that reports
 the resulting values is enough validation, including when asked to verify the
 result; do not re-inspect solely to confirm it.
 
-Scene and node commands print JSON; setup, status, and help print text. Failures
+Command results print JSON; setup, status, and help print text. Failures
 use stderr and a nonzero exit status. `status` prints the project root, and
 `scene current` succeeds with `active: false` when no scene is being edited.
 

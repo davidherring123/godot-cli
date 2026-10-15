@@ -4,17 +4,17 @@ package cli
 import (
 	"os"
 
-	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-cli/internal/core/project"
 )
 
-func FetchProjectContext() (*core.Project, error) {
+func FetchProjectContext() (*project.Project, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	root, err := core.FindProjectRoot(cwd)
+	root, err := project.FindProjectRoot(cwd)
 	if err != nil {
 		return nil, err
 	}
-	return &core.Project{Root: root}, nil
+	return &project.Project{Root: root}, nil
 }

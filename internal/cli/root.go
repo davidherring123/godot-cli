@@ -18,6 +18,8 @@ func NewRootCommand(version string) *cobra.Command {
 		NewSceneCommand(),
 		NewNodeCommand(),
 		NewResourceCommand(),
+		NewProjectCommand(),
+		NewInputCommand(),
 	)
 
 	return cmd

@@ -4,7 +4,9 @@ package core
 import (
 	"reflect"
 
+	"github.com/davidherring123/godot-cli/internal/core/input"
 	"github.com/davidherring123/godot-cli/internal/core/node"
+	"github.com/davidherring123/godot-cli/internal/core/project/settings"
 	"github.com/davidherring123/godot-cli/internal/core/resource"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
 	"github.com/invopop/jsonschema"
@@ -61,6 +63,30 @@ var (
 		resource.DeleteName,
 		"Delete a resource file that nothing else references",
 	)
+	ProjectSettingsList = define[settings.ListParams, settings.ListResult](
+		settings.ListName,
+		"List editor-visible project settings",
+	)
+	ProjectSettingsGet = define[settings.GetParams, settings.GetResult](
+		settings.GetName,
+		"Show one project setting with its default and override state",
+	)
+	ProjectSettingsSet = define[settings.SetParams, settings.SetResult](
+		settings.SetName,
+		"Set a project setting and save project.godot immediately",
+	)
+	ProjectSettingsUnset = define[settings.UnsetParams, settings.UnsetResult](
+		settings.UnsetName,
+		"Remove a project setting override and save project.godot immediately",
+	)
+	InputList        = define[input.ListParams, input.ListResult](input.ListName, "List Input Map actions")
+	InputInspect     = define[input.InspectParams, input.InspectResult](input.InspectName, "Show one Input Map action and its bindings")
+	InputAdd         = define[input.AddParams, input.AddResult](input.AddName, "Add an Input Map action and save project.godot immediately")
+	InputSet         = define[input.SetParams, input.SetResult](input.SetName, "Set an Input Map action's deadzone and save project.godot immediately")
+	InputRename      = define[input.RenameParams, input.RenameResult](input.RenameName, "Rename an Input Map action and save project.godot immediately")
+	InputDelete      = define[input.DeleteParams, input.DeleteResult](input.DeleteName, "Delete an Input Map action and save project.godot immediately")
+	InputEventAdd    = define[input.EventAddParams, input.EventAddResult](input.EventAddName, "Add a binding to an Input Map action and save project.godot immediately")
+	InputEventDelete = define[input.EventDeleteParams, input.EventDeleteResult](input.EventDeleteName, "Remove a binding from an Input Map action and save project.godot immediately")
 )
 
 func All() []ActionDefinition {
@@ -83,6 +109,18 @@ func All() []ActionDefinition {
 		ResourceInspect,
 		ResourceSet,
 		ResourceDelete,
+		ProjectSettingsList,
+		ProjectSettingsGet,
+		ProjectSettingsSet,
+		ProjectSettingsUnset,
+		InputList,
+		InputInspect,
+		InputAdd,
+		InputSet,
+		InputRename,
+		InputDelete,
+		InputEventAdd,
+		InputEventDelete,
 	}
 }
 

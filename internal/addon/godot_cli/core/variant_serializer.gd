@@ -47,6 +47,15 @@ static func serialize(value: Variant) -> Variant:
                 "size": serialize(value.size)
             }
 
+        TYPE_ARRAY:
+            return _serialize_array(value)
+
+        TYPE_DICTIONARY:
+            return _serialize_dictionary(value)
+
+        TYPE_PACKED_BYTE_ARRAY, TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT64_ARRAY, TYPE_PACKED_FLOAT32_ARRAY, TYPE_PACKED_FLOAT64_ARRAY, TYPE_PACKED_STRING_ARRAY, TYPE_PACKED_VECTOR2_ARRAY, TYPE_PACKED_VECTOR3_ARRAY, TYPE_PACKED_VECTOR4_ARRAY, TYPE_PACKED_COLOR_ARRAY:
+            return _serialize_array(value)
+
         TYPE_OBJECT:
             return _serialize_object(value)
 
@@ -55,6 +64,22 @@ static func serialize(value: Variant) -> Variant:
 
         _:
             return str(value)
+
+static func _serialize_array(value: Variant) -> Array:
+    var result: Array = []
+
+    for item in value:
+        result.append(serialize(item))
+
+    return result
+
+static func _serialize_dictionary(value: Dictionary) -> Dictionary:
+    var result := {}
+
+    for key in value:
+        result[str(key)] = serialize(value[key])
+
+    return result
 
 static func _serialize_object(value: Object) -> Variant:
     if value is Resource:
