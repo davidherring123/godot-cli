@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-cli/internal/core/project"
 )
 
 func runProperties(
 	rawProperties string,
-	call func(*core.Project, map[string]json.RawMessage) (any, error),
+	call func(*project.Project, map[string]json.RawMessage) (any, error),
 ) error {
 	var properties map[string]json.RawMessage
 

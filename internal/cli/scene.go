@@ -5,6 +5,7 @@ import (
 
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
 	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-cli/internal/core/project"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
 	"github.com/spf13/cobra"
 )
@@ -68,7 +69,7 @@ func newSceneCreateCommand() *cobra.Command {
 		Args:        cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return runProperties(rawProperties, func(
-				project *core.Project,
+				project *project.Project,
 				properties map[string]json.RawMessage,
 			) (any, error) {
 				return scene.Create(project.Root, scene.CreateParams{

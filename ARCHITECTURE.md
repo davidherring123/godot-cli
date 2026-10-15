@@ -37,10 +37,12 @@ path yet — assume a running, addon-enabled editor.
 
 - `internal/cli` — cobra commands ONLY. No editor logic, no direct use of
   `internal/bridge`.
-- `internal/core/<scene|node|resource>` — one action per file: constant name,
-  `Params`, `Result`, thin function that validates and calls `bridge.Call`.
-  Registered in `core/schema.go` (`define[...]` + `All()`); schemas feed the
-  agent skill docs.
+- `internal/core/<scene|node|resource|input>` and `internal/core/project/settings`
+  — one action per file: constant name, `Params`, `Result`, thin function that
+  validates and calls `bridge.Call`. Registered in `core/schema.go`
+  (`define[...]` + `All()`); schemas feed the agent skill docs.
+- `internal/core/project` — the `Project` type and `FindProjectRoot` project
+  discovery used by every command.
 - `internal/core/property` — property metadata shared by the node and resource
   domains.
 - `internal/agent/skill` — generates `references/commands.md` + JSON schemas from
@@ -51,7 +53,12 @@ path yet — assume a running, addon-enabled editor.
   `property_codec.gd` holds the property validation, application, and
   serialization shared by the scene, node, and resource services;
   `resource/resource_service.gd` manages `.tres`/`.res` files on disk.
+  `project/settings/settings_service.gd` edits `project.godot` settings and
+  `input/input_service.gd` (with `input/input_event_codec.gd`) edits Input Map
+  actions, both saving the project file immediately rather than as undo steps.
 - Mutations go through `EditorUndoRedoManager` — every command is one undo step.
+  Project settings and Input Map commands are the exception: they change
+  `project.godot` directly and are not undoable.
 - `expected_scene` is validated centrally in `request_handler.gd`
   (`supports_expected_scene`), except `scene.current`, which handles it itself so
   it can return `active:false` when no scene is open.

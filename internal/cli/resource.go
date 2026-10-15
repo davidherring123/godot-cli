@@ -5,6 +5,7 @@ import (
 
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
 	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-cli/internal/core/project"
 	"github.com/davidherring123/godot-cli/internal/core/resource"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +42,7 @@ func newResourceCreateCommand() *cobra.Command {
 		Args:        cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return runProperties(rawProperties, func(
-				project *core.Project,
+				project *project.Project,
 				properties map[string]json.RawMessage,
 			) (any, error) {
 				return resource.Create(project.Root, resource.CreateParams{
@@ -99,7 +100,7 @@ func newResourceSetCommand() *cobra.Command {
 		Args:        cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return runProperties(rawProperties, func(
-				project *core.Project,
+				project *project.Project,
 				properties map[string]json.RawMessage,
 			) (any, error) {
 				return resource.Set(project.Root, resource.SetParams{
