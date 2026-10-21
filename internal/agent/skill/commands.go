@@ -12,7 +12,10 @@ import (
 	"github.com/spf13/pflag"
 )
 
-const ActionKey = "godot-cli/action"
+const (
+	ActionKey = "godot-cli/action"
+	IgnoreKey = "godot-cli/skill-ignore"
+)
 
 type Command struct {
 	Path         string   `json:"path"`
@@ -60,6 +63,9 @@ func Generate(root *cobra.Command) (map[string][]byte, error) {
 
 func collect(cmd *cobra.Command, reference *Reference, files map[string][]byte) error {
 	if cmd.Hidden {
+		return nil
+	}
+	if cmd.Annotations[IgnoreKey] == "true" {
 		return nil
 	}
 	if cmd.Parent() != nil && (cmd.Name() == "help" || cmd.Name() == "completion") {
