@@ -9,6 +9,7 @@ import (
 	"github.com/davidherring123/godot-cli/internal/core/project/settings"
 	"github.com/davidherring123/godot-cli/internal/core/resource"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
+	"github.com/davidherring123/godot-cli/internal/core/validate"
 	"github.com/invopop/jsonschema"
 )
 
@@ -30,12 +31,16 @@ func define[P, R any](name, description string) ActionDefinition {
 }
 
 var (
-	SceneList       = define[scene.ListParams, scene.ListResult](scene.ListName, "List scenes in the project")
-	SceneCurrent    = define[scene.CurrentParams, scene.CurrentResult](scene.CurrentName, "Show the active editor scene")
-	SceneOpen       = define[scene.OpenParams, scene.OpenResult](scene.OpenName, "Open or activate an editor scene")
-	SceneCreate     = define[scene.CreateParams, scene.CreateResult](scene.CreateName, "Create a new scene file and open it in the editor")
-	SceneSave       = define[scene.SaveParams, scene.SaveResult](scene.SaveName, "Save the active editor scene")
-	SceneTree       = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show the active editor scene's node tree")
+	SceneList    = define[scene.ListParams, scene.ListResult](scene.ListName, "List scenes in the project")
+	SceneCurrent = define[scene.CurrentParams, scene.CurrentResult](scene.CurrentName, "Show the active editor scene")
+	SceneOpen    = define[scene.OpenParams, scene.OpenResult](scene.OpenName, "Open or activate an editor scene")
+	SceneCreate  = define[scene.CreateParams, scene.CreateResult](scene.CreateName, "Create a new scene file and open it in the editor")
+	SceneSave    = define[scene.SaveParams, scene.SaveResult](scene.SaveName, "Save the active editor scene")
+	SceneTree    = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show the active editor scene's node tree")
+	ValidateLive = define[validate.LiveParams, validate.LiveResult](
+		validate.LiveName,
+		"Validate the active editor scene, including unsaved state",
+	)
 	NodeInspect     = define[node.InspectParams, node.InspectResult](node.InspectName, "Inspect a node in the active editor scene")
 	NodeSet         = define[node.SetParams, node.SetResult](node.SetName, "Set node properties as one undoable editor action")
 	NodeAdd         = define[node.AddParams, node.AddResult](node.AddName, "Add a node to the active editor scene as one undoable editor action")
@@ -97,6 +102,7 @@ func All() []ActionDefinition {
 		SceneCreate,
 		SceneSave,
 		SceneTree,
+		ValidateLive,
 		NodeInspect,
 		NodeSet,
 		NodeAdd,

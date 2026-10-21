@@ -20,6 +20,7 @@ func NewRootCommand(version string) *cobra.Command {
 		NewResourceCommand(),
 		NewProjectCommand(),
 		NewInputCommand(),
+		NewValidateCommand(),
 	)
 
 	return cmd
