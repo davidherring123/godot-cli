@@ -83,9 +83,9 @@ func runValidate(
 		scene = args[0]
 	}
 
-	result, err := validate.Run(project.Root, validate.RunParams{
-		Scene:   scene,
-		Timeout: timeout,
+	result, err := validate.Scene(project.Root, validate.SceneParams{
+		Scene:          scene,
+		TimeoutSeconds: timeout.Seconds(),
 	})
 	if err != nil {
 		return err

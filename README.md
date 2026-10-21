@@ -27,6 +27,27 @@ The CLI will automatically install and manage its matching addon inside supporte
 
 When an editor is running, commands can be routed to the live editor. When no editor is running, commands can use Godot's headless capabilities instead.
 
+## MCP server
+
+`godot-cli mcp` exposes the project's actions as a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio. It serves one Godot project per process: start it from anywhere inside the project, or pass `--project`.
+
+Live-editor tools require Godot 4 to be running with the godot-cli addon installed. Run `godot-cli init` once in the project first. Tools that work on saved files, such as `scene_list`, `resource_inspect`, and `validate_scene`, do not need a running editor.
+
+```json
+{
+  "mcpServers": {
+    "godot": {
+      "command": "godot-cli",
+      "args": ["mcp", "--project", "C:/Projects/MyGame"]
+    }
+  }
+}
+```
+
+Tool names use underscores: `scene_list`, `node_add`, `resource_set`, `input_event_add`, `validate_scene`, and so on. Every successful call returns JSON text plus structured content. Tool failures set `isError` and preserve the core error code (`invalid_argument`, `not_found`, `failed_precondition`, and others) so the client can recover.
+
+stdout is reserved for MCP messages; diagnostics are written to stderr.
+
 ## Installation
 
 Installation instructions will be made available once the first version is released.
