@@ -13,6 +13,7 @@ func get_actions() -> Dictionary:
         "scene.create": ActionHandler.new(create_scene, false, false, false),
         "scene.tree": ActionHandler.new(get_tree, true, false, true),
         "scene.save": ActionHandler.new(save, true, false, true),
+        "validate.live": ActionHandler.new(validate_live, true, false, true),
     }
 
 func current(request: Request) -> Response:
@@ -224,6 +225,72 @@ func get_tree(_request: Request) -> Response:
 
 func save(_request: Request) -> Response:
     return scene_context.save()
+
+func validate_live(_request: Request) -> Response:
+    var root := scene_context.editor.get_edited_scene_root()
+    var errors: Array[String] = []
+
+    _collect_script_errors(root, errors, {})
+    _collect_serialization_errors(root, errors)
+
+    var description := scene_context.describe()
+
+    return Response.success({
+        "valid": errors.is_empty(),
+        "scene": description["scene"],
+        "unsaved": description["unsaved"],
+        "errors": errors,
+    })
+
+func _collect_script_errors(
+    node: Node,
+    errors: Array[String],
+    seen: Dictionary
+) -> void:
+    var script := node.get_script()
+
+    if script != null:
+        var path := str(script.resource_path)
+
+        if not path.is_empty() and not seen.has(path):
+            seen[path] = true
+
+            var parse_error := _parse_script(path)
+
+            if parse_error != OK:
+                errors.append(
+                    "Script does not parse (%s): %s"
+                    % [error_string(parse_error), path]
+                )
+
+    for child in node.get_children():
+        _collect_script_errors(child, errors, seen)
+
+func _parse_script(path: String) -> int:
+    var fresh := ResourceLoader.load(
+        path, "Script", ResourceLoader.CACHE_MODE_IGNORE
+    ) as GDScript
+
+    if fresh == null or fresh.can_instantiate():
+        return OK
+
+    return fresh.reload()
+
+func _collect_serialization_errors(root: Node, errors: Array[String]) -> void:
+    var packed := PackedScene.new()
+    var pack_error := packed.pack(root)
+
+    if pack_error != OK:
+        errors.append("Could not pack the scene: %s" % error_string(pack_error))
+        return
+
+    var copy := packed.instantiate()
+
+    if copy == null:
+        errors.append("Could not instantiate the packed scene")
+        return
+
+    copy.free()
 
 func _node_to_dict(node: Node, root: Node) -> Dictionary:
     var children: Array[Dictionary] = []

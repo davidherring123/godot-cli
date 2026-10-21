@@ -140,6 +140,22 @@ only if it reports a different scene is active. A mutation response that reports
 the resulting values is enough validation, including when asked to verify the
 result; do not re-inspect solely to confirm it.
 
+Validate that a scene loads and runs:
+
+```shell
+godot-cli validate
+godot-cli validate <scene>
+godot-cli validate --live --expect-scene <scene>
+```
+
+`validate` loads a scene in a fresh headless Godot process and runs it briefly,
+returning `valid`, `scene`, and `errors` and exiting nonzero when validation
+fails; without a scene argument it uses the configured main scene. `validate
+--live` checks the active editor scene instead, including unsaved state, and
+reports `unsaved`. Neither mode saves or modifies the project. Use it to confirm
+that a scene loads and runs; it does not replace the mutation responses above,
+which remain the way to confirm individual property values.
+
 Command results print JSON; setup, status, and help print text. Failures
 use stderr and a nonzero exit status. `status` prints the project root, and
 `scene current` succeeds with `active: false` when no scene is being edited.

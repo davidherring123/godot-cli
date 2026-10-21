@@ -30,8 +30,10 @@ godot-cli node move Player World --save
 
 Editor discovery: on enable, the addon writes
 `.godot/godot-cli/instances/<pid>.json` (pid, port, project); the CLI reads it
-and connects. If no editor is reachable, commands fail. There is no headless
-path yet — assume a running, addon-enabled editor.
+and connects. If no editor is reachable, live commands fail — assume a running,
+addon-enabled editor. `validate` is the exception: by default it runs the saved
+project in a fresh `godot --headless` process and never talks to the editor.
+`validate --live` uses the editor like any other live command.
 
 ## Layers and invariants
 
@@ -45,6 +47,12 @@ path yet — assume a running, addon-enabled editor.
   discovery used by every command.
 - `internal/core/property` — property metadata shared by the node and resource
   domains.
+- `internal/core/validate` — saved-project validation spawns `godot --headless`
+  with an embedded `runner.gd`, merges the runner's JSON report with Godot's
+  `ERROR:`/`SCRIPT ERROR:` output, and never writes to the project.
+  `validate.live` packs and re-instantiates the active editor scene in memory:
+  it detects scripts that no longer parse and serialization failures without
+  saving anything.
 - `internal/agent/skill` — generates `references/commands.md` + JSON schemas from
   cobra commands / `core` definitions; `godot-cli init --agent` installs them.
 - `internal/addon/godot_cli/` — `plugin.gd` (lifecycle) → `requests/`
