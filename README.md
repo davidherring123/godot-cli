@@ -27,11 +27,22 @@ The CLI will automatically install and manage its matching addon inside supporte
 
 When an editor is running, commands can be routed to the live editor. When no editor is running, commands can use Godot's headless capabilities instead.
 
+## Editor lifecycle
+
+`godot-cli init` installs the addon and enables it in `project.godot`. From there:
+
+```shell
+godot-cli editor open     # start the editor and wait for the addon bridge
+godot-cli editor status   # check whether an editor is running
+```
+
+`editor open` reuses an existing editor when one is already registered, so it is safe to call before live commands. It prints JSON with `opened`, `already_running`, `pid`, `port`, and `version`.
+
 ## MCP server
 
 `godot-cli mcp` exposes the project's actions as a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio. It serves one Godot project per process: start it from anywhere inside the project, or pass `--project`.
 
-Live-editor tools require Godot 4 to be running with the godot-cli addon installed. Run `godot-cli init` once in the project first. Tools that work on saved files, such as `scene_list`, `resource_inspect`, and `validate_scene`, do not need a running editor.
+Live-editor tools require Godot 4 to be running with the godot-cli addon installed. Run `godot-cli init` once in the project first; it installs and enables the addon. If no editor is running, the `editor_open` tool (or `godot-cli editor open`) starts it and waits for the bridge. Tools that work on saved files, such as `scene_list` and `validate_scene`, do not need a running editor.
 
 ```json
 {
@@ -44,7 +55,15 @@ Live-editor tools require Godot 4 to be running with the godot-cli addon install
 }
 ```
 
-Tool names use underscores: `scene_list`, `node_add`, `resource_set`, `input_event_add`, `validate_scene`, and so on. Every successful call returns JSON text plus structured content. Tool failures set `isError` and preserve the core error code (`invalid_argument`, `not_found`, `failed_precondition`, and others) so the client can recover.
+For OpenCode, `godot-cli init --agent opencode` prints the project-local registration command:
+
+```shell
+opencode mcp add godot -- godot-cli mcp
+```
+
+`godot-cli` does not modify OpenCode configuration itself; the command above adds only the `godot` MCP server to the current project.
+
+Tool names use underscores: `editor_open`, `editor_status`, `scene_list`, `node_add`, `resource_set`, `input_event_add`, `validate_scene`, and so on. Every successful call returns JSON text plus structured content. Tool failures set `isError` and preserve the core error code (`invalid_argument`, `not_found`, `failed_precondition`, and others) so the client can recover.
 
 stdout is reserved for MCP messages; diagnostics are written to stderr.
 

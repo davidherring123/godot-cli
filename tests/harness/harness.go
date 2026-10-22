@@ -1,4 +1,4 @@
-// Package harness manages the shared Godot editor used by core tests.
+// Package harness manages Godot editor sessions used by live integration tests.
 package harness
 
 import (
@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/davidherring123/godot-cli/internal/addon"
-	"github.com/davidherring123/godot-cli/internal/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/bridge"
 )
 
 const (

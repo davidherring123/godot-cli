@@ -1,25 +1,30 @@
-package core_test
+package mcp_test
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
+	"github.com/davidherring123/godot-cli/internal/agent/mcp"
 	"github.com/davidherring123/godot-cli/internal/core"
-	"github.com/davidherring123/godot-cli/internal/mcpserver"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/davidherring123/godot-cli/internal/core/scene"
+	"github.com/davidherring123/godot-cli/tests/harness"
+	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestMCPLiveSceneCurrent(t *testing.T) {
-	session := requireSuite(t)
+	session := startLiveSession(t)
 	path := "res://cases/scene_current_succeeds/main.tscn"
 
-	openFixtureScene(t, session, path)
+	if _, err := scene.Open(session.Root(), scene.OpenParams{Scene: path}); err != nil {
+		t.Fatalf("opening fixture scene: %v", err)
+	}
 
 	mcpSession := connectMCP(t, session.Root(), []core.ActionDefinition{core.SceneCurrent})
 
-	result, err := mcpSession.CallTool(context.Background(), &mcp.CallToolParams{
+	result, err := mcpSession.CallTool(context.Background(), &mcpgo.CallToolParams{
 		Name:      "scene_current",
 		Arguments: map[string]any{"expected_scene": path},
 	})
@@ -42,14 +47,16 @@ func TestMCPLiveSceneCurrent(t *testing.T) {
 }
 
 func TestMCPLiveErrorPreservesCode(t *testing.T) {
-	session := requireSuite(t)
+	session := startLiveSession(t)
 	path := "res://cases/scene_current_conflict/main.tscn"
 
-	openFixtureScene(t, session, path)
+	if _, err := scene.Open(session.Root(), scene.OpenParams{Scene: path}); err != nil {
+		t.Fatalf("opening fixture scene: %v", err)
+	}
 
 	mcpSession := connectMCP(t, session.Root(), []core.ActionDefinition{core.SceneCurrent})
 
-	result, err := mcpSession.CallTool(context.Background(), &mcp.CallToolParams{
+	result, err := mcpSession.CallTool(context.Background(), &mcpgo.CallToolParams{
 		Name: "scene_current",
 		Arguments: map[string]any{
 			"expected_scene": "res://cases/different/main.tscn",
@@ -68,14 +75,35 @@ func TestMCPLiveErrorPreservesCode(t *testing.T) {
 	}
 }
 
+func startLiveSession(t *testing.T) *harness.Session {
+	t.Helper()
+
+	session, err := harness.Start(t.Logf)
+	if errors.Is(err, harness.ErrGodotNotFound) {
+		t.Skip(err)
+	}
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Errorf("closing MCP test session: %v", err)
+		}
+	})
+
+	return session
+}
+
 func connectMCP(
 	t *testing.T,
 	projectRoot string,
 	actions []core.ActionDefinition,
-) *mcp.ClientSession {
+) *mcpgo.ClientSession {
 	t.Helper()
 
-	server, err := mcpserver.NewServer(mcpserver.Options{
+	server, err := mcp.NewServer(mcp.Options{
 		Version:     "test",
 		ProjectRoot: projectRoot,
 		Actions:     actions,
@@ -85,15 +113,15 @@ func connectMCP(
 	}
 
 	ctx := context.Background()
-	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	serverTransport, clientTransport := mcpgo.NewInMemoryTransports()
 
 	serverSession, err := server.Connect(ctx, serverTransport, nil)
 	if err != nil {
 		t.Fatalf("connecting MCP server: %v", err)
 	}
 
-	client := mcp.NewClient(
-		&mcp.Implementation{Name: "godot-cli-test", Version: "test"},
+	client := mcpgo.NewClient(
+		&mcpgo.Implementation{Name: "godot-cli-test", Version: "test"},
 		nil,
 	)
 
@@ -111,11 +139,11 @@ func connectMCP(
 	return clientSession
 }
 
-func mcpText(result *mcp.CallToolResult) string {
+func mcpText(result *mcpgo.CallToolResult) string {
 	var text strings.Builder
 
 	for _, content := range result.Content {
-		if value, ok := content.(*mcp.TextContent); ok {
+		if value, ok := content.(*mcpgo.TextContent); ok {
 			text.WriteString(value.Text)
 		}
 	}

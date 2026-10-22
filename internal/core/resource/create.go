@@ -1,7 +1,7 @@
 // Package resource manages .tres and .res files through a running Godot editor.
 package resource
 
-import "github.com/davidherring123/godot-cli/internal/bridge"
+import "github.com/davidherring123/godot-cli/internal/core/bridge"
 
 const CreateName = "resource.create"
 

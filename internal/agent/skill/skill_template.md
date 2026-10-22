@@ -7,6 +7,10 @@ description: Work with Godot projects through godot-cli: scenes, nodes, resource
 
 Use `godot-cli` for Godot scenes, nodes, resources, and editor state.
 
+If a live command fails because no editor is running, start it with
+`godot-cli editor open` and retry. `godot-cli editor status` reports whether an
+editor is registered. `godot-cli init` installs and enables the addon.
+
 Use the narrowest command that completes the task. Do not rediscover information
 already supplied:
 

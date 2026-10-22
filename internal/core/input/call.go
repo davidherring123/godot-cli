@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/davidherring123/godot-cli/internal/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/bridge"
 )
 
 func call[P any, R any](projectRoot, name string, params P) (R, error) {

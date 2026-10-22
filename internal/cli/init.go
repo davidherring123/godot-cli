@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/davidherring123/godot-cli/internal/addon"
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
@@ -14,8 +15,8 @@ func NewInitCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "init",
 		Short:   "Install godot-cli into the current project",
-		Long:    "Install the Godot addon. With --agent, also install or refresh the portable skill and command reference. Prints setup instructions as text.",
-		Example: "godot-cli init\ngodot-cli init --agent codex,opencode",
+		Long:    "Install and enable the Godot addon. With --agent, also install or refresh the portable skill and command reference. For OpenCode, prints the command to register the MCP server; godot-cli does not modify OpenCode configuration.",
+		Example: "godot-cli init\ngodot-cli init --agent codex\ngodot-cli init --agent opencode",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runInit(cmd, agents)
@@ -49,37 +50,44 @@ func runInit(
 		return err
 	}
 
-	return installSkill(cmd, context.Root, agents)
+	if err := installSkill(cmd, context.Root, agents); err != nil {
+		return err
+	}
+
+	printOpenCodeMCPInstructions(cmd, agents)
+
+	return nil
 }
 
 func installAddon(cmd *cobra.Command, projectRoot string) error {
-	if addon.IsInstalled(projectRoot) {
-		if !addon.IsManaged(projectRoot) {
-			cmd.Println(
-				"Godot CLI is already installed in this project.",
-			)
-			return nil
-		}
-
+	switch {
+	case addon.IsInstalled(projectRoot) && !addon.IsManaged(projectRoot):
+		cmd.Println("Godot CLI is already installed in this project.")
+	case addon.IsInstalled(projectRoot):
 		if err := addon.Install(projectRoot); err != nil {
 			return fmt.Errorf("updating addon: %w", err)
 		}
 
-		cmd.Println(
-			"✓ Updated addons/godot_cli to match this godot-cli version.",
-		)
-		return nil
+		cmd.Println("✓ Updated addons/godot_cli to match this godot-cli version.")
+	default:
+		if err := addon.Install(projectRoot); err != nil {
+			return fmt.Errorf("installing addon: %w", err)
+		}
+
+		cmd.Println("✓ Installed addons/godot_cli")
 	}
 
-	if err := addon.Install(projectRoot); err != nil {
-		return fmt.Errorf("installing addon: %w", err)
+	changed, err := addon.Enable(projectRoot)
+	if err != nil {
+		return fmt.Errorf("enabling addon: %w", err)
 	}
 
-	cmd.Println(
-		"✓ Installed addons/godot_cli\n\n" +
-			"Enable the addon in Godot:\n" +
-			"Project → Project Settings → Plugins → Godot CLI",
-	)
+	if changed {
+		cmd.Println("✓ Enabled the Godot CLI addon in project.godot. Restart the editor if it is already open.")
+	} else {
+		cmd.Println("Godot CLI addon is already enabled.")
+	}
+
 	return nil
 }
 
@@ -97,6 +105,20 @@ func installSkill(cmd *cobra.Command, projectRoot string, agents []string) error
 	if err != nil {
 		return fmt.Errorf("installing skill: %w", err)
 	}
+
 	cmd.Println("Installed skill:", path)
+
 	return nil
+}
+
+func printOpenCodeMCPInstructions(cmd *cobra.Command, agents []string) {
+	if !slices.Contains(agents, "opencode") {
+		return
+	}
+
+	cmd.Println(
+		"\nTo expose this project to OpenCode, run:\n" +
+			"  opencode mcp add godot -- godot-cli mcp\n\n" +
+			"godot-cli does not modify OpenCode configuration.",
+	)
 }

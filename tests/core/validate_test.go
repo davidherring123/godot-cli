@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/node"
 	"github.com/davidherring123/godot-cli/internal/core/validate"
 	"github.com/davidherring123/godot-cli/tests/harness"

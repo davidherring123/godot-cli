@@ -15,6 +15,7 @@ func NewRootCommand(version string) *cobra.Command {
 	cmd.AddCommand(
 		NewInitCommand(),
 		NewStatusCommand(),
+		NewEditorCommand(),
 		NewSceneCommand(),
 		NewNodeCommand(),
 		NewResourceCommand(),

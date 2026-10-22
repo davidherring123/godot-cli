@@ -2,7 +2,7 @@
 package node
 
 import (
-	"github.com/davidherring123/godot-cli/internal/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/bridge"
 )
 
 const AddName = "node.add"

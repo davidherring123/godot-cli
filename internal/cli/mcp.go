@@ -1,8 +1,9 @@
 package cli
 
 import (
+	"github.com/davidherring123/godot-cli/internal/agent/mcp"
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
-	"github.com/davidherring123/godot-cli/internal/mcpserver"
+	"github.com/davidherring123/godot-cli/internal/core/project"
 	"github.com/spf13/cobra"
 )
 
@@ -22,14 +23,14 @@ func NewMCPCommand(version string) *cobra.Command {
 			skill.IgnoreKey: "true",
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			root, err := mcpserver.ResolveProjectRoot(projectPath)
+			resolved, err := project.Resolve(projectPath)
 			if err != nil {
 				return err
 			}
 
-			return mcpserver.Run(cmd.Context(), mcpserver.Options{
+			return mcp.Run(cmd.Context(), mcp.Options{
 				Version:     version,
-				ProjectRoot: root,
+				ProjectRoot: resolved.Root,
 			})
 		},
 	}

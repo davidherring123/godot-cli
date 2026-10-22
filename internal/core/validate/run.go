@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/davidherring123/godot-cli/internal/core/godot"
 )
 
 const (
@@ -22,7 +24,7 @@ const (
 )
 
 // ErrGodotNotFound reports that no Godot executable could be located.
-var ErrGodotNotFound = errors.New("godot executable not found")
+var ErrGodotNotFound = godot.ErrNotFound
 
 //go:embed runner.gd
 var runnerSource string
@@ -46,7 +48,7 @@ type processOutput struct {
 // reports load, script, resource, and early runtime errors. It never opens the
 // editor and never writes to the project.
 func Run(projectRoot string, params RunParams) (RunResult, error) {
-	godotPath, err := findGodot()
+	godotPath, err := godot.FindExecutable()
 	if err != nil {
 		return RunResult{}, err
 	}
@@ -335,25 +337,4 @@ func writeRunner() (string, error) {
 	}
 
 	return file.Name(), nil
-}
-
-func findGodot() (string, error) {
-	candidates := []string{
-		os.Getenv("GODOT_BIN"),
-		"godot",
-		"godot4",
-	}
-
-	for _, candidate := range candidates {
-		if candidate == "" {
-			continue
-		}
-
-		path, err := exec.LookPath(candidate)
-		if err == nil {
-			return path, nil
-		}
-	}
-
-	return "", fmt.Errorf("%w; set GODOT_BIN to its path", ErrGodotNotFound)
 }
