@@ -21,7 +21,7 @@ copies its matching addon on `init`; a running editor picks it up on next launch
 godot-cli node move Player World --save
   cli/*.go        cobra parsing, flags, project discovery, PrintJSON
   core/<domain>/  typed params+result, pre-bridge validation, action name
-  bridge/         connect + one request/response over TCP
+  core/bridge/    connect + one request/response over TCP
   ──────────────── wire ────────────────
   bridge.gd       TCP server (127.0.0.1, ports 49152–49252), polled each frame
   requests/       request_handler.gd routes by action name → *Service
@@ -38,7 +38,7 @@ project in a fresh `godot --headless` process and never talks to the editor.
 The MCP server reuses the same path without a subprocess:
 
 ```
-godot-cli mcp  →  mcpserver  →  core action Invoke  →  bridge  →  addon
+godot-cli mcp  →  internal/agent/mcp  →  core action Invoke  →  core/bridge  →  addon
 ```
 
 MCP arguments are raw JSON decoded into the action's typed `Params`; successful
@@ -48,20 +48,29 @@ results are returned as both JSON text and structured content. Tool failures use
 ## Layers and invariants
 
 - `internal/cli` — cobra commands ONLY. No editor logic, no direct use of
-  `internal/bridge`.
+  `internal/core/bridge`.
 - `internal/core/<scene|node|resource|input>` and `internal/core/project/settings`
   — one action per file: constant name, `Params`, `Result`, thin function that
   validates and calls `bridge.Call`. Registered in `core/schema.go`
   (`define[...]` + `All()`) with typed schemas and an `Invoke` function; the
   registry feeds the agent skill docs and the MCP server.
-- `internal/mcpserver` — exposes `core.All()` over the Model Context Protocol.
+- `internal/core/bridge` — editor discovery and TCP request/response transport
+  used by core actions; defines the API errors also translated by MCP.
+- `internal/agent/mcp` — exposes `core.All()` over the Model Context Protocol.
   Tool names replace dots with underscores (`scene.list` → `scene_list`);
   arguments are decoded into the action's `Params`, results become both JSON
   text and structured content, and `bridge.APIError` codes are preserved in
-  `isError` tool responses. `godot-cli mcp` serves stdio and resolves one project
+  `isError` tool responses. Tool calls are serialized so the editor only handles
+  one operation at a time. `godot-cli mcp` serves stdio and resolves one project
   for the process lifetime.
-- `internal/core/project` — the `Project` type and `FindProjectRoot` project
-  discovery used by every command.
+- `internal/core/project` — the `Project` type, `Resolve` path handling, and
+  `FindProjectRoot` project discovery used by every command.
+- `internal/core/editor` — Go-only `editor.open` and `editor.status` actions.
+  `open` launches `godot --editor` detached, waits for the addon's instance file,
+  and reuses an already-registered editor; `status` reports the registered
+  instance without starting one.
+- `internal/core/godot` — locates the Godot executable for `validate.scene` and
+  `editor.open` (`GODOT_BIN`, then `godot`/`godot4` on PATH).
 - `internal/core/property` — property metadata shared by the node and resource
   domains.
 - `internal/core/validate` — saved-project validation spawns `godot --headless`
@@ -72,6 +81,10 @@ results are returned as both JSON text and structured content. Tool failures use
   saving anything.
 - `internal/agent/skill` — generates `references/commands.md` + JSON schemas from
   cobra commands / `core` definitions; `godot-cli init --agent` installs them.
+  For OpenCode it also prints the project-local `opencode mcp add` command;
+  godot-cli never writes OpenCode configuration itself.
+- `internal/addon` — embeds the GDScript addon, installs/updates it, and enables
+  `res://addons/godot_cli/plugin.cfg` in `project.godot` during `init`.
 - `internal/addon/godot_cli/` — `plugin.gd` (lifecycle) → `requests/`
   (transport + routing) → `core/` (Godot logic). `node_service.gd` is the
   largest file; `node_builder.gd`/`node_path_util.gd` are its helpers.
@@ -103,6 +116,11 @@ action in `All()` also exposes it as an MCP tool automatically.
 
 ## Testing
 
+- `tests/core` — live Godot action tests; `tests/editor` — isolated editor
+  lifecycle tests, including launch behavior with a fake executable.
+- `tests/cli` — CLI interface tests, including `init`; `tests/mcp` — MCP
+  interface tests, including live calls with their own Godot sessions.
+- `tests/harness` — Godot session management shared by live integration tests.
 - `make check` — gofmt, vet, golangci-lint (repo config in `.golangci.yml`).
 - `make test` — runs Go unit tests, then spins up a real headless Godot editor
   and drives the addon over the bridge (same wire as the CLI). Skips the editor

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/resource"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )

@@ -3,7 +3,7 @@ CMD := ./cmd/godot-cli
 BIN_DIR := ./bin
 INSTALL_DIR := $(HOME)/.local/bin
 
-TEST_PACKAGES ?= ./internal/... ./tests/core
+TEST_PACKAGES ?= ./internal/... ./tests/...
 TEST_ARGS ?=
 
 # WARNING: Benchmarks invoke a model and may cost money

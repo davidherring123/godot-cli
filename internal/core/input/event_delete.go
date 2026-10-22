@@ -1,6 +1,6 @@
 package input
 
-import "github.com/davidherring123/godot-cli/internal/bridge"
+import "github.com/davidherring123/godot-cli/internal/core/bridge"
 
 const EventDeleteName = "input.event_delete"
 
