@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
-
-	"github.com/spf13/cobra"
 )
 
 //go:embed skill_template.md
@@ -24,28 +21,17 @@ func ValidateNames(targets []string) error {
 	return nil
 }
 
-func Install(projectRoot string, root *cobra.Command) (string, error) {
-	files, err := Generate(root)
-	if err != nil {
+// Install writes the portable skill into the project.
+func Install(projectRoot string) (string, error) {
+	skillDir := filepath.Join(projectRoot, ".agents", "skills", "godot-cli")
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
 		return "", err
 	}
 
-	files["SKILL.md"] = []byte(skillTemplate)
+	skillPath := filepath.Join(skillDir, "SKILL.md")
+	if err := os.WriteFile(skillPath, []byte(skillTemplate), 0644); err != nil {
+		return "", err
+	}
 
-	skillDir := filepath.Join(projectRoot, ".agents", "skills", "godot-cli")
-	paths := make([]string, 0, len(files))
-	for path := range files {
-		paths = append(paths, path)
-	}
-	sort.Strings(paths)
-	for _, relativePath := range paths {
-		path := filepath.Join(skillDir, filepath.FromSlash(relativePath))
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			return "", err
-		}
-		if err := os.WriteFile(path, files[relativePath], 0644); err != nil {
-			return "", err
-		}
-	}
-	return filepath.Join(skillDir, "SKILL.md"), nil
+	return skillPath, nil
 }

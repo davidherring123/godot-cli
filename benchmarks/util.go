@@ -13,35 +13,6 @@ import (
 	"unicode"
 )
 
-func loadTask(repositoryRoot, name string) (taskDefinition, error) {
-	path := filepath.Join(
-		repositoryRoot,
-		"benchmarks",
-		"tasks",
-		name+".json",
-	)
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return taskDefinition{}, err
-	}
-	var task taskDefinition
-
-	if err := json.Unmarshal(data, &task); err != nil {
-		return taskDefinition{}, err
-	}
-	if task.ID == "" || task.Goal == "" || task.InitialScene == "" {
-		return taskDefinition{}, errors.New("benchmark task is incomplete")
-	}
-	if task.Verify.Scene == "" {
-		return taskDefinition{}, errors.New("benchmark task is missing a verification scene")
-	}
-	if len(task.Verify.Nodes) == 0 {
-		return taskDefinition{}, errors.New("benchmark task has no node checks")
-	}
-	return task, nil
-}
-
 func enableAddon(projectRoot string) error {
 	path := filepath.Join(projectRoot, "project.godot")
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)

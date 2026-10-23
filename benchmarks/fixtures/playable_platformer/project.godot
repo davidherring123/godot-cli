@@ -2,5 +2,5 @@ config_version=5
 
 [application]
 
-config/name="godot-cli Move Player Benchmark"
+config/name="godot-cli Playable Platformer Benchmark"
 config/features=PackedStringArray("4.4")

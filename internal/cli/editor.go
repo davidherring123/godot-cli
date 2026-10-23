@@ -3,8 +3,6 @@ package cli
 import (
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/agent/skill"
-	"github.com/davidherring123/godot-cli/internal/core"
 	"github.com/davidherring123/godot-cli/internal/core/editor"
 	"github.com/spf13/cobra"
 )
@@ -35,9 +33,6 @@ func newEditorOpenCommand() *cobra.Command {
 			"Requires the addon to be installed and enabled; run `godot-cli init` first.",
 		Example: "godot-cli editor open\ngodot-cli editor open --timeout 60s",
 		Args:    cobra.NoArgs,
-		Annotations: map[string]string{
-			skill.ActionKey: core.EditorOpen.Name,
-		},
 		RunE: func(_ *cobra.Command, _ []string) error {
 			project, err := FetchProjectContext()
 			if err != nil {
@@ -68,9 +63,6 @@ func newEditorStatusCommand() *cobra.Command {
 			"Prints JSON with running, pid, port, and version. Does not start the editor.",
 		Example: "godot-cli editor status",
 		Args:    cobra.NoArgs,
-		Annotations: map[string]string{
-			skill.ActionKey: core.EditorStatus.Name,
-		},
 		RunE: func(_ *cobra.Command, _ []string) error {
 			project, err := FetchProjectContext()
 			if err != nil {

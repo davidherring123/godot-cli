@@ -7,12 +7,13 @@ TEST_PACKAGES ?= ./internal/... ./tests/...
 TEST_ARGS ?=
 
 # WARNING: Benchmarks invoke a model and may cost money
-# BENCHMARK_APPROACH: godot-cli | direct-files | both
+# BENCHMARK_APPROACH: mcp | direct-files | both
+# both compares the MCP-first path against direct file editing.
 # BENCHMARK_RUNS > 1 or BENCHMARK_APPROACH=both prints a median summary.
 
 BENCHMARK_MODEL ?= opencode-go/deepseek-v4.1-flash
-BENCHMARK_APPROACH ?= godot-cli
-BENCHMARK_TASK ?= move_player
+BENCHMARK_APPROACH ?= mcp
+BENCHMARK_TASK ?= playable_platformer
 BENCHMARK_RUNS ?= 1
 BENCHMARK_ARGS ?=
 
@@ -72,7 +73,7 @@ benchmark:
 		$(BENCHMARK_ARGS)
 
 benchmark-smoke:
-	go run ./benchmarks --smoke-api
+	go run ./benchmarks --smoke
 
 clean:
 ifeq ($(OS),Windows_NT)

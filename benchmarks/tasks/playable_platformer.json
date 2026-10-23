@@ -1,0 +1,105 @@
+{
+  "id": "playable_platformer",
+  "goal": "Build a small, playable 2D platformer in res://main.tscn and configure it as the project's loadable main scene. Use a CharacterBody2D or RigidBody2D for the visible player, with collision and a script. The player moves left and right and jumps across at least five visible, collidable platforms made from StaticBody2D or AnimatableBody2D nodes to reach a visible end flag. Use an Area2D with a collision shape for the flag trigger. Touching the flag wins the game; falling below the level respawns the player at the start. Implement those behaviors in scripts; the benchmark verifies the saved project structure, not live gameplay. The HUD is a CanvasLayer with a visible Label or RichTextLabel that lists movement, jump, and restart controls, plus a clear win message shown when the player wins (a hidden overlay is fine). Restart must be available. Define input actions named move_left, move_right, jump, and restart, each with at least one input event. Use only built-in Godot nodes and generated or procedural visuals; do not rely on external assets or plugins. Choose your own layout and visual style.",
+  "initialScene": "res://main.tscn",
+  "semantic": true,
+  "verify": {
+    "scene": "res://main.tscn",
+    "checks": [
+      {
+        "kind": "physicsBodies",
+        "types": [
+          "CharacterBody2D",
+          "RigidBody2D"
+        ],
+        "min": 1,
+        "collision": true,
+        "script": true,
+        "visible": true
+      },
+      {
+        "kind": "physicsBodies",
+        "types": [
+          "StaticBody2D",
+          "AnimatableBody2D"
+        ],
+        "min": 5,
+        "collision": true,
+        "visible": true
+      },
+      {
+        "kind": "physicsBodies",
+        "types": [
+          "Area2D"
+        ],
+        "min": 1,
+        "collision": true,
+        "visible": true
+      },
+      {
+        "kind": "hudText",
+        "types": [
+          "Label",
+          "RichTextLabel"
+        ],
+        "min": 1,
+        "visible": true,
+        "container": "CanvasLayer",
+        "textContains": [
+          "jump",
+          "restart"
+        ],
+        "textAny": [
+          "move",
+          "left",
+          "right",
+          "a/d",
+          "a / d",
+          "arrow",
+          "wasd"
+        ]
+      },
+      {
+        "kind": "hudText",
+        "types": [
+          "Label",
+          "RichTextLabel"
+        ],
+        "min": 1,
+        "container": "CanvasLayer",
+        "textAny": [
+          "win",
+          "won",
+          "victory",
+          "made it",
+          "you did it",
+          "congratulations",
+          "level complete",
+          "course complete",
+          "level cleared",
+          "goal reached",
+          "flag reached",
+          "reached the goal",
+          "reached the flag",
+          "success"
+        ]
+      },
+      {
+        "kind": "mainScene",
+        "scene": "res://main.tscn",
+        "loadable": true
+      },
+      {
+        "kind": "inputActions",
+        "actions": [
+          "move_left",
+          "move_right",
+          "jump",
+          "restart"
+        ],
+        "min": 4,
+        "events": true
+      }
+    ]
+  }
+}

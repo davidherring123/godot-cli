@@ -6,16 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"sort"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 const verifierPrefix = "GODOT_CLI_BENCHMARK_RESULT:"
-
-type verifySpec struct {
-	Node       string   `json:"node"`
-	Properties []string `json:"properties"`
-}
 
 type probeResult struct {
 	Loaded bool         `json:"loaded"`
@@ -24,9 +20,9 @@ type probeResult struct {
 }
 
 type probeCheck struct {
-	Node       string         `json:"node"`
-	Found      bool           `json:"found"`
-	Properties map[string]any `json:"properties,omitempty"`
+	Kind   string `json:"kind"`
+	Passed bool   `json:"passed"`
+	Detail string `json:"detail,omitempty"`
 }
 
 func verifySavedScene(
@@ -36,23 +32,7 @@ func verifySavedScene(
 	verifierPath string,
 	verification verification,
 ) (probeResult, string, error) {
-	checks := verification.Nodes
-	spec := make([]verifySpec, 0, len(checks))
-
-	for _, check := range checks {
-		propertyNames := make([]string, 0, len(check.Properties))
-		for name := range check.Properties {
-			propertyNames = append(propertyNames, name)
-		}
-		sort.Strings(propertyNames)
-		spec = append(spec, verifySpec{
-			Node:       check.Node,
-			Properties: propertyNames,
-		})
-	}
-
-	encodedSpec, err := json.Marshal(spec)
-
+	encodedChecks, err := json.Marshal(verification.Checks)
 	if err != nil {
 		return probeResult{}, "", err
 	}
@@ -65,7 +45,7 @@ func verifySavedScene(
 		verifierPath,
 		"--",
 		verification.Scene,
-		string(encodedSpec),
+		string(encodedChecks),
 	}
 
 	command := exec.CommandContext(ctx, godotPath, arguments...)
@@ -99,4 +79,96 @@ func verifySavedScene(
 	return probeResult{}, text, errors.New(
 		"godot verifier did not produce a result",
 	)
+}
+
+// verifyAndEvaluate runs the saved-scene verifier and turns its report, along
+// with the agent and MCP outcomes, into a pass/fail evaluation.
+func verifyAndEvaluate(
+	repositoryRoot string,
+	task taskDefinition,
+	prepared preparedRun,
+	result benchmarkResult,
+	session sessionInfo,
+	runErr error,
+	traceErr error,
+	toolObservationErr error,
+	logf func(format string, args ...any),
+) (evaluation, string) {
+	logf("Verifying persisted project state")
+
+	verifyContext, cancelVerify := context.WithTimeout(
+		context.Background(),
+		30*time.Second,
+	)
+	defer cancelVerify()
+
+	verifierPath := filepath.Join(repositoryRoot, "benchmarks", "verify_scene.gd")
+
+	probe, verifyOutput, verifyErr := verifySavedScene(
+		verifyContext,
+		prepared.godotPath,
+		prepared.projectRoot,
+		verifierPath,
+		task.Verify,
+	)
+	if verifyErr != nil || !probe.Loaded {
+		logf("Godot verifier output:\n%s", verifyOutput)
+	}
+
+	return evaluateResult(evaluationInput{
+		Task:               task,
+		Result:             result,
+		ProjectRoot:        prepared.projectRoot,
+		ResponseOutcome:    session.Outcome,
+		Probe:              probe,
+		RunErr:             runErr,
+		VerifyErr:          verifyErr,
+		MCPTraceErr:        traceErr,
+		ToolObservationErr: toolObservationErr,
+	}), verifyOutput
+}
+
+// verificationFailures converts a probe report into task failures, keeping
+// checks aligned by position so a missing or reordered result is an error
+// rather than a silent pass.
+func verificationFailures(
+	task taskDefinition,
+	probe probeResult,
+) []string {
+	if !probe.Loaded {
+		if probe.Error != "" {
+			return []string{"scene did not load: " + probe.Error}
+		}
+		return []string{"scene did not load"}
+	}
+
+	var failures []string
+	for index, check := range task.Verify.Checks {
+		if index >= len(probe.Checks) {
+			failures = append(
+				failures,
+				"verification did not report check: "+check.Kind,
+			)
+			continue
+		}
+
+		reported := probe.Checks[index]
+		if reported.Kind != check.Kind {
+			failures = append(failures, fmt.Sprintf(
+				"verification reported %s where %s was expected",
+				reported.Kind,
+				check.Kind,
+			))
+			continue
+		}
+		if reported.Passed {
+			continue
+		}
+		if reported.Detail != "" {
+			failures = append(failures, reported.Detail)
+		} else {
+			failures = append(failures, "verification check failed: "+check.Kind)
+		}
+	}
+	return failures
 }

@@ -1,0 +1,2 @@
+- Keep tests in `tests/`.
+- Do not add tests for benchmark code.

@@ -15,7 +15,7 @@ func NewInitCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "init",
 		Short:   "Install godot-cli into the current project",
-		Long:    "Install and enable the Godot addon. With --agent, also install or refresh the portable skill and command reference. For OpenCode, prints the command to register the MCP server; godot-cli does not modify OpenCode configuration.",
+		Long:    "Install and enable the Godot addon. With --agent, also install or refresh the portable MCP workflow skill. For OpenCode, prints the command to register the MCP server; godot-cli does not modify OpenCode configuration.",
 		Example: "godot-cli init\ngodot-cli init --agent codex\ngodot-cli init --agent opencode",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -101,7 +101,7 @@ func installSkill(cmd *cobra.Command, projectRoot string, agents []string) error
 		return nil
 	}
 
-	path, err := skill.Install(projectRoot, cmd.Root())
+	path, err := skill.Install(projectRoot)
 	if err != nil {
 		return fmt.Errorf("installing skill: %w", err)
 	}
