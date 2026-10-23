@@ -160,14 +160,29 @@ results are returned as both JSON text and structured content. Tool failures use
   granular handlers with deferred saves and rollback; resource batches reuse
   `resource_service.gd` handlers with an in-memory preview pass, batch-local
   resource references, and no file writes until apply.
-- Mutations go through `EditorUndoRedoManager` — every command is one undo step.
-  Project settings and Input Map commands are the exception: they change
-  `project.godot` directly and are not undoable.
+- `scene/scene_apply_service.gd` adds `scene.apply`, the batch entry point for
+  `node.add`/`set`/`rename`/`duplicate`/`move`/`delete`/`instantiate`
+  operations. It resolves operation ids (`@id`) and reuses the granular
+  `NodeService` handlers, so single-node commands and batches share the same
+  validation and mutation logic. A batch first runs against a temporary
+  packed-scene copy (the dry-run path); only a fully valid batch edits the live
+  scene. `scene/scene_edit_session.gd` adapts the node handlers'
+  `EditorUndoRedoManager` calls into one editor action: do methods execute
+  immediately for later operation validation while undo methods accumulate for
+  atomic rollback. If the live pass fails after some operations were applied,
+  the batch is committed without re-running do methods, undone through the
+  scene's undo history, and replaced with an empty action so the partial batch
+  cannot be redone. `dry_run` stops after the temporary-copy pass.
+- Mutations go through `EditorUndoRedoManager` — every command is one undo step,
+  and a whole `scene.apply` batch is one undo step. Project settings and Input
+  Map commands are the exception: they change `project.godot` directly and are
+  not undoable.
 - `expected_scene` is validated centrally in `request_handler.gd`
   (`supports_expected_scene`), except `scene.current`, which handles it itself so
   it can return `active:false` when no scene is open.
 - `--save` is a post-effect in `request_handler.gd`: run action → save scene.
-  Save once per edit batch, not per command.
+  Save once per edit batch, not per command. `scene.apply` supports the same
+  post-effect and rejects `save` together with `dry_run`.
 - Node property values use `{"resource":"res://..."}` references; decoded in
   `variant_deserializer.gd`, not by the Go side.
 
@@ -196,3 +211,7 @@ action in `All()` also exposes it as an MCP tool automatically.
   suite if Godot is missing. CI runs this with Godot 4.7.
 - Fixtures each own a directory under `tests/fixtures/core/cases/`; shared
   scenes live in `tests/fixtures/core/scenes/`.
+- `scene.apply` tests live in `tests/core/scene_apply_test.go`; MCP tool tests
+  live in `tests/mcp/scene_apply_test.go`. Keep batch operation names and field
+  rules in sync between `internal/core/scene/apply.go` and
+  `scene_apply_service.gd`.

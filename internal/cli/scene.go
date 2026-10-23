@@ -2,6 +2,8 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
 	"github.com/davidherring123/godot-cli/internal/core"
@@ -27,6 +29,7 @@ func NewSceneCommand() *cobra.Command {
 		newSceneCreateCommand(),
 		newSceneTreeCommand(),
 		newSceneSaveCommand(),
+		newSceneApplyCommand(),
 	)
 
 	return cmd
@@ -166,6 +169,55 @@ func newSceneOpenCommand() *cobra.Command {
 			return PrintJSON(result)
 		},
 	}
+}
+
+func newSceneApplyCommand() *cobra.Command {
+	var rawOperations string
+	var dryRun bool
+	var flags mutationFlags
+	cmd := &cobra.Command{
+		Use:         "apply",
+		Short:       core.SceneApply.Description,
+		Long:        "Apply an ordered array of node operations to the active editor scene as one atomic undo step. Each operation names its own `op`: node.add, node.set, node.rename, node.duplicate, node.move, node.delete, or node.instantiate, and uses the same fields as the matching single-node command. Give an operation an `id` and later operations can target its resulting node with `@id` in node or parent, so a batch can build and edit new nodes in one call. The whole batch is first validated on a temporary copy of the scene: if any operation fails, the live scene is untouched, and a failure during the real apply rolls back through the editor undo stack. --dry-run returns the planned paths and summaries without editing. Use --save once to save the scene after the batch succeeds. Operations run in order and commit as one undo step.",
+		Example:     `godot-cli scene apply --operations '[{"op":"node.add","id":"spawn","type":"Marker2D","parent":"World","name":"Spawn","properties":{"position":{"x":32,"y":48}}},{"op":"node.set","node":"@spawn","properties":{"position":{"x":64,"y":96}}}]' --save --expect-scene res://main.tscn`,
+		Annotations: map[string]string{skill.ActionKey: core.SceneApply.Name},
+		Args:        cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			var operations []scene.ApplyOperation
+
+			decoder := json.NewDecoder(strings.NewReader(rawOperations))
+			decoder.DisallowUnknownFields()
+
+			if err := decoder.Decode(&operations); err != nil {
+				return fmt.Errorf("operations must be a JSON array of scene operations: %w", err)
+			}
+
+			project, err := FetchProjectContext()
+			if err != nil {
+				return err
+			}
+
+			result, err := scene.Apply(project.Root, scene.ApplyParams{
+				Operations:    operations,
+				DryRun:        dryRun,
+				ExpectedScene: flags.expectedScene,
+				Save:          flags.save,
+			})
+			if err != nil {
+				return err
+			}
+
+			return PrintJSON(result)
+		},
+	}
+
+	cmd.Flags().StringVar(&rawOperations, "operations", "", "JSON array of scene operations to apply in order")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate and plan the batch without editing the active scene")
+	flags.bind(cmd)
+
+	_ = cmd.MarkFlagRequired("operations")
+
+	return cmd
 }
 
 func newSceneSaveCommand() *cobra.Command {

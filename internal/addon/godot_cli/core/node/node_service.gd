@@ -6,9 +6,9 @@ extends ActionService
 const DUPLICATE_FROM_EDITOR := 32
 
 var scene_context: EditorSceneContext
-var undo_redo: EditorUndoRedoManager
+var undo_redo: Object
 
-func _init(context: EditorSceneContext, history: EditorUndoRedoManager) -> void:
+func _init(context: EditorSceneContext, history: Object) -> void:
     scene_context = context
     undo_redo = history
 
@@ -33,7 +33,7 @@ func inspect(request: Request) -> Response:
             "A node path is required"
         )
 
-    var root := scene_context.editor.get_edited_scene_root()
+    var root := scene_context.edited_root()
     var node := scene_context.find_node(node_path)
 
     if node == null:
@@ -92,7 +92,7 @@ func set_properties(request: Request) -> Response:
             "A nonempty properties object is required"
         )
 
-    var root := scene_context.editor.get_edited_scene_root()
+    var root := scene_context.edited_root()
     var node := scene_context.find_node(node_path)
 
     if node == null:
@@ -181,7 +181,7 @@ func add(request: Request) -> Response:
             "properties must be an object"
         )
 
-    var root := scene_context.editor.get_edited_scene_root()
+    var root := scene_context.edited_root()
     var parent := scene_context.find_node(parent_path)
 
     if parent == null:
@@ -309,7 +309,7 @@ func instantiate_scene(request: Request) -> Response:
             "Set the script in the source scene instead of overriding it on an instance"
         )
 
-    var root := scene_context.editor.get_edited_scene_root()
+    var root := scene_context.edited_root()
     var parent := scene_context.find_node(parent_path)
 
     if parent == null:
@@ -416,7 +416,7 @@ func rename(request: Request) -> Response:
     if not requested_name is String or requested_name.is_empty():
         return Response.failure(ErrorCode.INVALID_ARGUMENT, "A new name is required")
 
-    var root := scene_context.editor.get_edited_scene_root()
+    var root := scene_context.edited_root()
     var node := scene_context.find_node(node_path)
 
     if node == null:
@@ -492,7 +492,7 @@ func duplicate_node(request: Request) -> Response:
     if not requested_name is String:
         return Response.failure(ErrorCode.INVALID_ARGUMENT, "name must be a string")
 
-    var root := scene_context.editor.get_edited_scene_root()
+    var root := scene_context.edited_root()
     var node := scene_context.find_node(node_path)
 
     if node == null:
@@ -603,7 +603,7 @@ func move_node(request: Request) -> Response:
             "keep_global_transform must be a boolean"
         )
 
-    var root := scene_context.editor.get_edited_scene_root()
+    var root := scene_context.edited_root()
     var node := scene_context.find_node(node_path)
 
     if node == null:
@@ -740,7 +740,7 @@ func delete(request: Request) -> Response:
     if not node_path is String or node_path.is_empty():
         return Response.failure(ErrorCode.INVALID_ARGUMENT, "A node path is required")
 
-    var root := scene_context.editor.get_edited_scene_root()
+    var root := scene_context.edited_root()
     var node := scene_context.find_node(node_path)
 
     if node == null:

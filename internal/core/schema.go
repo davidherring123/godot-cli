@@ -144,6 +144,11 @@ var (
 	SceneCreate  = define[scene.CreateParams, scene.CreateResult](scene.CreateName, "Create a new scene file and open it in the editor", scene.Create, withAdditive())
 	SceneSave    = define[scene.SaveParams, scene.SaveResult](scene.SaveName, "Save the active editor scene", scene.Save)
 	SceneTree    = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show the active editor scene's node tree", scene.Tree, withReadOnly())
+	SceneApply   = define[scene.ApplyParams, scene.ApplyResult](
+		scene.ApplyName,
+		"Apply an ordered batch of node edits to the active scene as one atomic undo step, with prevalidation and optional dry_run",
+		scene.Apply,
+	)
 	ValidateLive = define[validate.LiveParams, validate.LiveResult](
 		validate.LiveName,
 		"Validate the active editor scene, including unsaved state",
@@ -272,6 +277,7 @@ func All() []ActionDefinition {
 		SceneCreate,
 		SceneSave,
 		SceneTree,
+		SceneApply,
 		ValidateLive,
 		ValidateScene,
 		NodeInspect,

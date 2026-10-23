@@ -62,6 +62,24 @@ godot-cli node delete <node> --expect-scene <scene>
 godot-cli scene save --expect-scene <scene>
 ```
 
+For several ordered node edits, use one `scene apply` call instead of one command
+per node. Operations run in order and commit as a single editor undo step. The
+batch is prevalidated on a temporary copy of the scene, so a failed operation
+leaves the live scene untouched and the error names the failed operation index,
+op, and id. Give an operation an `id` and later operations can target its
+resulting node with `@id` in `node` or `parent`. Use `--dry-run` to validate and
+preview paths and summaries without editing. `--properties` is not used here;
+each operation carries its own `properties` object.
+
+```shell
+godot-cli scene apply --expect-scene <scene> --operations '[
+  {"op":"node.add","id":"spawn","type":"Marker2D","parent":"World","name":"Spawn","properties":{"position":{"x":32,"y":48}}},
+  {"op":"node.set","node":"@spawn","properties":{"position":{"x":64,"y":96}}},
+  {"op":"node.rename","node":"@spawn","name":"SpawnPoint"},
+  {"op":"node.instantiate","id":"player","scene":"res://player.tscn","parent":"@spawn","name":"Player"}
+]'
+```
+
 Common resource file work:
 
 ```shell
@@ -131,9 +149,10 @@ index and target.
 
 Every mutation applies to the live editor scene immediately, so run related
 edits back to back and save once when they are done: add `--save` to the scene's
-final mutation, or run `scene save` afterwards. Do not save between steps. Each
-mutation is its own editor undo step, and `saved: false` in a response only means
-the scene still has unsaved changes; do not re-inspect to confirm a change.
+final mutation or to `scene apply`, or run `scene save` afterwards. Do not save
+between steps. Each granular mutation is its own editor undo step and a whole
+`scene apply` batch is one undo step. `saved: false` in a response only means the
+scene still has unsaved changes; do not re-inspect to confirm a change.
 
 `--properties` takes a JSON object of property names to values. Vectors are
 `{"x":..,"y":..}` (add `z`/`w` as needed), colors `{"r":..,"g":..,"b":..,"a":..}`,

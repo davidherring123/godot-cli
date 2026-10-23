@@ -3,11 +3,28 @@ extends RefCounted
 
 var editor: EditorInterface
 
+# Batch prevalidation runs the same node mutations against a temporary copy of
+# the scene. The override keeps those edits away from the live editor scene.
+var root_override: Node = null
+
 func _init(editor_interface: EditorInterface) -> void:
     editor = editor_interface
 
+# for_root returns a context that resolves the scene root to root instead of
+# the editor's active scene. Used by scene.apply's dry-run/prevalidation pass.
+func for_root(root: Node) -> EditorSceneContext:
+    var context := EditorSceneContext.new(editor)
+    context.root_override = root
+    return context
+
+func edited_root() -> Node:
+    if root_override != null and is_instance_valid(root_override):
+        return root_override
+
+    return editor.get_edited_scene_root()
+
 func validate(params: Dictionary) -> Response:
-    var root := editor.get_edited_scene_root()
+    var root := edited_root()
 
     if root == null:
         return Response.failure(
@@ -44,7 +61,7 @@ func expected_scene_error(root: Node, expected: String) -> Response:
     return null
 
 func describe() -> Dictionary:
-    var root := editor.get_edited_scene_root()
+    var root := edited_root()
 
     if root == null:
         return {
@@ -69,7 +86,7 @@ func describe() -> Dictionary:
     }
 
 func save() -> Response:
-    var root := editor.get_edited_scene_root()
+    var root := edited_root()
     var path := root.scene_file_path
 
     if path.is_empty():
@@ -97,7 +114,7 @@ func find_node(path: String) -> Node:
     if node_path.is_absolute() or node_path.get_subname_count() > 0:
         return null
 
-    var root := editor.get_edited_scene_root()
+    var root := edited_root()
     var node := root.get_node_or_null(node_path)
 
     if node == root or (node != null and root.is_ancestor_of(node)):
