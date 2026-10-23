@@ -7,16 +7,19 @@ extends ActionService
 # and batch operations run through the same NodeService methods.
 
 const ID_PATTERN := "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
-const MAX_OPERATIONS := 1000
 
 const OPERATION_FIELDS := {
-    "node.add": ["op", "id", "type", "parent", "name", "properties"],
-    "node.set": ["op", "id", "node", "properties"],
-    "node.rename": ["op", "id", "node", "name"],
-    "node.duplicate": ["op", "id", "node", "name"],
-    "node.move": ["op", "id", "node", "parent", "index", "keep_global_transform"],
-    "node.delete": ["op", "id", "node"],
-    "node.instantiate": ["op", "id", "scene", "parent", "name", "properties"],
+    "node.add": ["operation", "id", "type", "parent", "name", "properties"],
+    "node.set": ["operation", "id", "node", "properties"],
+    "node.rename": ["operation", "id", "node", "name"],
+    "node.duplicate": ["operation", "id", "node", "name"],
+    "node.move": [
+        "operation", "id", "node", "parent", "index", "keep_global_transform",
+    ],
+    "node.delete": ["operation", "id", "node"],
+    "node.instantiate": [
+        "operation", "id", "scene", "parent", "name", "properties",
+    ],
 }
 
 var scene_context: EditorSceneContext
@@ -33,18 +36,10 @@ func get_actions() -> Dictionary:
 
 func apply(request: Request) -> Response:
     var operations = request.params.get("operations")
+    var size_error := validate_batch_operations(operations)
 
-    if not operations is Array or operations.is_empty():
-        return Response.failure(
-            ErrorCode.INVALID_ARGUMENT,
-            "A nonempty operations array is required"
-        )
-
-    if operations.size() > MAX_OPERATIONS:
-        return Response.failure(
-            ErrorCode.INVALID_ARGUMENT,
-            "A batch may contain at most %d operations" % MAX_OPERATIONS
-        )
+    if size_error != null:
+        return size_error
 
     var dry_run = request.params.get("dry_run", false)
 
@@ -85,7 +80,11 @@ func apply(request: Request) -> Response:
             _result(scene, preview["results"], false, true)
         )
 
-    var session := SceneEditSession.new(undo_redo)
+    var session := SceneEditSession.new(
+        undo_redo,
+        "godot-cli: Apply scene batch",
+        root
+    )
     var node_service := NodeService.new(scene_context, session)
     var outcome := _run(
         operations,
@@ -97,17 +96,30 @@ func apply(request: Request) -> Response:
 
     if outcome["error"] != null:
         var applied_before_rollback := session.has_applied()
+        var rollback := session.rollback()
 
-        session.rollback()
+        if rollback["ok"]:
+            return _failure_with_context(
+                outcome["error"],
+                outcome,
+                (
+                    "Batch failed and was rolled back"
+                    if applied_before_rollback
+                    else "Batch failed before any operation was applied"
+                )
+            )
 
         return _failure_with_context(
-            outcome["error"],
+            Response.failure(
+                ErrorCode.INTERNAL_ERROR,
+                "Rollback was incomplete (%d of %d undo steps restored): %s" % [
+                    rollback["restored"],
+                    rollback["total"],
+                    outcome["error"].message,
+                ]
+            ),
             outcome,
-            (
-                "Batch failed and was rolled back"
-                if applied_before_rollback
-                else "Batch failed before any operation was applied"
-            )
+            "Batch failed and rollback was incomplete"
         )
 
     session.finish()
@@ -121,33 +133,22 @@ func _preview(root: Node, operations: Array) -> Dictionary:
     var pack_error := packed.pack(root)
 
     if pack_error != OK:
-        return {
-            "error": Response.failure(
-                ErrorCode.ACTION_FAILED,
-                "Could not build a temporary scene copy for prevalidation: %s"
-                % error_string(pack_error)
-            ),
-            "failed_index": -1,
-            "failed_op": "",
-            "failed_id": "",
-            "results": [],
-        }
+        return _preview_error(
+            "Could not build a temporary scene copy for prevalidation: %s"
+            % error_string(pack_error)
+        )
 
     var copy := packed.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE)
 
-    if copy == null:
-        return {
-            "error": Response.failure(
-                ErrorCode.ACTION_FAILED,
-                "Could not instantiate a temporary scene copy for prevalidation"
-            ),
-            "failed_index": -1,
-            "failed_op": "",
-            "failed_id": "",
-            "results": [],
-        }
+    if copy == null or not is_instance_valid(copy):
+        return _preview_error(
+            "Could not instantiate a temporary scene copy for prevalidation"
+        )
 
     copy.scene_file_path = root.scene_file_path
+
+    var seen_nodes := {}
+    _remember_nodes(copy, seen_nodes)
 
     var context := scene_context.for_root(copy)
     var session := SceneEditSession.new(null)
@@ -157,46 +158,87 @@ func _preview(root: Node, operations: Array) -> Dictionary:
         copy,
         context,
         node_service.get_actions(),
-        session
+        session,
+        seen_nodes
     )
 
-    copy.free()
+    # A script can free the temporary root while its properties are applied.
+    # Never report a successful dry run from a freed preview root.
+    var root_freed := not is_instance_valid(copy)
+    var orphans := _orphaned_nodes(seen_nodes.keys(), copy)
+
+    if not root_freed:
+        copy.free()
+
+    _free_orphans(orphans)
+
+    if root_freed:
+        return _preview_error(
+            "The temporary scene root was freed during prevalidation; "
+            + "the live scene was not modified"
+        )
 
     return outcome
+
+func _preview_error(message: String) -> Dictionary:
+    return {
+        "error": Response.failure(ErrorCode.INTERNAL_ERROR, message),
+        "failed_index": -1,
+        "failed_operation": {},
+        "failed_target": "",
+        "results": [],
+    }
 
 func _run(
     operations: Array,
     root: Node,
     context: EditorSceneContext,
     actions: Dictionary,
-    session: SceneEditSession
+    session: SceneEditSession,
+    seen_nodes: Dictionary = {}
 ) -> Dictionary:
     var results: Array[Dictionary] = []
     var ids: Dictionary = {}
 
     for index in operations.size():
         var operation: Dictionary = operations[index]
-        var op_name: String = operation.get("op", "")
+        var operation_name: String = operation.get("operation", "")
         var id: String = operation.get("id", "")
+        var target := _operation_target(operation)
+
+        if not is_instance_valid(root):
+            session.discard_pending()
+
+            return _outcome_error(
+                index,
+                operation,
+                target,
+                Response.failure(
+                    ErrorCode.INTERNAL_ERROR,
+                    "The scene root was freed while the batch was running"
+                ),
+                results
+            )
+
         var resolved := _operation_params(operation, ids, root, context)
         var error: Response = resolved["error"]
 
         if error != null:
             session.discard_pending()
 
-            return _outcome_error(index, op_name, id, error, results)
+            return _outcome_error(index, operation, target, error, results)
 
-        var handler: ActionHandler = actions[op_name]
+        var handler: ActionHandler = actions[operation_name]
         var params: Dictionary = resolved["params"]
-        var response = handler.callable.call(Request.new(op_name, params))
+        var response = handler.callable.call(Request.new(operation_name, params))
 
         if not response is Response:
             session.discard_pending()
 
             return _outcome_error(
                 index,
-                op_name,
-                id,
+                operation,
+                target,
                 Response.failure(
                     ErrorCode.INTERNAL_ERROR,
                     "Operation returned an invalid response"
@@ -204,27 +246,55 @@ func _run(
                 results
             )
 
+        var execution_error := session.take_execution_error()
+
+        if not execution_error.is_empty():
+            return _outcome_error(
+                index,
+                operation,
+                target,
+                Response.failure(ErrorCode.INTERNAL_ERROR, execution_error),
+                results
+            )
+
         if not response.code.is_empty():
             session.discard_pending()
 
-            return _outcome_error(index, op_name, id, response, results)
+            return _outcome_error(index, operation, target, response, results)
+
+        if not is_instance_valid(root):
+            session.discard_pending()
+
+            return _outcome_error(
+                index,
+                operation,
+                target,
+                Response.failure(
+                    ErrorCode.INTERNAL_ERROR,
+                    "The scene root was freed while the batch was running"
+                ),
+                results
+            )
 
         var result: Dictionary = response.result
-        var node := _result_node(op_name, result, resolved, context)
+        var node := _result_node(operation_name, result, resolved, context)
         var entry := _operation_result(index, operation, result, node, resolved)
         results.append(entry)
+
+        if not seen_nodes.is_empty() and is_instance_valid(root):
+            _remember_nodes(root, seen_nodes)
 
         if not id.is_empty():
             ids[id] = {
                 "node": node,
-                "deleted": op_name == "node.delete",
+                "deleted": operation_name == "node.delete",
             }
 
     return {
         "error": null,
         "failed_index": -1,
-        "failed_op": "",
-        "failed_id": "",
+        "failed_operation": {},
+        "failed_target": "",
         "results": results,
     }
 
@@ -234,12 +304,12 @@ func _operation_params(
     root: Node,
     context: EditorSceneContext
 ) -> Dictionary:
-    var op_name: String = operation.get("op", "")
+    var operation_name: String = operation.get("operation", "")
     var params := {}
     var resolved_node: Node = null
     var resolved_parent: Node = null
 
-    match op_name:
+    match operation_name:
         "node.add":
             var parent := _resolve_ref(operation.get("parent"), ids, root, "parent")
 
@@ -337,7 +407,7 @@ func _operation_params(
             return {
                 "error": Response.failure(
                     ErrorCode.INVALID_ARGUMENT,
-                    "Unknown operation: %s" % op_name
+                    "Unsupported operation: %s" % operation_name
                 ),
                 "params": {},
             }
@@ -446,12 +516,12 @@ func _find_node(root: Node, path: String) -> Node:
     return null
 
 func _result_node(
-    op_name: String,
+    operation_name: String,
     result: Dictionary,
     resolved: Dictionary,
     context: EditorSceneContext
 ) -> Node:
-    match op_name:
+    match operation_name:
         "node.add", "node.instantiate":
             return context.find_node(str(result.get("path", "")))
         "node.duplicate":
@@ -472,10 +542,10 @@ func _operation_result(
     node: Node,
     resolved: Dictionary
 ) -> Dictionary:
-    var op_name: String = operation.get("op", "")
+    var operation_name: String = operation.get("operation", "")
     var entry := {
         "index": index,
-        "op": op_name,
+        "operation": operation_name,
         "path": "",
         "name": "",
         "type": "",
@@ -486,7 +556,7 @@ func _operation_result(
     if operation.has("id"):
         entry["id"] = operation["id"]
 
-    match op_name:
+    match operation_name:
         "node.add":
             entry["path"] = str(result.get("path", ""))
             entry["name"] = str(result.get("name", ""))
@@ -569,7 +639,7 @@ func _result(
         if entry["changed"]:
             changed += 1
 
-        match entry["op"]:
+        match entry["operation"]:
             "node.add", "node.instantiate", "node.duplicate":
                 added += 1
             "node.delete":
@@ -591,16 +661,16 @@ func _result(
 
 func _outcome_error(
     index: int,
-    op_name: String,
-    id: String,
+    operation: Dictionary,
+    target: String,
     error: Response,
     results: Array
 ) -> Dictionary:
     return {
         "error": error,
         "failed_index": index,
-        "failed_op": op_name,
-        "failed_id": id,
+        "failed_operation": operation,
+        "failed_target": target,
         "results": results,
     }
 
@@ -609,19 +679,17 @@ func _failure_with_context(
     outcome: Dictionary,
     prefix: String
 ) -> Response:
-    var label := "operation[%d]" % outcome.get("failed_index", -1)
-    var op_name: String = outcome.get("failed_op", "")
-    var id: String = outcome.get("failed_id", "")
+    var index := int(outcome.get("failed_index", -1))
 
-    if not op_name.is_empty():
-        label += " %s" % op_name
+    if index < 0:
+        return Response.failure(error.code, "%s: %s" % [prefix, error.message])
 
-    if not id.is_empty():
-        label += " (id=%s)" % id
-
-    return Response.failure(
-        error.code,
-        "%s: %s failed: %s" % [prefix, label, error.message]
+    return batch_operation_failure(
+        index,
+        outcome.get("failed_operation", {}),
+        str(outcome.get("failed_target", "")),
+        error,
+        prefix
     )
 
 func _validate_operations(operations: Array) -> Response:
@@ -639,26 +707,91 @@ func _validate_operations(operations: Array) -> Response:
         var operation = operations[index]
 
         if not operation is Dictionary:
-            return Response.failure(
-                ErrorCode.INVALID_ARGUMENT,
-                "operation[%d] must be an object" % index
-            )
-
-        var op_name = operation.get("op")
-
-        if not op_name is String or not OPERATION_FIELDS.has(op_name):
-            return Response.failure(
-                ErrorCode.INVALID_ARGUMENT,
-                "operation[%d] has an unknown op" % index
-            )
-
-        for key in operation:
-            if not OPERATION_FIELDS[op_name].has(key):
-                return Response.failure(
+            return batch_operation_failure(
+                index,
+                operation,
+                "",
+                Response.failure(
                     ErrorCode.INVALID_ARGUMENT,
-                    "operation[%d] %s does not accept field %s"
-                    % [index, op_name, key]
+                    "Each operation must be an object"
                 )
+            )
+
+        var operation_name = operation.get("operation")
+
+        if not operation_name is String or operation_name.is_empty():
+            return batch_operation_failure(
+                index,
+                operation,
+                _operation_target(operation),
+                Response.failure(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "An operation is required"
+                )
+            )
+
+        if not OPERATION_FIELDS.has(operation_name):
+            return batch_operation_failure(
+                index,
+                operation,
+                _operation_target(operation),
+                Response.failure(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "Unsupported operation: %s" % operation_name
+                )
+            )
+
+        var field_error := validate_operation_fields(
+            index,
+            operation,
+            OPERATION_FIELDS
+        )
+
+        if field_error != null:
+            return batch_operation_failure(
+                index,
+                operation,
+                _operation_target(operation),
+                field_error
+            )
+
+        if operation.has("id"):
+            var id = operation["id"]
+
+            if not id is String or id.is_empty():
+                return batch_operation_failure(
+                    index,
+                    operation,
+                    _operation_target(operation),
+                    Response.failure(
+                        ErrorCode.INVALID_ARGUMENT,
+                        "An id must be a nonempty string"
+                    )
+                )
+
+            if pattern.search(id) == null:
+                return batch_operation_failure(
+                    index,
+                    operation,
+                    _operation_target(operation),
+                    Response.failure(
+                        ErrorCode.INVALID_ARGUMENT,
+                        "Invalid id: %s" % id
+                    )
+                )
+
+            if ids.has(id):
+                return batch_operation_failure(
+                    index,
+                    operation,
+                    _operation_target(operation),
+                    Response.failure(
+                        ErrorCode.INVALID_ARGUMENT,
+                        "Duplicate operation id: %s" % id
+                    )
+                )
+
+            ids[id] = true
 
         for field in ["node", "parent"]:
             if not operation.has(field):
@@ -671,28 +804,84 @@ func _validate_operations(operations: Array) -> Response:
 
             var reference_id: String = reference.substr(1)
 
+            if reference_id.is_empty():
+                return batch_operation_failure(
+                    index,
+                    operation,
+                    _operation_target(operation),
+                    Response.failure(
+                        ErrorCode.INVALID_ARGUMENT,
+                        "%s has an empty operation reference" % field
+                    )
+                )
+
             if not ids.has(reference_id):
-                return Response.failure(
-                    ErrorCode.INVALID_ARGUMENT,
-                    "operation[%d] %s refers to unknown or not-yet-defined operation id %s"
-                    % [index, op_name, reference]
+                return batch_operation_failure(
+                    index,
+                    operation,
+                    _operation_target(operation),
+                    Response.failure(
+                        ErrorCode.INVALID_ARGUMENT,
+                        "%s refers to unknown or not-yet-defined operation id %s"
+                        % [field, reference]
+                    )
                 )
-
-        if operation.has("id"):
-            var id = operation["id"]
-
-            if not id is String or pattern.search(id) == null:
-                return Response.failure(
-                    ErrorCode.INVALID_ARGUMENT,
-                    "operation[%d] has an invalid id" % index
-                )
-
-            if ids.has(id):
-                return Response.failure(
-                    ErrorCode.INVALID_ARGUMENT,
-                    "Duplicate operation id: %s" % id
-                )
-
-            ids[id] = true
 
     return null
+
+func _operation_target(operation: Dictionary) -> String:
+    var node = operation.get("node", "")
+
+    if node is String and not node.is_empty():
+        return node
+
+    var parent = operation.get("parent", "")
+
+    if parent is String and not parent.is_empty():
+        return parent
+
+    var id = operation.get("id", "")
+
+    if id is String:
+        return id
+
+    return ""
+
+func _remember_nodes(node: Node, nodes: Dictionary) -> void:
+    if node == null or not is_instance_valid(node):
+        return
+
+    nodes[node] = true
+
+    for child in node.get_children():
+        _remember_nodes(child, nodes)
+
+func _orphaned_nodes(nodes: Array, root: Node) -> Array[Node]:
+    var orphans: Array[Node] = []
+
+    for value in nodes:
+        var node := value as Node
+
+        if node == null or not is_instance_valid(node):
+            continue
+
+        if is_instance_valid(root):
+            if node == root:
+                continue
+
+            if root.is_ancestor_of(node):
+                continue
+
+        orphans.append(node)
+
+    return orphans
+
+func _free_orphans(orphans: Array[Node]) -> void:
+    for node in orphans:
+        if not is_instance_valid(node):
+            continue
+
+        if node.get_parent() != null:
+            continue
+
+        node.free()

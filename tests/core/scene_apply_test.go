@@ -23,66 +23,66 @@ func TestSceneApplyBatchAppliesOperations(t *testing.T) {
 		Save:          true,
 		Operations: []scene.ApplyOperation{
 			{
-				Op:     "node.add",
-				ID:     "spawn",
-				Type:   "Marker2D",
-				Parent: "World",
-				Name:   "Spawn",
+				Operation: "node.add",
+				ID:        "spawn",
+				Type:      "Marker2D",
+				Parent:    "World",
+				Name:      "Spawn",
 				Properties: map[string]json.RawMessage{
 					"position": json.RawMessage(`{"x":32,"y":48}`),
 				},
 			},
 			{
-				Op:   "node.set",
-				Node: "@spawn",
+				Operation: "node.set",
+				Node:      "@spawn",
 				Properties: map[string]json.RawMessage{
 					"position": json.RawMessage(`{"x":64,"y":96}`),
 				},
 			},
 			{
-				Op:     "node.add",
-				ID:     "icon",
-				Type:   "Sprite2D",
-				Parent: "@spawn",
-				Name:   "Icon",
+				Operation: "node.add",
+				ID:        "icon",
+				Type:      "Sprite2D",
+				Parent:    "@spawn",
+				Name:      "Icon",
 			},
 			{
-				Op:   "node.rename",
-				Node: "@spawn",
-				Name: "SpawnPoint",
+				Operation: "node.rename",
+				Node:      "@spawn",
+				Name:      "SpawnPoint",
 			},
 			{
-				Op:   "node.set",
-				Node: "@icon",
+				Operation: "node.set",
+				Node:      "@icon",
 				Properties: map[string]json.RawMessage{
 					"position": json.RawMessage(`{"x":1,"y":2}`),
 				},
 			},
 			{
-				Op:   "node.duplicate",
-				ID:   "icon_copy",
-				Node: "@icon",
-				Name: "IconCopy",
+				Operation: "node.duplicate",
+				ID:        "icon_copy",
+				Node:      "@icon",
+				Name:      "IconCopy",
 			},
 			{
-				Op:     "node.move",
-				Node:   "@icon_copy",
-				Parent: "World",
-				Index:  intPointer(0),
+				Operation: "node.move",
+				Node:      "@icon_copy",
+				Parent:    "World",
+				Index:     intPointer(0),
 			},
 			{
-				Op:     "node.instantiate",
-				ID:     "batch_player",
-				Scene:  "res://scenes/player.tscn",
-				Parent: "World",
-				Name:   "BatchPlayer",
+				Operation: "node.instantiate",
+				ID:        "batch_player",
+				Scene:     "res://scenes/player.tscn",
+				Parent:    "World",
+				Name:      "BatchPlayer",
 				Properties: map[string]json.RawMessage{
 					"position": json.RawMessage(`{"x":8,"y":9}`),
 				},
 			},
 			{
-				Op:   "node.set",
-				Node: "@batch_player",
+				Operation: "node.set",
+				Node:      "@batch_player",
 				Properties: map[string]json.RawMessage{
 					"speed": json.RawMessage(`250`),
 				},
@@ -177,6 +177,8 @@ func TestSceneApplyBatchAppliesOperations(t *testing.T) {
 		}
 	}
 
+	requireSceneUnsaved(t, session, path, false)
+
 	if err := session.LogJSON(scene.ApplyName, result); err != nil {
 		t.Fatal(err)
 	}
@@ -192,10 +194,10 @@ func TestSceneApplyMarksSceneUnsaved(t *testing.T) {
 		ExpectedScene: path,
 		Operations: []scene.ApplyOperation{
 			{
-				Op:     "node.add",
-				Type:   "Marker2D",
-				Parent: "World",
-				Name:   "UnsavedMarker",
+				Operation: "node.add",
+				Type:      "Marker2D",
+				Parent:    "World",
+				Name:      "UnsavedMarker",
 			},
 		},
 	})
@@ -223,6 +225,7 @@ func TestSceneApplyFailedPrevalidationLeavesSceneUntouched(t *testing.T) {
 	path := "res://cases/scene_apply_rollback/main.tscn"
 
 	openFixtureScene(t, session, path)
+	requireSceneUnsaved(t, session, path, false)
 
 	_, err := bridge.Call[scene.ApplyParams, scene.ApplyResult](
 		session.Client,
@@ -231,20 +234,20 @@ func TestSceneApplyFailedPrevalidationLeavesSceneUntouched(t *testing.T) {
 			ExpectedScene: path,
 			Operations: []scene.ApplyOperation{
 				{
-					Op:     "node.add",
-					ID:     "temp",
-					Type:   "Marker2D",
-					Parent: "World",
-					Name:   "Temp",
+					Operation: "node.add",
+					ID:        "temp",
+					Type:      "Marker2D",
+					Parent:    "World",
+					Name:      "Temp",
 				},
 				{
-					Op:   "node.rename",
-					Node: "@temp",
-					Name: "TempRenamed",
+					Operation: "node.rename",
+					Node:      "@temp",
+					Name:      "TempRenamed",
 				},
 				{
-					Op:   "node.set",
-					Node: "@temp",
+					Operation: "node.set",
+					Node:      "@temp",
 					Properties: map[string]json.RawMessage{
 						"definitely_missing": json.RawMessage(`true`),
 					},
@@ -256,7 +259,7 @@ func TestSceneApplyFailedPrevalidationLeavesSceneUntouched(t *testing.T) {
 	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
 	assertApplyErrorMessage(t, err,
 		"Prevalidation failed",
-		"operation[2]",
+		"operation 2",
 		"node.set",
 		"definitely_missing",
 	)
@@ -268,15 +271,17 @@ func TestSceneApplyFailedPrevalidationLeavesSceneUntouched(t *testing.T) {
 		t.Fatalf("failed batch left nodes behind: %s", got)
 	}
 
+	requireSceneUnsaved(t, session, path, false)
+
 	// The editor must still accept a normal batch after a failed batch.
 	result := applyScene(t, session, scene.ApplyParams{
 		ExpectedScene: path,
 		Operations: []scene.ApplyOperation{
 			{
-				Op:     "node.add",
-				Type:   "Marker2D",
-				Parent: "World/Existing",
-				Name:   "Recovered",
+				Operation: "node.add",
+				Type:      "Marker2D",
+				Parent:    "World/Existing",
+				Name:      "Recovered",
 			},
 		},
 	})
@@ -291,6 +296,7 @@ func TestSceneApplyRollsBackWhenLiveStateDrifts(t *testing.T) {
 	path := "res://cases/scene_apply_live_rollback/main.tscn"
 
 	openFixtureScene(t, session, path)
+	requireSceneUnsaved(t, session, path, false)
 
 	// The tool script creates an unowned editor-only node that
 	// PackedScene.pack omits from the prevalidation copy.
@@ -308,46 +314,46 @@ func TestSceneApplyRollsBackWhenLiveStateDrifts(t *testing.T) {
 			ExpectedScene: path,
 			Operations: []scene.ApplyOperation{
 				{
-					Op:   "node.set",
-					ID:   "existing",
-					Node: "World/Existing",
+					Operation: "node.set",
+					ID:        "existing",
+					Node:      "World/Existing",
 					Properties: map[string]json.RawMessage{
 						"position": json.RawMessage(`{"x":50,"y":60}`),
 					},
 				},
 				{
-					Op:   "node.rename",
-					Node: "@existing",
-					Name: "Renamed",
+					Operation: "node.rename",
+					Node:      "@existing",
+					Name:      "Renamed",
 				},
 				{
-					Op:     "node.add",
-					ID:     "temp",
-					Type:   "Marker2D",
-					Parent: "World",
-					Name:   "Temp",
+					Operation: "node.add",
+					ID:        "temp",
+					Type:      "Marker2D",
+					Parent:    "World",
+					Name:      "Temp",
 				},
 				{
-					Op:     "node.move",
-					Node:   "@existing",
-					Parent: "@temp",
+					Operation: "node.move",
+					Node:      "@existing",
+					Parent:    "@temp",
 				},
 				{
-					Op:     "node.add",
-					ID:     "victim",
-					Type:   "Marker2D",
-					Parent: "World",
-					Name:   "Victim",
+					Operation: "node.add",
+					ID:        "victim",
+					Type:      "Marker2D",
+					Parent:    "World",
+					Name:      "Victim",
 				},
 				{
-					Op:   "node.delete",
-					Node: "@victim",
+					Operation: "node.delete",
+					Node:      "@victim",
 				},
 				{
-					Op:     "node.add",
-					Type:   "Marker2D",
-					Parent: "World",
-					Name:   "RuntimeOnly",
+					Operation: "node.add",
+					Type:      "Marker2D",
+					Parent:    "World",
+					Name:      "RuntimeOnly",
 				},
 			},
 		},
@@ -356,7 +362,7 @@ func TestSceneApplyRollsBackWhenLiveStateDrifts(t *testing.T) {
 	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
 	assertApplyErrorMessage(t, err,
 		"Batch failed and was rolled back",
-		"operation[6]",
+		"operation 6",
 		"node.add",
 		"RuntimeOnly",
 	)
@@ -391,6 +397,59 @@ func TestSceneApplyRollsBackWhenLiveStateDrifts(t *testing.T) {
 			}
 		}
 	}
+
+	// Rollback must not commit the failed batch to editor history: a scene
+	// that was clean before the batch must still be clean afterwards.
+	requireSceneUnsaved(t, session, path, false)
+}
+
+func TestSceneApplyDeletedIDCannotBeReferenced(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_apply_deleted_id/main.tscn"
+
+	openFixtureScene(t, session, path)
+	requireSceneUnsaved(t, session, path, false)
+
+	_, err := bridge.Call[scene.ApplyParams, scene.ApplyResult](
+		session.Client,
+		scene.ApplyName,
+		scene.ApplyParams{
+			ExpectedScene: path,
+			Operations: []scene.ApplyOperation{
+				{
+					Operation: "node.add",
+					ID:        "temp",
+					Type:      "Marker2D",
+					Parent:    "World",
+					Name:      "Temp",
+				},
+				{
+					Operation: "node.delete",
+					ID:        "gone",
+					Node:      "@temp",
+				},
+				{
+					Operation: "node.set",
+					Node:      "@gone",
+					Properties: map[string]json.RawMessage{
+						"position": json.RawMessage(`{"x":1,"y":2}`),
+					},
+				},
+			},
+		},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertApplyErrorMessage(t, err, "deleted earlier in the batch")
+
+	requireSceneUnsaved(t, session, path, false)
+
+	tree := sceneTree(t, session, path)
+	world := childNamed(t, tree.Root, "World")
+
+	if got := strings.Join(childNames(world), ","); got != "Existing" {
+		t.Fatalf("failed batch mutated the live scene: %s", got)
+	}
 }
 
 func TestSceneApplyDryRunDoesNotMutateScene(t *testing.T) {
@@ -407,16 +466,16 @@ func TestSceneApplyDryRunDoesNotMutateScene(t *testing.T) {
 			DryRun:        true,
 			Operations: []scene.ApplyOperation{
 				{
-					Op:     "node.add",
-					ID:     "temp",
-					Type:   "Marker2D",
-					Parent: "World",
-					Name:   "Temp",
+					Operation: "node.add",
+					ID:        "temp",
+					Type:      "Marker2D",
+					Parent:    "World",
+					Name:      "Temp",
 				},
 				{
-					Op:   "node.rename",
-					Node: "@temp",
-					Name: "DryRunTemp",
+					Operation: "node.rename",
+					Node:      "@temp",
+					Name:      "DryRunTemp",
 				},
 			},
 		},
@@ -467,6 +526,7 @@ func TestSceneApplyPrevalidationRejectsConflict(t *testing.T) {
 	path := "res://cases/scene_apply_prevalidation/main.tscn"
 
 	openFixtureScene(t, session, path)
+	requireSceneUnsaved(t, session, path, false)
 
 	_, err := bridge.Call[scene.ApplyParams, scene.ApplyResult](
 		session.Client,
@@ -475,17 +535,17 @@ func TestSceneApplyPrevalidationRejectsConflict(t *testing.T) {
 			ExpectedScene: path,
 			Operations: []scene.ApplyOperation{
 				{
-					Op:     "node.add",
-					Type:   "Marker2D",
-					Parent: "World",
-					Name:   "Existing",
+					Operation: "node.add",
+					Type:      "Marker2D",
+					Parent:    "World",
+					Name:      "Existing",
 				},
 			},
 		},
 	)
 
 	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
-	assertApplyErrorMessage(t, err, "Prevalidation failed", "operation[0]", "node.add")
+	assertApplyErrorMessage(t, err, "Prevalidation failed", "operation 0", "node.add")
 
 	tree := sceneTree(t, session, path)
 	world := childNamed(t, tree.Root, "World")
@@ -493,6 +553,8 @@ func TestSceneApplyPrevalidationRejectsConflict(t *testing.T) {
 	if got := strings.Join(childNames(world), ","); got != "Existing" {
 		t.Fatalf("prevalidation failure mutated the live scene: %s", got)
 	}
+
+	requireSceneUnsaved(t, session, path, false)
 }
 
 func TestSceneApplyExpectedSceneConflict(t *testing.T) {
@@ -508,10 +570,10 @@ func TestSceneApplyExpectedSceneConflict(t *testing.T) {
 			ExpectedScene: "res://cases/scene_apply_batch/main.tscn",
 			Operations: []scene.ApplyOperation{
 				{
-					Op:     "node.add",
-					Type:   "Marker2D",
-					Parent: "World",
-					Name:   "WrongScene",
+					Operation: "node.add",
+					Type:      "Marker2D",
+					Parent:    "World",
+					Name:      "WrongScene",
 				},
 			},
 		},
@@ -532,24 +594,31 @@ func TestSceneApplyRejectsInvalidBatchesBeforeConnecting(t *testing.T) {
 			contains: "nonempty operations array",
 		},
 		{
-			name: "unknown operation",
-			params: scene.ApplyParams{Operations: []scene.ApplyOperation{
-				{Op: "node.explode"},
-			}},
-			contains: "unknown operation",
+			name: "too many operations",
+			params: scene.ApplyParams{
+				Operations: make([]scene.ApplyOperation, 101),
+			},
+			contains: "At most 100 operations",
 		},
 		{
-			name: "duplicate id",
+			name: "Unsupported operation",
 			params: scene.ApplyParams{Operations: []scene.ApplyOperation{
-				{Op: "node.delete", ID: "x", Node: "."},
-				{Op: "node.delete", ID: "x", Node: "."},
+				{Operation: "node.explode"},
 			}},
-			contains: "duplicate id",
+			contains: "Unsupported operation",
+		},
+		{
+			name: "Duplicate id",
+			params: scene.ApplyParams{Operations: []scene.ApplyOperation{
+				{Operation: "node.delete", ID: "x", Node: "."},
+				{Operation: "node.delete", ID: "x", Node: "."},
+			}},
+			contains: "Duplicate operation id",
 		},
 		{
 			name: "unknown id reference",
 			params: scene.ApplyParams{Operations: []scene.ApplyOperation{
-				{Op: "node.set", Node: "@missing", Properties: map[string]json.RawMessage{
+				{Operation: "node.set", Node: "@missing", Properties: map[string]json.RawMessage{
 					"visible": json.RawMessage(`true`),
 				}},
 			}},
@@ -558,9 +627,9 @@ func TestSceneApplyRejectsInvalidBatchesBeforeConnecting(t *testing.T) {
 		{
 			name: "field not valid for operation",
 			params: scene.ApplyParams{Operations: []scene.ApplyOperation{
-				{Op: "node.delete", Node: ".", Type: "Marker2D"},
+				{Operation: "node.delete", Node: ".", Type: "Marker2D"},
 			}},
-			contains: "does not accept field type",
+			contains: "does not accept type",
 		},
 		{
 			name: "dry run with save",
@@ -568,7 +637,7 @@ func TestSceneApplyRejectsInvalidBatchesBeforeConnecting(t *testing.T) {
 				DryRun: true,
 				Save:   true,
 				Operations: []scene.ApplyOperation{
-					{Op: "node.delete", Node: "."},
+					{Operation: "node.delete", Node: "."},
 				},
 			},
 			contains: "save cannot be combined with dry_run",
@@ -576,7 +645,7 @@ func TestSceneApplyRejectsInvalidBatchesBeforeConnecting(t *testing.T) {
 		{
 			name: "set without properties",
 			params: scene.ApplyParams{Operations: []scene.ApplyOperation{
-				{Op: "node.set", Node: "."},
+				{Operation: "node.set", Node: "."},
 			}},
 			contains: "nonempty properties object",
 		},
@@ -589,6 +658,67 @@ func TestSceneApplyRejectsInvalidBatchesBeforeConnecting(t *testing.T) {
 			assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
 			assertApplyErrorMessage(t, err, testCase.contains)
 		})
+	}
+}
+
+func TestSceneApplyRejectsEmptyWireFieldsBeforeConnecting(t *testing.T) {
+	cases := []struct {
+		name     string
+		params   string
+		contains string
+	}{
+		{
+			name:     "empty id",
+			params:   `{"operations":[{"operation":"node.delete","id":"","node":"."}]}`,
+			contains: "nonempty string",
+		},
+		{
+			name:     "empty exclusive properties",
+			params:   `{"operations":[{"operation":"node.delete","node":".","properties":{}}]}`,
+			contains: "does not accept properties",
+		},
+		{
+			name:     "empty reference id",
+			params:   `{"operations":[{"operation":"node.set","node":"@","properties":{"visible":true}}]}`,
+			contains: "empty operation reference",
+		},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			var params scene.ApplyParams
+
+			if err := json.Unmarshal([]byte(testCase.params), &params); err != nil {
+				t.Fatalf("decoding params: %v", err)
+			}
+
+			_, err := scene.Apply("", params)
+
+			assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+			assertApplyErrorMessage(t, err, testCase.contains)
+		})
+	}
+}
+
+func requireSceneUnsaved(
+	t *testing.T,
+	session *harness.Session,
+	path string,
+	want bool,
+) {
+	t.Helper()
+
+	current, err := bridge.Call[scene.CurrentParams, scene.CurrentResult](
+		session.Client,
+		scene.CurrentName,
+		scene.CurrentParams{ExpectedScene: path},
+	)
+	if err != nil {
+		t.Fatalf("expected scene.current to succeed: %v", err)
+	}
+
+	if current.Unsaved != want {
+		t.Fatalf("scene %s unsaved = %t; want %t", path, current.Unsaved, want)
 	}
 }
 

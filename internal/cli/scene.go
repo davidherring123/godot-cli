@@ -2,8 +2,6 @@ package cli
 
 import (
 	"encoding/json"
-	"fmt"
-	"strings"
 
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
 	"github.com/davidherring123/godot-cli/internal/core"
@@ -178,18 +176,14 @@ func newSceneApplyCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "apply",
 		Short:       core.SceneApply.Description,
-		Long:        "Apply an ordered array of node operations to the active editor scene as one atomic undo step. Each operation names its own `op`: node.add, node.set, node.rename, node.duplicate, node.move, node.delete, or node.instantiate, and uses the same fields as the matching single-node command. Give an operation an `id` and later operations can target its resulting node with `@id` in node or parent, so a batch can build and edit new nodes in one call. The whole batch is first validated on a temporary copy of the scene: if any operation fails, the live scene is untouched, and a failure during the real apply rolls back through the editor undo stack. --dry-run returns the planned paths and summaries without editing. Use --save once to save the scene after the batch succeeds. Operations run in order and commit as one undo step.",
-		Example:     `godot-cli scene apply --operations '[{"op":"node.add","id":"spawn","type":"Marker2D","parent":"World","name":"Spawn","properties":{"position":{"x":32,"y":48}}},{"op":"node.set","node":"@spawn","properties":{"position":{"x":64,"y":96}}}]' --save --expect-scene res://main.tscn`,
+		Long:        "Apply an ordered array of 1-100 node operations to the active editor scene as one atomic undo step. Each operation names its own `operation`: node.add, node.set, node.rename, node.duplicate, node.move, node.delete, or node.instantiate, and uses the same fields as the matching single-node command. Give an operation an `id` and later operations can target its resulting node with `@id` in node or parent, so a batch can build and edit new nodes in one call. The whole batch is first validated on a temporary copy of the scene: if any operation fails, the live scene is untouched. A failure during the real apply directly reverses earlier operations without adding the failed batch to the undo history, so an originally clean scene stays clean; an incomplete rollback is reported distinctly. --dry-run returns best-effort planned paths and summaries without editing; editor-only runtime nodes are not represented in the temporary copy. Result paths are snapshots taken when each operation completes, and an id assigned to node.delete cannot be referenced later. Use --save once to save the scene after the batch succeeds; if the save fails, the batch remains applied and undoable. Operations run in order and commit as one undo step.",
+		Example:     `godot-cli scene apply --operations '[{"operation":"node.add","id":"spawn","type":"Marker2D","parent":"World","name":"Spawn","properties":{"position":{"x":32,"y":48}}},{"operation":"node.set","node":"@spawn","properties":{"position":{"x":64,"y":96}}}]' --save --expect-scene res://main.tscn`,
 		Annotations: map[string]string{skill.ActionKey: core.SceneApply.Name},
 		Args:        cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			var operations []scene.ApplyOperation
-
-			decoder := json.NewDecoder(strings.NewReader(rawOperations))
-			decoder.DisallowUnknownFields()
-
-			if err := decoder.Decode(&operations); err != nil {
-				return fmt.Errorf("operations must be a JSON array of scene operations: %w", err)
+			operations, err := parseOperations[scene.ApplyOperation](rawOperations)
+			if err != nil {
+				return err
 			}
 
 			project, err := FetchProjectContext()

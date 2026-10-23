@@ -22,7 +22,7 @@ func validate_batch_operations(value: Variant) -> Response:
     return null
 
 func validate_operation_fields(
-    index: int,
+    _index: int,
     operation: Dictionary,
     allowed: Dictionary
 ) -> Response:
@@ -39,12 +39,7 @@ func validate_operation_fields(
 
         return Response.failure(
             ErrorCode.INVALID_ARGUMENT,
-            "operation %d (%s): %s does not accept %s" % [
-                index,
-                kind,
-                kind,
-                key,
-            ]
+            "%s does not accept %s" % [kind, key]
         )
 
     return null

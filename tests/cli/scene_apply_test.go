@@ -31,14 +31,77 @@ func TestSceneApplyRejectsInvalidBatchWithoutEditor(t *testing.T) {
 		"scene",
 		"apply",
 		"--operations",
-		`[{"op":"node.explode"}]`,
+		`[{"operation":"node.explode"}]`,
 	)
 
 	if err == nil {
 		t.Fatalf("expected an invalid batch to fail:\n%s", output)
 	}
 
-	if !strings.Contains(err.Error(), "unknown operation") {
+	if !strings.Contains(err.Error(), "Unsupported operation") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSceneApplyRejectsTrailingJSON(t *testing.T) {
+	root := testProject(t)
+
+	output, err := runCLI(
+		t,
+		root,
+		"scene",
+		"apply",
+		"--operations",
+		`[{"operation":"node.delete","node":"."}] []`,
+	)
+
+	if err == nil {
+		t.Fatalf("expected trailing JSON to fail:\n%s", output)
+	}
+
+	if !strings.Contains(err.Error(), "single JSON array") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSceneApplyRejectsOldOpField(t *testing.T) {
+	root := testProject(t)
+
+	output, err := runCLI(
+		t,
+		root,
+		"scene",
+		"apply",
+		"--operations",
+		`[{"op":"node.delete","node":"."}]`,
+	)
+
+	if err == nil {
+		t.Fatalf("expected the old op field to fail:\n%s", output)
+	}
+
+	if !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSceneApplyRejectsEmptyID(t *testing.T) {
+	root := testProject(t)
+
+	output, err := runCLI(
+		t,
+		root,
+		"scene",
+		"apply",
+		"--operations",
+		`[{"operation":"node.delete","id":"","node":"."}]`,
+	)
+
+	if err == nil {
+		t.Fatalf("expected an empty id to fail:\n%s", output)
+	}
+
+	if !strings.Contains(err.Error(), "nonempty string") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -54,7 +117,7 @@ func TestSceneApplyRejectsDryRunWithSave(t *testing.T) {
 		"--dry-run",
 		"--save",
 		"--operations",
-		`[{"op":"node.delete","node":"."}]`,
+		`[{"operation":"node.delete","node":"."}]`,
 	)
 
 	if err == nil {

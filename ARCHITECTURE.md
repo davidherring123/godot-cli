@@ -164,15 +164,21 @@ results are returned as both JSON text and structured content. Tool failures use
   `node.add`/`set`/`rename`/`duplicate`/`move`/`delete`/`instantiate`
   operations. It resolves operation ids (`@id`) and reuses the granular
   `NodeService` handlers, so single-node commands and batches share the same
-  validation and mutation logic. A batch first runs against a temporary
-  packed-scene copy (the dry-run path); only a fully valid batch edits the live
-  scene. `scene/scene_edit_session.gd` adapts the node handlers'
-  `EditorUndoRedoManager` calls into one editor action: do methods execute
-  immediately for later operation validation while undo methods accumulate for
-  atomic rollback. If the live pass fails after some operations were applied,
-  the batch is committed without re-running do methods, undone through the
-  scene's undo history, and replaced with an empty action so the partial batch
-  cannot be redone. `dry_run` stops after the temporary-copy pass.
+  validation and mutation logic. A batch accepts 1–100 operations and first
+  runs against a temporary packed-scene copy (the dry-run path); only a fully
+  valid batch edits the live scene. `scene/scene_edit_session.gd` adapts the
+  node handlers' `EditorUndoRedoManager` calls into one editor action: do
+  methods execute immediately for later operation validation, while do and undo
+  methods accumulate without touching editor history. On success the whole
+  batch is registered as one action and committed without re-running do
+  methods. If the live pass fails, rollback directly executes the accumulated
+  undo methods in reverse order and never commits the failed batch to history,
+  so an originally clean scene stays clean. If an undo method cannot run, the
+  error is `internal_error` and reports how many undo steps were restored.
+  `dry_run` is best-effort: packed copies omit editor-only and unowned runtime
+  nodes, so the live pass can still fail and roll back. Result paths are
+  snapshots from each operation, ids cannot be referenced after their node is
+  deleted, and a save failure leaves the applied batch undoable.
 - Mutations go through `EditorUndoRedoManager` — every command is one undo step,
   and a whole `scene.apply` batch is one undo step. Project settings and Input
   Map commands are the exception: they change `project.godot` directly and are
@@ -182,7 +188,11 @@ results are returned as both JSON text and structured content. Tool failures use
   it can return `active:false` when no scene is open.
 - `--save` is a post-effect in `request_handler.gd`: run action → save scene.
   Save once per edit batch, not per command. `scene.apply` supports the same
-  post-effect and rejects `save` together with `dry_run`.
+  post-effect and rejects `save` together with `dry_run`. Previews run against a
+  preview `EditorSceneContext` whose `save()` fails closed, so no code path can
+  save the live tab during prevalidation. If the final save fails, the batch
+  remains applied in the editor and undoable; the error says the action
+  completed but the scene could not be saved.
 - Node property values use `{"resource":"res://..."}` references; decoded in
   `variant_deserializer.gd`, not by the Go side.
 
@@ -204,6 +214,8 @@ action in `All()` also exposes it as an MCP tool automatically.
 - `tests/cli` — CLI interface tests, including `init`; `tests/mcp` — MCP
   interface tests, including image content, actionable runtime errors, and live
   calls with their own Godot sessions.
+- `tests/addon` checks addon installation and runs a small headless Godot script
+  that verifies deferred session history plus one-step undo/redo ordering.
 - `tests/harness` — Godot session management shared by live integration tests.
 - `make check` — gofmt, vet, golangci-lint (repo config in `.golangci.yml`).
 - `make test` — runs Go unit tests, then spins up a real headless Godot editor

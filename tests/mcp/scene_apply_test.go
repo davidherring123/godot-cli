@@ -28,18 +28,18 @@ func TestMCPLiveSceneApply(t *testing.T) {
 			"save":           true,
 			"operations": []map[string]any{
 				{
-					"op":     "node.add",
-					"id":     "marker",
-					"type":   "Marker2D",
-					"parent": "World",
-					"name":   "BatchMarker",
+					"operation": "node.add",
+					"id":        "marker",
+					"type":      "Marker2D",
+					"parent":    "World",
+					"name":      "BatchMarker",
 					"properties": map[string]any{
 						"position": map[string]any{"x": 12, "y": 34},
 					},
 				},
 				{
-					"op":   "node.set",
-					"node": "@marker",
+					"operation": "node.set",
+					"node":      "@marker",
 					"properties": map[string]any{
 						"position": map[string]any{"x": 56, "y": 78},
 					},
@@ -104,15 +104,15 @@ func TestMCPLiveSceneApplyReportsFailedOperation(t *testing.T) {
 			"expected_scene": path,
 			"operations": []map[string]any{
 				{
-					"op":     "node.add",
-					"id":     "temp",
-					"type":   "Marker2D",
-					"parent": "World",
-					"name":   "Temp",
+					"operation": "node.add",
+					"id":        "temp",
+					"type":      "Marker2D",
+					"parent":    "World",
+					"name":      "Temp",
 				},
 				{
-					"op":   "node.set",
-					"node": "@temp",
+					"operation": "node.set",
+					"node":      "@temp",
 					"properties": map[string]any{
 						"definitely_missing": true,
 					},
@@ -132,7 +132,7 @@ func TestMCPLiveSceneApplyReportsFailedOperation(t *testing.T) {
 
 	for _, fragment := range []string{
 		`"code":"not_found"`,
-		"operation[1]",
+		"operation 1",
 		"node.set",
 		"definitely_missing",
 		"Prevalidation failed",

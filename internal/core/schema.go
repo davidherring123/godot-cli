@@ -146,7 +146,7 @@ var (
 	SceneTree    = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show the active editor scene's node tree", scene.Tree, withReadOnly())
 	SceneApply   = define[scene.ApplyParams, scene.ApplyResult](
 		scene.ApplyName,
-		"Apply an ordered batch of node edits to the active scene as one atomic undo step, with prevalidation and optional dry_run",
+		"Apply 1-100 ordered node operations to the active scene as one atomic undo step, with best-effort prevalidation, optional dry_run, and deferred history registration",
 		scene.Apply,
 	)
 	ValidateLive = define[validate.LiveParams, validate.LiveResult](

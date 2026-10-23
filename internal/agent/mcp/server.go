@@ -101,7 +101,7 @@ func defaultInstructions(projectRoot string) string {
 		"artifact and MCP image content, and runtime_stop ends the session. Capture requires a windowed runtime; " +
 		"headless runtime sessions report errors and frames but return unsupported for capture. " +
 		"Scene and node edits are undoable: set save=true once after a batch of edits, not after every change. " +
-		"Prefer scene_apply for multiple ordered scene edits: it validates the whole batch first, commits it as one undo step, supports dry_run, and lets later operations target earlier results with @id. " +
+		"Prefer scene_apply for multiple ordered scene edits: it accepts up to 100 operations, validates the whole batch first, commits it as one undo step, supports best-effort dry_run, and lets later operations target earlier results with @id. " +
 		"Resource, project-setting, and Input Map tools save immediately and have no save argument. " +
 		"Use resource_apply, project_settings_apply, and input_map_apply for ordered domain batches of up to 100 operations; " +
 		"each supports dry_run, reports per-operation diagnostics, and attempts best-effort rollback within its own domain on failure. " +

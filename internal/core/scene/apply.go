@@ -5,12 +5,56 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/davidherring123/godot-cli/internal/core/batch"
 	"github.com/davidherring123/godot-cli/internal/core/bridge"
 )
 
 const ApplyName = "scene.apply"
 
 var applyIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`)
+
+// applyAllowedFields is the source of truth for which fields each operation
+// accepts. The addon uses the matching table so bridge and MCP callers see the
+// same diagnostics.
+var applyAllowedFields = map[string]map[string]bool{
+	"node.add": {
+		"operation": true, "id": true, "type": true, "parent": true,
+		"name": true, "properties": true,
+	},
+	"node.set": {
+		"operation": true, "id": true, "node": true, "properties": true,
+	},
+	"node.rename": {
+		"operation": true, "id": true, "node": true, "name": true,
+	},
+	"node.duplicate": {
+		"operation": true, "id": true, "node": true, "name": true,
+	},
+	"node.move": {
+		"operation": true, "id": true, "node": true, "parent": true,
+		"index": true, "keep_global_transform": true,
+	},
+	"node.delete": {
+		"operation": true, "id": true, "node": true,
+	},
+	"node.instantiate": {
+		"operation": true, "id": true, "scene": true, "parent": true,
+		"name": true, "properties": true,
+	},
+}
+
+var applyFieldOrder = []string{
+	"operation",
+	"id",
+	"node",
+	"parent",
+	"type",
+	"name",
+	"scene",
+	"properties",
+	"index",
+	"keep_global_transform",
+}
 
 func Apply(projectRoot string, params ApplyParams) (ApplyResult, error) {
 	if err := validateApply(params); err != nil {
@@ -28,12 +72,15 @@ func Apply(projectRoot string, params ApplyParams) (ApplyResult, error) {
 }
 
 func validateApply(params ApplyParams) error {
-	if params.DryRun && params.Save {
-		return applyError(-1, "", "save cannot be combined with dry_run")
+	if err := batch.ValidateOperationCount(len(params.Operations)); err != nil {
+		return err
 	}
 
-	if len(params.Operations) == 0 {
-		return applyError(-1, "", "a nonempty operations array is required")
+	if params.DryRun && params.Save {
+		return &bridge.APIError{
+			Code:    bridge.ErrorCodeInvalidArgument,
+			Message: "save cannot be combined with dry_run",
+		}
 	}
 
 	defined := make(map[string]bool, len(params.Operations))
@@ -56,7 +103,45 @@ func validateApplyOperation(
 	operation ApplyOperation,
 	defined map[string]bool,
 ) error {
-	switch operation.Op {
+	op := operation.Operation
+	target := applyOperationTarget(operation)
+
+	if op == "" {
+		return batch.InvalidOperation(
+			index,
+			"",
+			target,
+			"An operation is required",
+		)
+	}
+
+	allowed, ok := applyAllowedFields[op]
+
+	if !ok {
+		return batch.InvalidOperation(
+			index,
+			op,
+			target,
+			fmt.Sprintf("Unsupported operation: %s", op),
+		)
+	}
+
+	for _, field := range applyFieldOrder {
+		if operation.HasField(field) && !allowed[field] {
+			return batch.InvalidOperation(
+				index,
+				op,
+				target,
+				fmt.Sprintf("%s does not accept %s", op, field),
+			)
+		}
+	}
+
+	if err := validateOperationID(index, operation, defined); err != nil {
+		return err
+	}
+
+	switch op {
 	case "node.add":
 		return validateAdd(index, operation, defined)
 	case "node.set":
@@ -71,195 +156,115 @@ func validateApplyOperation(
 		return validateDelete(index, operation, defined)
 	case "node.instantiate":
 		return validateInstantiate(index, operation, defined)
-	case "":
-		return applyError(index, "", "an op is required")
-	default:
-		return applyError(index, operation.Op, "unknown operation")
 	}
+
+	return nil
+}
+
+func applyOperationTarget(operation ApplyOperation) string {
+	if operation.Node != "" {
+		return operation.Node
+	}
+
+	if operation.Parent != "" {
+		return operation.Parent
+	}
+
+	return operation.ID
 }
 
 func validateAdd(index int, operation ApplyOperation, defined map[string]bool) error {
-	if err := validateOperationID(index, operation, defined); err != nil {
-		return err
-	}
-
-	if err := rejectFields(index, operation.Op, map[string]bool{
-		"node":                  operation.Node != "",
-		"scene":                 operation.Scene != "",
-		"index":                 operation.Index != nil,
-		"keep_global_transform": operation.KeepGlobalTransform != nil,
-	}); err != nil {
-		return err
-	}
-
 	if operation.Type == "" {
-		return applyError(index, operation.Op, "type is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A type is required")
 	}
 
 	if operation.Parent == "" {
-		return applyError(index, operation.Op, "parent is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A parent is required")
 	}
 
-	return validateReference(index, operation.Op, "parent", operation.Parent, defined)
+	return validateReference(index, operation.Operation, "parent", operation.Parent, defined)
 }
 
 func validateSet(index int, operation ApplyOperation, defined map[string]bool) error {
-	if err := validateOperationID(index, operation, defined); err != nil {
-		return err
-	}
-
-	if err := rejectFields(index, operation.Op, map[string]bool{
-		"parent":                operation.Parent != "",
-		"type":                  operation.Type != "",
-		"name":                  operation.Name != "",
-		"scene":                 operation.Scene != "",
-		"index":                 operation.Index != nil,
-		"keep_global_transform": operation.KeepGlobalTransform != nil,
-	}); err != nil {
-		return err
-	}
-
 	if operation.Node == "" {
-		return applyError(index, operation.Op, "node is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A node is required")
 	}
 
 	if len(operation.Properties) == 0 {
-		return applyError(index, operation.Op, "a nonempty properties object is required")
+		return applyError(
+			index,
+			operation.Operation,
+			applyOperationTarget(operation),
+			"A nonempty properties object is required",
+		)
 	}
 
-	return validateReference(index, operation.Op, "node", operation.Node, defined)
+	return validateReference(index, operation.Operation, "node", operation.Node, defined)
 }
 
 func validateRename(index int, operation ApplyOperation, defined map[string]bool) error {
-	if err := validateOperationID(index, operation, defined); err != nil {
-		return err
-	}
-
-	if err := rejectFields(index, operation.Op, map[string]bool{
-		"parent":                operation.Parent != "",
-		"type":                  operation.Type != "",
-		"scene":                 operation.Scene != "",
-		"properties":            len(operation.Properties) > 0,
-		"index":                 operation.Index != nil,
-		"keep_global_transform": operation.KeepGlobalTransform != nil,
-	}); err != nil {
-		return err
-	}
-
 	if operation.Node == "" {
-		return applyError(index, operation.Op, "node is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A node is required")
 	}
 
 	if operation.Name == "" {
-		return applyError(index, operation.Op, "name is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A name is required")
 	}
 
-	return validateReference(index, operation.Op, "node", operation.Node, defined)
+	return validateReference(index, operation.Operation, "node", operation.Node, defined)
 }
 
 func validateDuplicate(index int, operation ApplyOperation, defined map[string]bool) error {
-	if err := validateOperationID(index, operation, defined); err != nil {
-		return err
-	}
-
-	if err := rejectFields(index, operation.Op, map[string]bool{
-		"parent":                operation.Parent != "",
-		"type":                  operation.Type != "",
-		"scene":                 operation.Scene != "",
-		"properties":            len(operation.Properties) > 0,
-		"index":                 operation.Index != nil,
-		"keep_global_transform": operation.KeepGlobalTransform != nil,
-	}); err != nil {
-		return err
-	}
-
 	if operation.Node == "" {
-		return applyError(index, operation.Op, "node is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A node is required")
 	}
 
-	return validateReference(index, operation.Op, "node", operation.Node, defined)
+	return validateReference(index, operation.Operation, "node", operation.Node, defined)
 }
 
 func validateMove(index int, operation ApplyOperation, defined map[string]bool) error {
-	if err := validateOperationID(index, operation, defined); err != nil {
-		return err
-	}
-
-	if err := rejectFields(index, operation.Op, map[string]bool{
-		"type":       operation.Type != "",
-		"name":       operation.Name != "",
-		"scene":      operation.Scene != "",
-		"properties": len(operation.Properties) > 0,
-	}); err != nil {
-		return err
-	}
-
 	if operation.Node == "" {
-		return applyError(index, operation.Op, "node is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A node is required")
 	}
 
 	if operation.Parent == "" {
-		return applyError(index, operation.Op, "parent is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A parent is required")
 	}
 
 	if operation.Index != nil && *operation.Index < -1 {
-		return applyError(index, operation.Op, "index must be zero or greater")
+		return applyError(
+			index,
+			operation.Operation,
+			applyOperationTarget(operation),
+			"index must be zero or greater; omit it to move the node to the end",
+		)
 	}
 
-	if err := validateReference(index, operation.Op, "node", operation.Node, defined); err != nil {
+	if err := validateReference(index, operation.Operation, "node", operation.Node, defined); err != nil {
 		return err
 	}
 
-	return validateReference(index, operation.Op, "parent", operation.Parent, defined)
+	return validateReference(index, operation.Operation, "parent", operation.Parent, defined)
 }
 
 func validateDelete(index int, operation ApplyOperation, defined map[string]bool) error {
-	if err := validateOperationID(index, operation, defined); err != nil {
-		return err
-	}
-
-	if err := rejectFields(index, operation.Op, map[string]bool{
-		"parent":                operation.Parent != "",
-		"type":                  operation.Type != "",
-		"name":                  operation.Name != "",
-		"scene":                 operation.Scene != "",
-		"properties":            len(operation.Properties) > 0,
-		"index":                 operation.Index != nil,
-		"keep_global_transform": operation.KeepGlobalTransform != nil,
-	}); err != nil {
-		return err
-	}
-
 	if operation.Node == "" {
-		return applyError(index, operation.Op, "node is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A node is required")
 	}
 
-	return validateReference(index, operation.Op, "node", operation.Node, defined)
+	return validateReference(index, operation.Operation, "node", operation.Node, defined)
 }
 
 func validateInstantiate(index int, operation ApplyOperation, defined map[string]bool) error {
-	if err := validateOperationID(index, operation, defined); err != nil {
-		return err
-	}
-
-	if err := rejectFields(index, operation.Op, map[string]bool{
-		"node":                  operation.Node != "",
-		"type":                  operation.Type != "",
-		"index":                 operation.Index != nil,
-		"keep_global_transform": operation.KeepGlobalTransform != nil,
-	}); err != nil {
-		return err
-	}
-
 	if operation.Scene == "" {
-		return applyError(index, operation.Op, "scene is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A scene is required")
 	}
 
 	if operation.Parent == "" {
-		return applyError(index, operation.Op, "parent is required")
+		return applyError(index, operation.Operation, applyOperationTarget(operation), "A parent is required")
 	}
 
-	return validateReference(index, operation.Op, "parent", operation.Parent, defined)
+	return validateReference(index, operation.Operation, "parent", operation.Parent, defined)
 }
 
 func validateOperationID(
@@ -267,16 +272,37 @@ func validateOperationID(
 	operation ApplyOperation,
 	defined map[string]bool,
 ) error {
-	if operation.ID == "" {
+	if !operation.HasField("id") {
 		return nil
 	}
 
+	if operation.ID == "" {
+		return applyError(
+			index,
+			operation.Operation,
+			applyOperationTarget(operation),
+			"An id must be a nonempty string",
+		)
+	}
+
 	if !applyIDPattern.MatchString(operation.ID) {
-		return applyError(index, operation.Op, "invalid id %q", operation.ID)
+		return applyError(
+			index,
+			operation.Operation,
+			applyOperationTarget(operation),
+			"Invalid id: %s",
+			operation.ID,
+		)
 	}
 
 	if defined[operation.ID] {
-		return applyError(index, operation.Op, "duplicate id %q", operation.ID)
+		return applyError(
+			index,
+			operation.Operation,
+			applyOperationTarget(operation),
+			"Duplicate operation id: %s",
+			operation.ID,
+		)
 	}
 
 	return nil
@@ -296,14 +322,21 @@ func validateReference(
 	id := strings.TrimPrefix(value, "@")
 
 	if id == "" {
-		return applyError(index, op, "%s has an empty operation reference", field)
+		return applyError(
+			index,
+			op,
+			"",
+			"%s has an empty operation reference",
+			field,
+		)
 	}
 
 	if !defined[id] {
 		return applyError(
 			index,
 			op,
-			"%s refers to unknown or not-yet-defined operation id %q",
+			"",
+			"%s refers to unknown or not-yet-defined operation id %s",
 			field,
 			value,
 		)
@@ -312,39 +345,11 @@ func validateReference(
 	return nil
 }
 
-// rejectFields reports the first field that is not valid for an operation.
-func rejectFields(index int, op string, invalid map[string]bool) error {
-	for _, field := range []string{
-		"node",
-		"parent",
-		"type",
-		"name",
-		"scene",
-		"properties",
-		"index",
-		"keep_global_transform",
-	} {
-		if invalid[field] {
-			return applyError(index, op, "%s does not accept field %s", op, field)
-		}
-	}
-
-	return nil
-}
-
-func applyError(index int, op string, format string, args ...any) error {
-	label := "operations"
-
-	if index >= 0 {
-		label = fmt.Sprintf("operations[%d]", index)
-	}
-
-	if op != "" {
-		label += " (" + op + ")"
-	}
-
-	return &bridge.APIError{
-		Code:    bridge.ErrorCodeInvalidArgument,
-		Message: label + ": " + fmt.Sprintf(format, args...),
-	}
+func applyError(index int, op, target, format string, args ...any) error {
+	return batch.InvalidOperation(
+		index,
+		op,
+		target,
+		fmt.Sprintf(format, args...),
+	)
 }

@@ -7,6 +7,10 @@ var editor: EditorInterface
 # the scene. The override keeps those edits away from the live editor scene.
 var root_override: Node = null
 
+# Preview contexts must never save: editor.save_scene() acts on the live tab,
+# not on the temporary copy.
+var preview := false
+
 func _init(editor_interface: EditorInterface) -> void:
     editor = editor_interface
 
@@ -15,6 +19,7 @@ func _init(editor_interface: EditorInterface) -> void:
 func for_root(root: Node) -> EditorSceneContext:
     var context := EditorSceneContext.new(editor)
     context.root_override = root
+    context.preview = true
     return context
 
 func edited_root() -> Node:
@@ -86,6 +91,12 @@ func describe() -> Dictionary:
     }
 
 func save() -> Response:
+    if preview:
+        return Response.failure(
+            ErrorCode.INTERNAL_ERROR,
+            "Cannot save while validating a scene batch on a temporary copy"
+        )
+
     var root := edited_root()
     var path := root.scene_file_path
 
