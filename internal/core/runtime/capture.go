@@ -100,7 +100,7 @@ func waitForCapture(
 			)
 		}
 
-		if !processAlive(info.metadata.PID) {
+		if !sameProcess(info.metadata.PID, info.metadata.ProcessIdentity) {
 			return CaptureResult{}, newError(
 				string(bridge.ErrorCodeFailedPrecondition),
 				"runtime session %s exited before the screenshot completed; call runtime.status for errors",

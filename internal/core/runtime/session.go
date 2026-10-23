@@ -39,11 +39,12 @@ var (
 )
 
 type sessionMetadata struct {
-	Session   string    `json:"session"`
-	PID       int       `json:"pid"`
-	Scene     string    `json:"scene"`
-	Headless  bool      `json:"headless"`
-	StartedAt time.Time `json:"started_at"`
+	Session         string    `json:"session"`
+	PID             int       `json:"pid"`
+	ProcessIdentity string    `json:"process_identity,omitempty"`
+	Scene           string    `json:"scene"`
+	Headless        bool      `json:"headless"`
+	StartedAt       time.Time `json:"started_at"`
 }
 
 type heartbeatReport struct {
@@ -219,9 +220,18 @@ func inspectDirectory(directory string) (*sessionInfo, error) {
 	}
 
 	info := &sessionInfo{metadata: metadata, directory: directory}
-	alive := processAlive(metadata.PID)
 
-	if !alive {
+	// An exit report is authoritative: the runner writes it before quitting.
+	// Check it before PID liveness so a PID reused by another process is never
+	// mistaken for the runtime, which could otherwise lead stop to kill the
+	// unrelated process.
+	if _, found := readExit(directory); found {
+		info.state = StateExited
+
+		return info, nil
+	}
+
+	if !sameProcess(metadata.PID, metadata.ProcessIdentity) {
 		info.state = StateExited
 
 		return info, nil

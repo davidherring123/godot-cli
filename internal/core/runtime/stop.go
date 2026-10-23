@@ -7,8 +7,9 @@ import (
 )
 
 // Stop asks a runtime to quit, then kills it if it does not exit within the
-// requested timeout. Unresponsive sessions require Force so a reused or
-// unrelated process is never killed implicitly.
+// requested timeout. Starting sessions are stopped gracefully because they
+// have not had a chance to report a heartbeat yet. Only unresponsive sessions
+// require Force, so a reused or unrelated process is never killed implicitly.
 func Stop(projectRoot string, params StopParams) (StopResult, error) {
 	info, err := stopTarget(projectRoot, params.Session)
 	if err != nil {
@@ -23,11 +24,12 @@ func Stop(projectRoot string, params StopParams) (StopResult, error) {
 		}, nil
 	}
 
-	if info.state == StateExited || !processAlive(info.metadata.PID) {
+	if info.state == StateExited ||
+		!sameProcess(info.metadata.PID, info.metadata.ProcessIdentity) {
 		return stoppedResult(projectRoot, info.metadata.Session, false)
 	}
 
-	if info.state == StateUnresponsive || !info.responsive {
+	if info.state == StateUnresponsive {
 		if !params.Force {
 			return StopResult{}, newError(
 				string(bridge.ErrorCodeFailedPrecondition),
@@ -44,7 +46,7 @@ func Stop(projectRoot string, params StopParams) (StopResult, error) {
 		timeout = time.Duration(params.TimeoutSeconds * float64(time.Second))
 	}
 
-	if !terminate(info.metadata.PID, info.directory, timeout) {
+	if !terminate(info.metadata, info.directory, timeout) {
 		return StopResult{}, newError(
 			string(bridge.ErrorCodeActionFailed),
 			"runtime session %s did not exit after %s; pid %d is still alive",

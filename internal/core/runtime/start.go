@@ -131,13 +131,15 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 	go func() { _ = command.Wait() }()
 
 	pid := command.Process.Pid
+	identity, _ := processIdentity(pid)
 
 	metadata := sessionMetadata{
-		Session:   session,
-		PID:       pid,
-		Scene:     scene,
-		Headless:  params.Headless,
-		StartedAt: time.Now().UTC(),
+		Session:         session,
+		PID:             pid,
+		ProcessIdentity: identity,
+		Scene:           scene,
+		Headless:        params.Headless,
+		StartedAt:       time.Now().UTC(),
 	}
 
 	if err := writeJSONAtomic(filepath.Join(directory, "session.json"), metadata); err != nil {
@@ -157,13 +159,13 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 		timeout = time.Duration(params.TimeoutSeconds * float64(time.Second))
 	}
 
-	return waitForReady(projectRoot, directory, pid, timeout)
+	return waitForReady(projectRoot, directory, metadata, timeout)
 }
 
 func waitForReady(
 	projectRoot string,
 	directory string,
-	pid int,
+	metadata sessionMetadata,
 	timeout time.Duration,
 ) (StatusResult, error) {
 	deadline := time.NewTimer(timeout)
@@ -173,11 +175,12 @@ func waitForReady(
 	defer ticker.Stop()
 
 	session := filepath.Base(directory)
+	pid := metadata.PID
 
 	for {
 		if ready, found := readReady(directory); found {
 			if !ready.OK {
-				_ = terminate(pid, directory, time.Second)
+				_ = terminate(metadata, directory, time.Second)
 
 				return StatusResult{}, startError(projectRoot, directory, ready.Message)
 			}
@@ -190,7 +193,7 @@ func waitForReady(
 			return buildStatus(projectRoot, info), nil
 		}
 
-		if !processAlive(pid) {
+		if !sameProcess(pid, metadata.ProcessIdentity) {
 			return StatusResult{}, startError(
 				projectRoot,
 				directory,
@@ -200,7 +203,7 @@ func waitForReady(
 
 		select {
 		case <-deadline.C:
-			_ = terminate(pid, directory, time.Second)
+			_ = terminate(metadata, directory, time.Second)
 
 			return StatusResult{}, startError(
 				projectRoot,
@@ -371,36 +374,43 @@ func acquireStartLock(projectRoot string) (func(), error) {
 	)
 }
 
-func terminate(pid int, directory string, graceful time.Duration) bool {
+func terminate(metadata sessionMetadata, directory string, graceful time.Duration) bool {
 	_ = os.WriteFile(
 		filepath.Join(directory, "stop.request"),
 		[]byte("stop\n"),
 		0644,
 	)
 
-	if waitForExit(pid, graceful) {
+	if waitForExit(metadata.PID, metadata.ProcessIdentity, graceful) {
 		return true
 	}
 
-	if err := killProcess(pid); err != nil && processAlive(pid) {
+	// Re-check identity immediately before signaling so a PID reused during
+	// the graceful wait is never killed. A mismatch means the original
+	// runtime is already gone.
+	if !sameProcess(metadata.PID, metadata.ProcessIdentity) {
+		return true
+	}
+
+	if err := killProcess(metadata.PID); err != nil && processAlive(metadata.PID) {
 		return false
 	}
 
-	return waitForExit(pid, killWait)
+	return waitForExit(metadata.PID, metadata.ProcessIdentity, killWait)
 }
 
-func waitForExit(pid int, timeout time.Duration) bool {
+func waitForExit(pid int, identity string, timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 
 	for time.Now().Before(deadline) {
-		if !processAlive(pid) {
+		if !sameProcess(pid, identity) {
 			return true
 		}
 
 		time.Sleep(25 * time.Millisecond)
 	}
 
-	return !processAlive(pid)
+	return !sameProcess(pid, identity)
 }
 
 func killProcess(pid int) error {

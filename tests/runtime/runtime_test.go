@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,6 +14,19 @@ import (
 	"github.com/davidherring123/godot-cli/internal/core/godot"
 	gdruntime "github.com/davidherring123/godot-cli/internal/core/runtime"
 )
+
+const runtimeHelperEnv = "GODOT_CLI_RUNTIME_TEST_HELPER"
+
+// TestRuntimeHelperProcess is a long-lived child used by lifecycle tests that
+// need a real PID without launching Godot.
+func TestRuntimeHelperProcess(t *testing.T) {
+	if os.Getenv(runtimeHelperEnv) != "1" {
+		return
+	}
+
+	time.Sleep(30 * time.Second)
+	os.Exit(0)
+}
 
 func TestStatusWithoutRuntime(t *testing.T) {
 	root := newProject(t, false)
@@ -236,6 +250,219 @@ func TestStartReportsMissingScene(t *testing.T) {
 
 	if status.Active {
 		t.Fatalf("status = %+v; want no active runtime after a failed start", status)
+	}
+}
+
+func TestStopStartingSessionWithoutForce(t *testing.T) {
+	root := t.TempDir()
+	done, pid := startRuntimeHelper(t)
+	session := "20261023T150405Z-abcdef"
+
+	writeRuntimeFixture(t, root, session, runtimeFixture{
+		Session:   session,
+		PID:       pid,
+		Scene:     "res://main.tscn",
+		StartedAt: time.Now().UTC(),
+	}, nil)
+
+	stop, err := gdruntime.Stop(root, gdruntime.StopParams{
+		Session:        session,
+		TimeoutSeconds: 0.05,
+	})
+	if err != nil {
+		t.Fatalf("stopping a starting session without force: %v", err)
+	}
+
+	if !stop.Stopped || stop.AlreadyStopped || stop.State != gdruntime.StateExited {
+		t.Fatalf("stop = %+v; want the starting session to stop gracefully", stop)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("starting session was not stopped")
+	}
+}
+
+func TestExitReportIsTerminalDespiteLivePID(t *testing.T) {
+	root := t.TempDir()
+	done, pid := startRuntimeHelper(t)
+	session := "20261023T150405Z-abc123"
+	directory := writeRuntimeFixture(t, root, session, runtimeFixture{
+		Session:   session,
+		PID:       pid,
+		Scene:     "res://main.tscn",
+		StartedAt: time.Now().Add(-time.Hour).UTC(),
+	}, &runtimeExitFixture{
+		Reason: "stop",
+		Code:   0,
+	})
+
+	status, err := gdruntime.Status(root, gdruntime.StatusParams{Session: session})
+	if err != nil {
+		t.Fatalf("checking status: %v", err)
+	}
+
+	if status.Active || status.State != gdruntime.StateExited || status.ExitReason != "stop" {
+		t.Fatalf("status = %+v; want the exit report to win over a live PID", status)
+	}
+
+	stop, err := gdruntime.Stop(root, gdruntime.StopParams{
+		Session:        session,
+		Force:          true,
+		TimeoutSeconds: 0.05,
+	})
+	if err != nil {
+		t.Fatalf("stopping an exited session: %v", err)
+	}
+
+	if stop.Stopped || !stop.AlreadyStopped {
+		t.Fatalf("stop = %+v; want already_stopped", stop)
+	}
+
+	if _, err := os.Stat(filepath.Join(directory, "stop.request")); !os.IsNotExist(err) {
+		t.Fatal("stop signaled a process whose session already exited")
+	}
+
+	assertRuntimeHelperAlive(t, done)
+}
+
+func TestMismatchedProcessIdentityIsTerminal(t *testing.T) {
+	root := t.TempDir()
+	done, pid := startRuntimeHelper(t)
+	session := "20261023T150405Z-def456"
+	directory := writeRuntimeFixture(t, root, session, runtimeFixture{
+		Session:         session,
+		PID:             pid,
+		ProcessIdentity: "other-platform:not-this-process",
+		Scene:           "res://main.tscn",
+		StartedAt:       time.Now().Add(-time.Hour).UTC(),
+	}, nil)
+
+	status, err := gdruntime.Status(root, gdruntime.StatusParams{Session: session})
+	if err != nil {
+		t.Fatalf("checking status: %v", err)
+	}
+
+	if status.Active || status.State != gdruntime.StateExited {
+		t.Fatalf("status = %+v; want a reused PID to be treated as exited", status)
+	}
+
+	stop, err := gdruntime.Stop(root, gdruntime.StopParams{
+		Session:        session,
+		Force:          true,
+		TimeoutSeconds: 0.05,
+	})
+	if err != nil {
+		t.Fatalf("stopping a reused PID session: %v", err)
+	}
+
+	if stop.Stopped || !stop.AlreadyStopped {
+		t.Fatalf("stop = %+v; want already_stopped", stop)
+	}
+
+	if _, err := os.Stat(filepath.Join(directory, "stop.request")); !os.IsNotExist(err) {
+		t.Fatal("stop signaled a process with a mismatched identity")
+	}
+
+	assertRuntimeHelperAlive(t, done)
+}
+
+type runtimeFixture struct {
+	Session         string    `json:"session"`
+	PID             int       `json:"pid"`
+	ProcessIdentity string    `json:"process_identity,omitempty"`
+	Scene           string    `json:"scene"`
+	Headless        bool      `json:"headless"`
+	StartedAt       time.Time `json:"started_at"`
+}
+
+type runtimeExitFixture struct {
+	Reason string `json:"reason"`
+	Code   int    `json:"code"`
+}
+
+func writeRuntimeFixture(
+	t *testing.T,
+	root string,
+	session string,
+	metadata runtimeFixture,
+	exit *runtimeExitFixture,
+) string {
+	t.Helper()
+
+	directory := filepath.Join(
+		root,
+		".godot",
+		"godot-cli",
+		"runtime",
+		"sessions",
+		session,
+	)
+
+	if err := os.MkdirAll(filepath.Join(directory, "captures"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	writeFixtureJSON(t, filepath.Join(directory, "session.json"), metadata)
+
+	if exit != nil {
+		writeFixtureJSON(t, filepath.Join(directory, "exit.json"), exit)
+	}
+
+	return directory
+}
+
+func writeFixtureJSON(t *testing.T, path string, value any) {
+	t.Helper()
+
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(path, append(data, '\n'), 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func startRuntimeHelper(t *testing.T) (<-chan struct{}, int) {
+	t.Helper()
+
+	command := exec.Command(os.Args[0], "-test.run=^TestRuntimeHelperProcess$")
+	command.Env = append(os.Environ(), runtimeHelperEnv+"=1")
+
+	if err := command.Start(); err != nil {
+		t.Fatalf("starting helper process: %v", err)
+	}
+
+	done := make(chan struct{})
+
+	go func() {
+		_ = command.Wait()
+		close(done)
+	}()
+
+	t.Cleanup(func() {
+		_ = command.Process.Kill()
+
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Errorf("helper process %d did not exit", command.Process.Pid)
+		}
+	})
+
+	return done, command.Process.Pid
+}
+
+func assertRuntimeHelperAlive(t *testing.T, done <-chan struct{}) {
+	t.Helper()
+
+	select {
+	case <-done:
+		t.Fatal("stop terminated a process that no longer belongs to the session")
+	case <-time.After(100 * time.Millisecond):
 	}
 }
 

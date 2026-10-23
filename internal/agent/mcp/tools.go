@@ -91,10 +91,8 @@ func addAction(
 			Annotations: &mcpgo.ToolAnnotations{
 				ReadOnlyHint:    action.ReadOnly,
 				DestructiveHint: &destructive,
-				// Read-only tools are safe to retry. Mutating tools are
-				// conservatively reported as non-idempotent.
-				IdempotentHint: action.ReadOnly,
-				OpenWorldHint:  &openWorld,
+				IdempotentHint:  action.Idempotent,
+				OpenWorldHint:   &openWorld,
 			},
 		},
 		toolHandler(serializer, projectRoot, action),

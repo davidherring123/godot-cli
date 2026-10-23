@@ -27,6 +27,7 @@ type ActionDefinition struct {
 	Output      *jsonschema.Schema
 	ReadOnly    bool
 	Destructive bool
+	Idempotent  bool
 	Invoke      InvokeFunc
 }
 
@@ -52,6 +53,7 @@ func (err *ArgumentError) Unwrap() error {
 type actionHints struct {
 	readOnly    bool
 	destructive bool
+	idempotent  bool
 }
 
 // actionOption adjusts the behavior hints attached to an action.
@@ -70,6 +72,14 @@ func withReadOnly() actionOption {
 func withAdditive() actionOption {
 	return func(hints *actionHints) {
 		hints.destructive = false
+	}
+}
+
+// withIdempotent marks an action as safe to retry without changing the result
+// beyond its first successful call.
+func withIdempotent() actionOption {
+	return func(hints *actionHints) {
+		hints.idempotent = true
 	}
 }
 
@@ -96,6 +106,7 @@ func define[P, R any](
 		Output:      reflector.ReflectFromType(reflect.TypeFor[R]()),
 		ReadOnly:    hints.readOnly,
 		Destructive: hints.destructive,
+		Idempotent:  hints.readOnly || hints.idempotent,
 		Invoke: func(projectRoot string, input json.RawMessage) (any, error) {
 			var params P
 
@@ -232,6 +243,7 @@ var (
 		runtime.StopName,
 		"Stop the runtime session, waiting for a graceful exit before killing the game process",
 		runtime.Stop,
+		withIdempotent(),
 	)
 )
 

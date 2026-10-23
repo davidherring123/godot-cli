@@ -116,6 +116,70 @@ func TestServerExposesRuntimeTools(t *testing.T) {
 	}
 }
 
+func TestRuntimeStopAdvertisesIdempotentAnnotations(t *testing.T) {
+	root := t.TempDir()
+
+	if err := os.WriteFile(
+		filepath.Join(root, "project.godot"),
+		[]byte("[application]\n"),
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	session := connectMCP(t, root, []core.ActionDefinition{
+		core.RuntimeStart,
+		core.RuntimeStatus,
+		core.RuntimeStop,
+	})
+
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("listing tools: %v", err)
+	}
+
+	byName := make(map[string]*mcpgo.Tool, len(tools.Tools))
+
+	for _, tool := range tools.Tools {
+		byName[tool.Name] = tool
+	}
+
+	stop := byName["runtime_stop"]
+	if stop == nil || stop.Annotations == nil {
+		t.Fatal("runtime_stop is missing tool annotations")
+	}
+
+	if !stop.Annotations.IdempotentHint {
+		t.Fatal("runtime_stop should advertise idempotentHint=true")
+	}
+
+	if stop.Annotations.ReadOnlyHint {
+		t.Fatal("runtime_stop should not advertise readOnlyHint=true")
+	}
+
+	if stop.Annotations.DestructiveHint == nil || !*stop.Annotations.DestructiveHint {
+		t.Fatal("runtime_stop should advertise destructiveHint=true")
+	}
+
+	status := byName["runtime_status"]
+	if status == nil || status.Annotations == nil {
+		t.Fatal("runtime_status is missing tool annotations")
+	}
+
+	if !status.Annotations.ReadOnlyHint || !status.Annotations.IdempotentHint {
+		t.Fatalf("runtime_status annotations = %+v; want read-only and idempotent", status.Annotations)
+	}
+
+	start := byName["runtime_start"]
+	if start == nil || start.Annotations == nil {
+		t.Fatal("runtime_start is missing tool annotations")
+	}
+
+	if start.Annotations.IdempotentHint {
+		t.Fatal("runtime_start should not advertise idempotentHint=true")
+	}
+}
+
 func TestRuntimeCaptureWithoutSessionIsActionable(t *testing.T) {
 	root := t.TempDir()
 
