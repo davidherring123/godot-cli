@@ -25,6 +25,7 @@ func NewResourceCommand() *cobra.Command {
 		newResourceInspectCommand(),
 		newResourceSetCommand(),
 		newResourceDeleteCommand(),
+		newResourceApplyCommand(),
 	)
 
 	return cmd
@@ -139,4 +140,48 @@ func newResourceDeleteCommand() *cobra.Command {
 			return PrintJSON(result)
 		},
 	}
+}
+
+func newResourceApplyCommand() *cobra.Command {
+	var rawOperations string
+	var dryRun bool
+	cmd := &cobra.Command{
+		Use:   "apply",
+		Short: core.ResourceApply.Description,
+		Long: "Apply an ordered batch of resource create, set, and delete operations. " +
+			"Every operation is validated before anything is written; dry_run validates the full batch without writing. " +
+			"If a write fails after earlier operations, those files are restored and the error names the failed operation. " +
+			"Accepts 1-100 operations. This batch is domain-local: it makes no promise that resource and project-setting or Input Map changes happen together. " +
+			"Does not require an active scene and is not an editor undo step.",
+		Example:     `godot-cli resource apply --operations '[{"operation":"create","resource":"res://materials/metal.tres","type":"StandardMaterial3D"},{"operation":"set","resource":"res://materials/metal.tres","properties":{"roughness":0.4}}]'`,
+		Annotations: map[string]string{skill.ActionKey: core.ResourceApply.Name},
+		Args:        cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			operations, err := parseOperations[resource.ApplyOperation](rawOperations)
+			if err != nil {
+				return err
+			}
+
+			project, err := FetchProjectContext()
+			if err != nil {
+				return err
+			}
+
+			result, err := resource.Apply(project.Root, resource.ApplyParams{
+				Operations: operations,
+				DryRun:     dryRun,
+			})
+			if err != nil {
+				return err
+			}
+
+			return PrintJSON(result)
+		},
+	}
+	cmd.Flags().StringVar(&rawOperations, "operations", "", "JSON array of ordered resource operations")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate the full batch without writing any file")
+
+	_ = cmd.MarkFlagRequired("operations")
+
+	return cmd
 }

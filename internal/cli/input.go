@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
+	"github.com/davidherring123/godot-cli/internal/core"
 	"github.com/davidherring123/godot-cli/internal/core/input"
 	"github.com/spf13/cobra"
 )
@@ -27,6 +28,7 @@ func NewInputCommand() *cobra.Command {
 		newInputRenameCommand(),
 		newInputDeleteCommand(),
 		newInputEventCommand(),
+		newInputApplyCommand(),
 	)
 
 	return cmd
@@ -223,6 +225,43 @@ func newInputEventDeleteCommand() *cobra.Command {
 	cmd.Flags().IntVar(&index, "index", -1, "Zero-based position of the binding to remove")
 
 	_ = cmd.MarkFlagRequired("index")
+
+	return cmd
+}
+
+func newInputApplyCommand() *cobra.Command {
+	var rawOperations string
+	var dryRun bool
+	cmd := &cobra.Command{
+		Use:   "apply",
+		Short: core.InputMapApply.Description,
+		Long: "Apply an ordered batch of Input Map action and binding operations: add, set, rename, delete, event_add, and event_delete. " +
+			"Every operation is validated in order against the editor's Input Map, then applied in memory and saved to project.godot once. " +
+			"dry_run runs the same validation without saving. If saving fails, in-memory state and project.godot are restored. " +
+			"Accepts 1-100 operations. Binding indexes refer to the state after earlier operations in the same batch. " +
+			"This batch is domain-local and makes no promise that Input Map, resource, or project-setting changes happen together. " +
+			"This is a direct project-file change, not an editor undo step.",
+		Example:     `godot-cli input apply --operations '[{"operation":"add","action":"jump","deadzone":0.2},{"operation":"event_add","action":"jump","event":{"type":"key","physical_keycode":32}},{"operation":"set","action":"jump","deadzone":0.3}]'`,
+		Annotations: map[string]string{skill.ActionKey: core.InputMapApply.Name},
+		Args:        cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			operations, err := parseOperations[input.ApplyOperation](rawOperations)
+			if err != nil {
+				return err
+			}
+
+			return runInput(func(root string) (any, error) {
+				return input.Apply(root, input.ApplyParams{
+					Operations: operations,
+					DryRun:     dryRun,
+				})
+			})
+		},
+	}
+	cmd.Flags().StringVar(&rawOperations, "operations", "", "JSON array of ordered Input Map operations")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate the full batch without saving project.godot")
+
+	_ = cmd.MarkFlagRequired("operations")
 
 	return cmd
 }

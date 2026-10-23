@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
+	"github.com/davidherring123/godot-cli/internal/core"
 	"github.com/davidherring123/godot-cli/internal/core/project/settings"
 	"github.com/spf13/cobra"
 )
@@ -39,6 +40,7 @@ func newProjectSettingsCommand() *cobra.Command {
 		newProjectSettingsGetCommand(),
 		newProjectSettingsSetCommand(),
 		newProjectSettingsUnsetCommand(),
+		newProjectSettingsApplyCommand(),
 	)
 
 	return cmd
@@ -123,6 +125,42 @@ func newProjectSettingsUnsetCommand() *cobra.Command {
 			})
 		},
 	}
+}
+
+func newProjectSettingsApplyCommand() *cobra.Command {
+	var rawOperations string
+	var dryRun bool
+	cmd := &cobra.Command{
+		Use:   "apply",
+		Short: core.ProjectSettingsApply.Description,
+		Long: "Apply an ordered batch of project-setting set and unset operations. " +
+			"Every operation is validated against the editor's setting definitions, then applied in memory and saved to project.godot once. " +
+			"dry_run runs the same validation without saving. If saving fails, in-memory state and project.godot are restored. " +
+			"Accepts 1-100 operations. This batch is domain-local and makes no promise that settings and resource or Input Map changes happen together. " +
+			"This is a direct project-file change, not an editor undo step.",
+		Example:     `godot-cli project settings apply --operations '[{"operation":"set","setting":"display/window/size/viewport_width","value":1920},{"operation":"unset","setting":"application/config/name"}]'`,
+		Annotations: map[string]string{skill.ActionKey: core.ProjectSettingsApply.Name},
+		Args:        cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			operations, err := parseOperations[settings.ApplyOperation](rawOperations)
+			if err != nil {
+				return err
+			}
+
+			return runProjectSettings(func(root string) (any, error) {
+				return settings.Apply(root, settings.ApplyParams{
+					Operations: operations,
+					DryRun:     dryRun,
+				})
+			})
+		},
+	}
+	cmd.Flags().StringVar(&rawOperations, "operations", "", "JSON array of ordered project-setting operations")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate the full batch without saving project.godot")
+
+	_ = cmd.MarkFlagRequired("operations")
+
+	return cmd
 }
 
 func runProjectSettings(call func(root string) (any, error)) error {

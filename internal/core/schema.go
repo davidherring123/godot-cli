@@ -191,6 +191,11 @@ var (
 		"Delete a resource file that nothing else references",
 		resource.Delete,
 	)
+	ResourceApply = define[resource.ApplyParams, resource.ApplyResult](
+		resource.ApplyName,
+		"Apply ordered resource create, set, and delete operations with prevalidation, optional dry_run, and rollback of this domain's writes on failure",
+		resource.Apply,
+	)
 	ProjectSettingsList = define[settings.ListParams, settings.ListResult](
 		settings.ListName,
 		"List editor-visible project settings",
@@ -213,6 +218,11 @@ var (
 		"Remove a project setting override and save project.godot immediately",
 		settings.Unset,
 	)
+	ProjectSettingsApply = define[settings.ApplyParams, settings.ApplyResult](
+		settings.ApplyName,
+		"Apply ordered project-setting set and unset operations with prevalidation, optional dry_run, and one rollback-safe project.godot save",
+		settings.Apply,
+	)
 	InputList        = define[input.ListParams, input.ListResult](input.ListName, "List Input Map actions", input.List, withReadOnly())
 	InputInspect     = define[input.InspectParams, input.InspectResult](input.InspectName, "Show one Input Map action and its bindings", input.Inspect, withReadOnly())
 	InputAdd         = define[input.AddParams, input.AddResult](input.AddName, "Add an Input Map action and save project.godot immediately", input.Add, withAdditive())
@@ -221,7 +231,12 @@ var (
 	InputDelete      = define[input.DeleteParams, input.DeleteResult](input.DeleteName, "Delete an Input Map action and save project.godot immediately", input.Delete)
 	InputEventAdd    = define[input.EventAddParams, input.EventAddResult](input.EventAddName, "Add a binding to an Input Map action and save project.godot immediately", input.EventAdd, withAdditive())
 	InputEventDelete = define[input.EventDeleteParams, input.EventDeleteResult](input.EventDeleteName, "Remove a binding from an Input Map action and save project.godot immediately", input.EventDelete)
-	RuntimeStart     = define[runtime.StartParams, runtime.StatusResult](
+	InputMapApply = define[input.ApplyParams, input.ApplyResult](
+		input.ApplyName,
+		"Apply ordered Input Map action and binding mutations with prevalidation, optional dry_run, and one rollback-safe project.godot save",
+		input.Apply,
+	)
+	RuntimeStart = define[runtime.StartParams, runtime.StatusResult](
 		runtime.StartName,
 		"Start the project's game process, wait until its scene is ready, and return the runtime session",
 		runtime.Start,
@@ -271,10 +286,12 @@ func All() []ActionDefinition {
 		ResourceInspect,
 		ResourceSet,
 		ResourceDelete,
+		ResourceApply,
 		ProjectSettingsList,
 		ProjectSettingsGet,
 		ProjectSettingsSet,
 		ProjectSettingsUnset,
+		ProjectSettingsApply,
 		InputList,
 		InputInspect,
 		InputAdd,
@@ -283,6 +300,7 @@ func All() []ActionDefinition {
 		InputDelete,
 		InputEventAdd,
 		InputEventDelete,
+		InputMapApply,
 		RuntimeStart,
 		RuntimeStatus,
 		RuntimeCapture,

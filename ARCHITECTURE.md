@@ -82,6 +82,15 @@ results are returned as both JSON text and structured content. Tool failures use
   validates and calls `bridge.Call`. Registered in `core/schema.go`
   (`define[...]` + `All()`) with typed schemas and an `Invoke` function; the
   registry feeds the agent skill docs and the MCP server.
+- Domain batch actions — `resource.apply`, `project.settings.apply`, and
+  `input.map_apply` — sit beside the granular actions and reuse their addon
+  handlers. They accept ordered operations (1–100), validate the full batch,
+  support `dry_run`, and report the failed operation index. The resource batch
+  restores files written earlier in the batch and reports rollback failures;
+  the settings and Input Map batches apply in memory and save `project.godot`
+  once, restoring in-memory state and the file if the save fails. Atomicity is
+  per domain only, and none of the batches promise crash recovery mid-write;
+  never describe a resource, settings, and Input Map batch as one transaction.
 - `internal/core/bridge` — editor discovery and TCP request/response transport
   used by core actions; defines the API errors also translated by MCP.
 - `internal/agent/mcp` — exposes `core.All()` over the Model Context Protocol.
@@ -132,6 +141,9 @@ results are returned as both JSON text and structured content. Tool failures use
   `project/settings/settings_service.gd` edits `project.godot` settings and
   `input/input_service.gd` (with `input/input_event_codec.gd`) edits Input Map
   actions, both saving the project file immediately rather than as undo steps.
+  Those services also implement their domain batch action by calling the same
+  granular handlers with deferred saves and rollback; resource batches reuse
+  `resource_service.gd` handlers with a no-write validation pass.
 - Mutations go through `EditorUndoRedoManager` — every command is one undo step.
   Project settings and Input Map commands are the exception: they change
   `project.godot` directly and are not undoable.

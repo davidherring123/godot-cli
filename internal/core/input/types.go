@@ -123,3 +123,45 @@ type EventDeleteResult struct {
 	Events  []Event `json:"events" jsonschema:"description=Remaining bindings."`
 	Changed bool    `json:"changed"`
 }
+
+// ApplyOperation is one ordered Input Map mutation. Operation selects which
+// fields apply:
+//
+//   - add: action and optional deadzone
+//   - set: action and deadzone
+//   - rename: action and new_name
+//   - delete: action
+//   - event_add: action and event
+//   - event_delete: action and index
+type ApplyOperation struct {
+	Operation string   `json:"operation" jsonschema:"enum=add,enum=set,enum=rename,enum=delete,enum=event_add,enum=event_delete,description=Operation kind."`
+	Action    string   `json:"action" jsonschema:"minLength=1,description=Input Map action name such as jump."`
+	Deadzone  *float64 `json:"deadzone,omitempty" jsonschema:"description=Analog deadzone between 0 and 1 for add or set."`
+	NewName   string   `json:"new_name,omitempty" jsonschema:"description=New action name for rename."`
+	Event     *Event   `json:"event,omitempty" jsonschema:"description=Binding to add for event_add."`
+	Index     *int     `json:"index,omitempty" jsonschema:"minimum=0,description=Zero-based binding index for event_delete."`
+}
+
+type ApplyParams struct {
+	Operations []ApplyOperation `json:"operations" jsonschema:"minItems=1,maxItems=100,description=Ordered Input Map operations to validate and apply."`
+	DryRun     bool             `json:"dry_run,omitempty" jsonschema:"description=Validate the full batch without saving project.godot."`
+}
+
+type ApplyOperationSummary struct {
+	Index        int    `json:"index" jsonschema:"description=Zero-based position of the operation in the batch."`
+	Operation    string `json:"operation"`
+	Action       string `json:"action"`
+	Status       string `json:"status" jsonschema:"description=Outcome such as added, updated, renamed, deleted, binding_added, binding_deleted, or unchanged."`
+	Changed      bool   `json:"changed"`
+	NewName      string `json:"new_name,omitempty"`
+	BindingIndex *int   `json:"binding_index,omitempty" jsonschema:"description=Zero-based binding position for event_add and event_delete."`
+}
+
+type ApplyResult struct {
+	DryRun         bool                    `json:"dry_run"`
+	Applied        bool                    `json:"applied" jsonschema:"description=Whether project.godot was saved; false for a dry run."`
+	OperationCount int                     `json:"operation_count"`
+	Changed        int                     `json:"changed" jsonschema:"description=Number of operations that changed an action or binding."`
+	Unchanged      int                     `json:"unchanged"`
+	Operations     []ApplyOperationSummary `json:"operations"`
+}
