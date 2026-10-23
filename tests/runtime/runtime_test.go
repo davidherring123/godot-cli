@@ -19,7 +19,7 @@ const runtimeHelperEnv = "GODOT_CLI_RUNTIME_TEST_HELPER"
 
 // TestRuntimeHelperProcess is a long-lived child used by lifecycle tests that
 // need a real PID without launching Godot.
-func TestRuntimeHelperProcess(t *testing.T) {
+func TestRuntimeHelperProcess(_ *testing.T) {
 	if os.Getenv(runtimeHelperEnv) != "1" {
 		return
 	}
