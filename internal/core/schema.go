@@ -12,6 +12,7 @@ import (
 	"github.com/davidherring123/godot-cli/internal/core/node"
 	"github.com/davidherring123/godot-cli/internal/core/project/settings"
 	"github.com/davidherring123/godot-cli/internal/core/resource"
+	"github.com/davidherring123/godot-cli/internal/core/runtime"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
 	"github.com/davidherring123/godot-cli/internal/core/validate"
 	"github.com/invopop/jsonschema"
@@ -209,6 +210,29 @@ var (
 	InputDelete      = define[input.DeleteParams, input.DeleteResult](input.DeleteName, "Delete an Input Map action and save project.godot immediately", input.Delete)
 	InputEventAdd    = define[input.EventAddParams, input.EventAddResult](input.EventAddName, "Add a binding to an Input Map action and save project.godot immediately", input.EventAdd, withAdditive())
 	InputEventDelete = define[input.EventDeleteParams, input.EventDeleteResult](input.EventDeleteName, "Remove a binding from an Input Map action and save project.godot immediately", input.EventDelete)
+	RuntimeStart     = define[runtime.StartParams, runtime.StatusResult](
+		runtime.StartName,
+		"Start the project's game process, wait until its scene is ready, and return the runtime session",
+		runtime.Start,
+		withAdditive(),
+	)
+	RuntimeStatus = define[runtime.StatusParams, runtime.StatusResult](
+		runtime.StatusName,
+		"Show the active or most recent runtime session, including errors, frames, and artifacts",
+		runtime.Status,
+		withReadOnly(),
+	)
+	RuntimeCapture = define[runtime.CaptureParams, runtime.CaptureResult](
+		runtime.CaptureName,
+		"Capture a PNG screenshot from the running game; the MCP result includes the image when possible",
+		runtime.Capture,
+		withAdditive(),
+	)
+	RuntimeStop = define[runtime.StopParams, runtime.StopResult](
+		runtime.StopName,
+		"Stop the runtime session, waiting for a graceful exit before killing the game process",
+		runtime.Stop,
+	)
 )
 
 func All() []ActionDefinition {
@@ -247,6 +271,10 @@ func All() []ActionDefinition {
 		InputDelete,
 		InputEventAdd,
 		InputEventDelete,
+		RuntimeStart,
+		RuntimeStatus,
+		RuntimeCapture,
+		RuntimeStop,
 	}
 }
 

@@ -160,6 +160,28 @@ reports `unsaved`. Neither mode saves or modifies the project. Use it to confirm
 that a scene loads and runs; it does not replace the mutation responses above,
 which remain the way to confirm individual property values.
 
+See and debug the running game:
+
+```shell
+godot-cli runtime start [scene]
+godot-cli runtime start --headless
+godot-cli runtime status [--session <id>]
+godot-cli runtime capture [--session <id>]
+godot-cli runtime stop [--session <id>] [--force]
+```
+
+`runtime start` launches the project's game process, waits until the scene is
+ready, and prints the session, state, frames, errors, and log paths. It defaults
+to a window because `runtime capture` needs a rendering display; use
+`--headless` in CI, where the same session reports parsed engine/script errors
+but capture fails with `unsupported`. `runtime status` reports the active or most
+recent session, including `error_count` and distinct `errors`; read it before
+guessing why a scene exited. Captures are written under
+`.godot/godot-cli/runtime` and returned as `res://` artifact paths; MCP calls
+also receive the PNG as image content. Stop a session when finished;
+`runtime stop` is idempotent and requires `--force` only when the heartbeat has
+stopped responding. Do not start a second session while one is active.
+
 Command results print JSON; setup, status, and help print text. Failures
 use stderr and a nonzero exit status. `status` prints the project root, and
 `scene current` succeeds with `active: false` when no scene is being edited.

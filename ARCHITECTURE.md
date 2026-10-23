@@ -35,7 +35,35 @@ addon-enabled editor. `validate` is the exception: by default it runs the saved
 project in a fresh `godot --headless` process and never talks to the editor.
 `validate --live` uses the editor like any other live command.
 
-The MCP server reuses the same path without a subprocess:
+`runtime.*` is also Go-only. It starts the game itself instead of asking the
+editor to play the scene, so it works without the addon and without an editor:
+
+```
+godot-cli runtime start  →  godot --path <project> --script <runner.gd> -- ...
+                            runner.gd extends SceneTree, loads the scene,
+                            writes ready/heartbeat/exit JSON, polls requests
+godot-cli runtime capture →  request file → runner saves PNG → response file
+godot-cli runtime status  →  session files + process liveness + log scan
+godot-cli runtime stop    →  graceful stop.request, then kill after timeout
+```
+
+Runtime state lives under `.godot/godot-cli/runtime/sessions/<session>/`:
+`runner.gd`, `session.json`, `stdout.log`, `stderr.log`, `ready.json`,
+`heartbeat.json`, `exit.json`, `requests/`, `responses/`, and `captures/`.
+Go never accepts a user-supplied artifact path; screenshot names are generated
+by the runtime action and must stay inside the runtime directory, which the
+runner re-checks. Captures are `res://` paths so paths stay inside the project
+even when the host path contains symbolic links.
+
+`runtime.start` defaults to a window because screenshots need a rendering
+display. `headless=true` is supported for CI and error/log feedback; capture
+fails with `unsupported` rather than writing a blank image. `runtime.status`
+reports parsed `ERROR:`, `SCRIPT ERROR:`, `USER ERROR:`, and `FATAL:` lines from
+the log tail, heartbeat frame counts, exit codes, and the last artifact. Only one
+runtime session may be active per project. `runtime.stop` is idempotent, and
+refuses to kill an unresponsive process unless `force=true`.
+
+For editor actions, the MCP server reuses the same path without a subprocess:
 
 ```
 godot-cli mcp  →  internal/agent/mcp  →  core action Invoke  →  core/bridge  →  addon
@@ -59,10 +87,12 @@ results are returned as both JSON text and structured content. Tool failures use
 - `internal/agent/mcp` — exposes `core.All()` over the Model Context Protocol.
   Tool names replace dots with underscores (`scene.list` → `scene_list`);
   arguments are decoded into the action's `Params`, results become both JSON
-  text and structured content, and `bridge.APIError` codes are preserved in
-  `isError` tool responses. Tool calls are serialized so the editor only handles
-  one operation at a time. `godot-cli mcp` serves stdio and resolves one project
-  for the process lifetime.
+  text and structured content, and `bridge.APIError` and `runtime.Error` codes
+  are preserved in `isError` tool responses. Results that implement
+  `artifact.ImageSource` (currently `runtime.capture`) also add an MCP image
+  content block while the structured result keeps only metadata. Tool calls are
+  serialized so the editor only handles one operation at a time. `godot-cli mcp`
+  serves stdio and resolves one project for the process lifetime.
 - `internal/core/project` — the `Project` type, `Resolve` path handling, and
   `FindProjectRoot` project discovery used by every command.
 - `internal/core/editor` — Go-only `editor.open` and `editor.status` actions.
@@ -73,6 +103,14 @@ results are returned as both JSON text and structured content. Tool failures use
   `editor.open` (`GODOT_BIN`, then `godot`/`godot4` on PATH).
 - `internal/core/property` — property metadata shared by the node and resource
   domains.
+- `internal/core/scenepath` — resolves explicit scenes and the configured main
+  scene for `validate` and `runtime`, rejecting paths outside the project.
+- `internal/core/artifact` — protocol-neutral image payload interface used by
+  action results and rendered as MCP image content.
+- `internal/core/runtime` — Go-only game process lifecycle: detached launch,
+  readiness/heartbeat/exit files, log error extraction, screenshot request
+  channel, and safe stop. The runner script is embedded, like the validation
+  runner, and runs as a custom `SceneTree`; autoloads still initialize normally.
 - `internal/core/validate` — saved-project validation spawns `godot --headless`
   with an embedded `runner.gd`, merges the runner's JSON report with Godot's
   `ERROR:`/`SCRIPT ERROR:` output, and never writes to the project.
@@ -116,10 +154,13 @@ action in `All()` also exposes it as an MCP tool automatically.
 
 ## Testing
 
-- `tests/core` — live Godot action tests; `tests/editor` — isolated editor
-  lifecycle tests, including launch behavior with a fake executable.
+- `tests/core` — live Godot action tests; `tests/runtime` — live runtime
+  lifecycle/capture tests (windowed capture is opt-in with
+  `GODOT_MODE=graphical`); `tests/editor` — isolated editor lifecycle tests,
+  including launch behavior with a fake executable.
 - `tests/cli` — CLI interface tests, including `init`; `tests/mcp` — MCP
-  interface tests, including live calls with their own Godot sessions.
+  interface tests, including image content, actionable runtime errors, and live
+  calls with their own Godot sessions.
 - `tests/harness` — Godot session management shared by live integration tests.
 - `make check` — gofmt, vet, golangci-lint (repo config in `.golangci.yml`).
 - `make test` — runs Go unit tests, then spins up a real headless Godot editor

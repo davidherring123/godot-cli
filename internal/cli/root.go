@@ -22,6 +22,7 @@ func NewRootCommand(version string) *cobra.Command {
 		NewProjectCommand(),
 		NewInputCommand(),
 		NewValidateCommand(),
+		NewRuntimeCommand(),
 		NewMCPCommand(version),
 	)
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-cli/internal/core/artifact"
 	"github.com/invopop/jsonschema"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -179,8 +180,23 @@ func toolHandler(
 			return errorResult(fmt.Errorf("encoding %s result: %w", action.Name, err)), nil
 		}
 
+		content := []mcpgo.Content{&mcpgo.TextContent{Text: string(text)}}
+
+		if source, ok := outcome.result.(artifact.ImageSource); ok {
+			for _, image := range source.Images() {
+				if len(image.Data) == 0 || image.MIMEType == "" {
+					continue
+				}
+
+				content = append(content, &mcpgo.ImageContent{
+					MIMEType: image.MIMEType,
+					Data:     image.Data,
+				})
+			}
+		}
+
 		return &mcpgo.CallToolResult{
-			Content:           []mcpgo.Content{&mcpgo.TextContent{Text: string(text)}},
+			Content:           content,
 			StructuredContent: outcome.result,
 		}, nil
 	}

@@ -96,7 +96,11 @@ func defaultInstructions(projectRoot string) string {
 	return "This server inspects and edits " + projectDescription + ". " +
 		"Live-editor tools require Godot 4 to be running with the godot-cli addon installed; " +
 		"start it with the editor_open tool, and run `godot-cli init` once in the project to install and enable the addon. " +
+		"Runtime tools start the game itself and need no editor: runtime_start waits until the scene is ready, " +
+		"runtime_status reports state, frames, errors, logs, and the last capture, runtime_capture returns a PNG " +
+		"artifact and MCP image content, and runtime_stop ends the session. Capture requires a windowed runtime; " +
+		"headless runtime sessions report errors and frames but return unsupported for capture. " +
 		"Scene and node edits are undoable: set save=true once after a batch of edits, not after every change. " +
 		"Resource, project-setting, and Input Map tools save immediately and have no save argument. " +
-		"Tool results are JSON."
+		"Tool results are JSON unless an image content block is explicitly available."
 }
