@@ -370,6 +370,14 @@ func apply(request: Request) -> Response:
         else PackedByteArray()
     )
     var summaries: Array = []
+    var allowed_fields := {
+        "add": ["operation", "action", "deadzone"],
+        "set": ["operation", "action", "deadzone"],
+        "rename": ["operation", "action", "new_name"],
+        "delete": ["operation", "action"],
+        "event_add": ["operation", "action", "event"],
+        "event_delete": ["operation", "action", "index"],
+    }
 
     defer_save = true
     defer_reload = true
@@ -383,10 +391,8 @@ func apply(request: Request) -> Response:
                 "Each operation must be an object"
             )
 
-            defer_save = false
-            defer_reload = false
+            _end_batch()
             _restore_actions(snapshot)
-            _reload_input_map()
             return batch_operation_failure(
                 index,
                 operation,
@@ -397,6 +403,23 @@ func apply(request: Request) -> Response:
 
         var kind := str(operation.get("operation", ""))
         var target := str(operation.get("action", ""))
+        var field_error := validate_operation_fields(
+            index,
+            operation,
+            allowed_fields
+        )
+
+        if field_error != null:
+            _end_batch()
+            _restore_actions(snapshot)
+            return batch_operation_failure(
+                index,
+                operation,
+                target,
+                field_error,
+                "no changes were saved"
+            )
+
         var response: Response
 
         match kind:
@@ -419,10 +442,8 @@ func apply(request: Request) -> Response:
                 )
 
         if not response.code.is_empty():
-            defer_save = false
-            defer_reload = false
+            _end_batch()
             _restore_actions(snapshot)
-            _reload_input_map()
             return batch_operation_failure(
                 index,
                 operation,
@@ -437,34 +458,57 @@ func apply(request: Request) -> Response:
     defer_reload = false
 
     if dry_run_requested:
+        # dry_run never includes a save, so InputMap must not be reloaded:
+        # restore the in-memory ProjectSettings values and leave the live map
+        # untouched.
         _restore_actions(snapshot)
-        _reload_input_map()
         return Response.success(_apply_summary(summaries, true, false))
+
+    if _apply_changed_count(summaries) == 0:
+        return Response.success(_apply_summary(summaries, false, true))
 
     var save_error := ProjectSettings.save()
 
     if save_error != OK:
         _restore_actions(snapshot)
         var restore_error := _restore_project_file(project_existed, project_snapshot)
-        var suffix := "restored project.godot and in-memory state"
-
-        if not restore_error.is_empty():
-            suffix = "rollback failed: %s" % restore_error
 
         _reload_input_map()
 
+        if not restore_error.is_empty():
+            return Response.failure(
+                ErrorCode.INTERNAL_ERROR,
+                "Could not save project.godot after %d operation(s): %s; rollback failed: %s" % [
+                    summaries.size(),
+                    error_string(save_error),
+                    restore_error,
+                ]
+            )
+
         return Response.failure(
             ErrorCode.ACTION_FAILED,
-            "Could not save project.godot after %d operation(s): %s; %s" % [
+            "Could not save project.godot after %d operation(s): %s; restored project.godot and in-memory state" % [
                 summaries.size(),
                 error_string(save_error),
-                suffix,
             ]
         )
 
     _reload_input_map()
 
     return Response.success(_apply_summary(summaries, false, true))
+
+func _end_batch() -> void:
+    defer_save = false
+    defer_reload = false
+
+func _apply_changed_count(results: Array) -> int:
+    var changed := 0
+
+    for result in results:
+        if bool(result.get("changed", false)):
+            changed += 1
+
+    return changed
 
 func _apply_operation_summary(
     index: int,

@@ -134,8 +134,9 @@ func newProjectSettingsApplyCommand() *cobra.Command {
 		Use:   "apply",
 		Short: core.ProjectSettingsApply.Description,
 		Long: "Apply an ordered batch of project-setting set and unset operations. " +
-			"Every operation is validated against the editor's setting definitions, then applied in memory and saved to project.godot once. " +
-			"dry_run runs the same validation without saving. If saving fails, in-memory state and project.godot are restored. " +
+			"Every operation is validated against the editor's setting definitions and applied in order, with set/unset override state simulated in memory, then saved to project.godot once. " +
+			"dry_run runs the same validation without saving. An all-no-op batch does not rewrite project.godot. " +
+			"If saving fails, in-memory state and project.godot are restored on a best-effort basis; a rollback failure returns internal_error. " +
 			"Accepts 1-100 operations. This batch is domain-local and makes no promise that settings and resource or Input Map changes happen together. " +
 			"This is a direct project-file change, not an editor undo step.",
 		Example:     `godot-cli project settings apply --operations '[{"operation":"set","setting":"display/window/size/viewport_width","value":1920},{"operation":"unset","setting":"application/config/name"}]'`,

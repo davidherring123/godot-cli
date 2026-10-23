@@ -3,8 +3,11 @@ extends ActionService
 
 var editor: EditorInterface
 var dry_run := false
-var dry_run_resources: Dictionary = {}
-var dry_run_deleted: Dictionary = {}
+var batch_active := false
+var batch_resources: Dictionary = {}
+var batch_deleted: Dictionary = {}
+var batch_references: Dictionary = {}
+var batch_paths: Dictionary = {}
 
 func _init(editor_interface: EditorInterface) -> void:
     editor = editor_interface
@@ -56,14 +59,17 @@ func create(request: Request) -> Response:
             "Unknown or non-instantiable resource type: %s" % resource_type
         )
 
-    var property_error := PropertyCodec.apply_properties(resource, values)
+    var property_error := PropertyCodec.apply_properties(
+        resource,
+        values,
+        _resource_overrides()
+    )
 
     if property_error != null:
         return property_error
 
     if dry_run:
-        dry_run_deleted.erase(path)
-        dry_run_resources[path] = resource
+        _remember_created_resource(path, resource, values)
         return Response.success({
             "resource": path,
             "type": _type_name(resource),
@@ -74,6 +80,8 @@ func create(request: Request) -> Response:
 
     if save_error != null:
         return save_error
+
+    _remember_created_resource(path, resource, values)
 
     return Response.success({
         "resource": path,
@@ -167,7 +175,11 @@ func set_properties(request: Request) -> Response:
             "Could not load resource: %s" % path
         )
 
-    var decoded := PropertyCodec.decode_properties(resource, values)
+    var decoded := PropertyCodec.decode_properties(
+        resource,
+        values,
+        _resource_overrides()
+    )
 
     if decoded.error != null:
         return decoded.error
@@ -200,13 +212,20 @@ func set_properties(request: Request) -> Response:
 
                 return save_error
 
-    if dry_run:
-        dry_run_resources[path] = resource
+        if batch_active:
+            _remember_set_references(path, converted)
+
+    if dry_run or batch_active:
+        batch_resources[path] = resource
+        batch_paths[resource.get_instance_id()] = path
 
     var result := {}
 
     for property_name in names:
-        result[property_name] = VariantSerializer.serialize(resource.get(property_name))
+        result[property_name] = VariantSerializer.serialize(
+            resource.get(property_name),
+            batch_paths
+        )
 
     return Response.success({
         "resource": path,
@@ -229,15 +248,7 @@ func delete(request: Request) -> Response:
             "Resource not found: %s" % path
         )
 
-    if dry_run and dry_run_resources.has(path):
-        dry_run_resources.erase(path)
-        dry_run_deleted[path] = true
-        return Response.success({
-            "resource": path,
-            "deleted": true,
-        })
-
-    var referencing := _referencing_paths(path)
+    var referencing := _referencing_paths_for_delete(path)
 
     if not referencing.is_empty():
         return Response.failure(
@@ -246,7 +257,10 @@ func delete(request: Request) -> Response:
         )
 
     if dry_run:
-        dry_run_deleted[path] = true
+        if batch_active:
+            _forget_resource(path)
+            batch_deleted[path] = true
+
         return Response.success({
             "resource": path,
             "deleted": true,
@@ -259,6 +273,10 @@ func delete(request: Request) -> Response:
             ErrorCode.ACTION_FAILED,
             "Could not delete %s: %s" % [path, error_string(error)]
         )
+
+    if batch_active:
+        _forget_resource(path)
+        batch_deleted[path] = true
 
     _release_cached(path)
     _notify_filesystem(path)
@@ -304,18 +322,23 @@ func apply(request: Request) -> Response:
             )
 
         return Response.failure(
-            applied.code,
+            ErrorCode.INTERNAL_ERROR,
             "%s; rollback failed: %s" % [applied.message, rollback_error]
         )
 
     return Response.success(_apply_summary(applied.result, false, true))
 
 func _run_operations(operations: Array, preview: bool) -> Response:
+    _reset_batch_state()
     dry_run = preview
-    dry_run_resources.clear()
-    dry_run_deleted.clear()
+    batch_active = true
 
     var summaries: Array = []
+    var allowed_fields := {
+        "create": ["operation", "resource", "type", "properties"],
+        "set": ["operation", "resource", "properties"],
+        "delete": ["operation", "resource"],
+    }
 
     for index in operations.size():
         var operation = operations[index]
@@ -326,11 +349,21 @@ func _run_operations(operations: Array, preview: bool) -> Response:
                 "Each operation must be an object"
             )
 
-            _reset_dry_run_state()
+            _reset_batch_state()
             return batch_operation_failure(index, operation, "", invalid)
 
         var kind := str(operation.get("operation", ""))
         var target := str(operation.get("resource", ""))
+        var field_error := validate_operation_fields(
+            index,
+            operation,
+            allowed_fields
+        )
+
+        if field_error != null:
+            _reset_batch_state()
+            return batch_operation_failure(index, operation, target, field_error)
+
         var response: Response
 
         match kind:
@@ -347,12 +380,12 @@ func _run_operations(operations: Array, preview: bool) -> Response:
                 )
 
         if not response.code.is_empty():
-            _reset_dry_run_state()
+            _reset_batch_state()
             return batch_operation_failure(index, operation, target, response)
 
         summaries.append(_operation_summary(index, operation, response.result))
 
-    _reset_dry_run_state()
+    _reset_batch_state()
 
     return Response.success(summaries)
 
@@ -432,6 +465,8 @@ func _snapshot_resources(operations: Array) -> Dictionary:
     return snapshot
 
 func _restore_resources(snapshot: Dictionary) -> String:
+    var failures: Array[String] = []
+
     for path in snapshot:
         var state: Dictionary = snapshot[path]
 
@@ -439,7 +474,10 @@ func _restore_resources(snapshot: Dictionary) -> String:
             var file := FileAccess.open(path, FileAccess.WRITE)
 
             if file == null:
-                return "%s: %s" % [path, error_string(FileAccess.get_open_error())]
+                failures.append(
+                    "%s: %s" % [path, error_string(FileAccess.get_open_error())]
+                )
+                continue
 
             file.store_buffer(state.get("data", PackedByteArray()))
             file.close()
@@ -447,31 +485,34 @@ func _restore_resources(snapshot: Dictionary) -> String:
             var error := DirAccess.remove_absolute(path)
 
             if error != OK:
-                return "%s: %s" % [path, error_string(error)]
+                failures.append("%s: %s" % [path, error_string(error)])
+                continue
 
         _release_cached(path)
         _notify_filesystem(path)
 
-    return ""
+    return "; ".join(failures)
 
-func _reset_dry_run_state() -> void:
+func _reset_batch_state() -> void:
     dry_run = false
-    dry_run_resources.clear()
-    dry_run_deleted.clear()
+    batch_active = false
+    batch_resources.clear()
+    batch_deleted.clear()
+    batch_references.clear()
+    batch_paths.clear()
 
 func _resource_exists(path: String) -> bool:
-    if dry_run:
-        if dry_run_deleted.has(path):
-            return false
+    if batch_deleted.has(path):
+        return false
 
-        if dry_run_resources.has(path):
-            return true
+    if batch_resources.has(path):
+        return true
 
     return FileAccess.file_exists(path)
 
 func _resource_for_operation(path: String) -> Resource:
-    if dry_run and dry_run_resources.has(path):
-        var pending: Resource = dry_run_resources[path]
+    if batch_resources.has(path):
+        var pending: Resource = batch_resources[path]
         return pending
 
     var resource := _load(path)
@@ -485,9 +526,143 @@ func _serialize_properties(resource: Resource, values: Dictionary) -> Dictionary
     var serialized := {}
 
     for property_name in values:
-        serialized[property_name] = VariantSerializer.serialize(resource.get(property_name))
+        serialized[property_name] = VariantSerializer.serialize(
+            resource.get(property_name),
+            batch_paths
+        )
 
     return serialized
+
+func _resource_overrides() -> Dictionary:
+    if not batch_active:
+        return {}
+
+    var overrides := {}
+
+    for path in batch_resources:
+        overrides[path] = batch_resources[path]
+
+    for path in batch_deleted:
+        overrides[path] = null
+
+    return overrides
+
+func _remember_created_resource(
+    path: String,
+    resource: Resource,
+    values: Dictionary
+) -> void:
+    if not batch_active:
+        return
+
+    batch_deleted.erase(path)
+    batch_resources[path] = resource
+    batch_paths[resource.get_instance_id()] = path
+    batch_references[path] = _json_references(values)
+
+func _forget_resource(path: String) -> void:
+    if not batch_active:
+        return
+
+    batch_resources.erase(path)
+    batch_references.erase(path)
+
+    for instance_id in batch_paths.keys():
+        if batch_paths[instance_id] == path:
+            batch_paths.erase(instance_id)
+
+func _json_references(values: Dictionary) -> Dictionary:
+    var references := {}
+    _collect_json_references(values, references)
+    return references
+
+func _collect_json_references(value: Variant, references: Dictionary) -> void:
+    if value is Dictionary:
+        var reference = value.get("resource")
+
+        if reference is String and reference.begins_with("res://"):
+            references[reference.simplify_path()] = true
+
+        for key in value:
+            _collect_json_references(value[key], references)
+    elif value is Array:
+        for item in value:
+            _collect_json_references(item, references)
+
+# _remember_set_references keeps a conservative batch-local set of references
+# introduced by set operations. References removed by a set are not subtracted:
+# without inspecting every untouched property (which can run custom getters), a
+# removed reference could still be held elsewhere on the resource. Keeping the
+# reference may block a later delete in the same batch, but it never allows a
+# delete that would drop a resource introduced earlier in the batch.
+func _remember_set_references(path: String, converted: Dictionary) -> void:
+    if not batch_references.has(path):
+        batch_references[path] = {}
+
+    var references: Dictionary = batch_references[path]
+
+    for property_name in converted:
+        _collect_value_references(converted[property_name], references)
+
+func _collect_value_references(value: Variant, references: Dictionary) -> void:
+    if value is Resource:
+        var path := _resource_path(value)
+
+        if not path.is_empty():
+            references[path] = true
+    elif value is Dictionary:
+        var reference = value.get("resource")
+
+        if reference is String and reference.begins_with("res://"):
+            references[reference.simplify_path()] = true
+
+        for key in value:
+            _collect_value_references(value[key], references)
+    elif value is Array:
+        for item in value:
+            _collect_value_references(item, references)
+
+func _resource_path(resource: Resource) -> String:
+    var path := str(resource.resource_path)
+
+    if not path.is_empty():
+        return path
+
+    var instance_id := resource.get_instance_id()
+
+    if batch_paths.has(instance_id):
+        return str(batch_paths[instance_id])
+
+    for candidate_path in batch_resources:
+        if is_same(resource, batch_resources[candidate_path]):
+            return candidate_path
+
+    return ""
+
+func _referencing_paths_for_delete(path: String) -> Array[String]:
+    var referencing := {}
+
+    for candidate in _referencing_paths(path):
+        if candidate == path or batch_deleted.has(candidate):
+            continue
+
+        referencing[candidate] = true
+
+    for candidate in batch_references:
+        if candidate == path or batch_deleted.has(candidate):
+            continue
+
+        if batch_references[candidate].has(path):
+            referencing[candidate] = true
+
+    var sorted: Array[String] = []
+
+    for candidate in referencing:
+        sorted.append(candidate)
+
+    sorted.sort()
+
+    return sorted
 
 func _validated_path(value: Variant) -> Response:
     if not value is String or not value.begins_with("res://"):

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/davidherring123/godot-cli/internal/core/batch"
 	"github.com/davidherring123/godot-cli/internal/core/bridge"
@@ -169,6 +170,220 @@ func TestProjectSettingsApplyNoOpReportsUnchanged(t *testing.T) {
 	if result.Operations[0].Status != "unchanged" {
 		t.Fatalf("unexpected status: %+v", result.Operations[0])
 	}
+}
+
+func TestProjectSettingsApplySetThenUnsetUsesBatchState(t *testing.T) {
+	session := requireSuite(t)
+
+	restoreSetting(t, session, viewportWidthSetting)
+
+	operations := []settings.ApplyOperation{
+		{
+			Operation: "set",
+			Setting:   viewportWidthSetting,
+			Value:     json.RawMessage(`1024`),
+		},
+		{
+			Operation: "unset",
+			Setting:   viewportWidthSetting,
+		},
+	}
+
+	dryRun, err := settings.Apply(session.Root(), settings.ApplyParams{
+		Operations: operations,
+		DryRun:     true,
+	})
+	if err != nil {
+		t.Fatalf("expected the set-then-unset dry run to succeed: %v", err)
+	}
+
+	if dryRun.Changed != 2 || dryRun.Unchanged != 0 {
+		t.Fatalf("unexpected dry-run summary: %+v", dryRun)
+	}
+
+	if dryRun.Operations[0].Status != "updated" ||
+		dryRun.Operations[1].Status != "unset" {
+		t.Fatalf("unexpected dry-run statuses: %+v", dryRun.Operations)
+	}
+
+	// The dry run simulated an override that was removed again, so the
+	// original override must still be on disk.
+	if value := decodeNumber(
+		t,
+		getProjectSetting(t, session, viewportWidthSetting).Value,
+	); value != 800 {
+		t.Fatalf("dry run changed viewport width to %v", value)
+	}
+
+	if !getProjectSetting(t, session, viewportWidthSetting).Overridden {
+		t.Fatal("dry run removed the original override")
+	}
+
+	applied, err := settings.Apply(session.Root(), settings.ApplyParams{
+		Operations: operations,
+	})
+	if err != nil {
+		t.Fatalf("expected the set-then-unset batch to succeed: %v", err)
+	}
+
+	if applied.Changed != 2 || applied.Unchanged != 0 {
+		t.Fatalf("unexpected apply summary: %+v", applied)
+	}
+
+	if getProjectSetting(t, session, viewportWidthSetting).Overridden {
+		t.Fatal("expected unset to remove the override set earlier in the batch")
+	}
+
+	if value := decodeNumber(
+		t,
+		getProjectSetting(t, session, viewportWidthSetting).Value,
+	); value != 1152 {
+		t.Fatalf("expected the engine default after unset, got %v", value)
+	}
+}
+
+func TestProjectSettingsApplyDuplicateUnsetReportsUnchanged(t *testing.T) {
+	session := requireSuite(t)
+
+	restoreSetting(t, session, viewportWidthSetting)
+	setProjectSetting(
+		t,
+		session,
+		viewportWidthSetting,
+		json.RawMessage(`1024`),
+	)
+
+	result, err := settings.Apply(session.Root(), settings.ApplyParams{
+		Operations: []settings.ApplyOperation{
+			{Operation: "unset", Setting: viewportWidthSetting},
+			{Operation: "unset", Setting: viewportWidthSetting},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected duplicate unset to succeed: %v", err)
+	}
+
+	if result.Changed != 1 || result.Unchanged != 1 {
+		t.Fatalf("unexpected duplicate-unset summary: %+v", result)
+	}
+
+	if result.Operations[0].Status != "unset" ||
+		result.Operations[1].Status != "unchanged" {
+		t.Fatalf("unexpected duplicate-unset statuses: %+v", result.Operations)
+	}
+
+	if getProjectSetting(t, session, viewportWidthSetting).Overridden {
+		t.Fatal("expected the override to be removed")
+	}
+}
+
+func TestProjectSettingsApplySetToDefaultClearsOverrideState(t *testing.T) {
+	session := requireSuite(t)
+
+	restoreSetting(t, session, viewportWidthSetting)
+	setProjectSetting(
+		t,
+		session,
+		viewportWidthSetting,
+		json.RawMessage(`1024`),
+	)
+
+	result, err := settings.Apply(session.Root(), settings.ApplyParams{
+		Operations: []settings.ApplyOperation{
+			{
+				Operation: "set",
+				Setting:   viewportWidthSetting,
+				Value:     json.RawMessage(`1152`),
+			},
+			{Operation: "unset", Setting: viewportWidthSetting},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected set-to-default then unset to succeed: %v", err)
+	}
+
+	if result.Changed != 1 || result.Unchanged != 1 {
+		t.Fatalf("unexpected set-to-default summary: %+v", result)
+	}
+
+	if result.Operations[1].Status != "unchanged" {
+		t.Fatalf(
+			"expected unset after set-to-default to be unchanged: %+v",
+			result.Operations,
+		)
+	}
+
+	if getProjectSetting(t, session, viewportWidthSetting).Overridden {
+		t.Fatal("expected setting the default value to clear the override")
+	}
+}
+
+func TestProjectSettingsApplyAddonRejectsExclusiveFields(t *testing.T) {
+	session := requireSuite(t)
+
+	_, err := bridge.Call[settings.ApplyParams, settings.ApplyResult](
+		session.Client,
+		settings.ApplyName,
+		settings.ApplyParams{
+			Operations: []settings.ApplyOperation{
+				{
+					Operation: "unset",
+					Setting:   viewportWidthSetting,
+					Value:     json.RawMessage(`1`),
+				},
+			},
+		},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+
+	var apiError *bridge.APIError
+
+	if !errors.As(err, &apiError) ||
+		!strings.Contains(apiError.Message, "does not accept value") {
+		t.Fatalf("expected an addon field exclusivity error, got %v", err)
+	}
+}
+
+func TestProjectSettingsApplyNoOpDoesNotRewriteProjectFile(t *testing.T) {
+	session := requireSuite(t)
+
+	restoreSetting(t, session, viewportWidthSetting)
+
+	before := projectFileModTime(t, session)
+
+	time.Sleep(20 * time.Millisecond)
+
+	if _, err := settings.Apply(session.Root(), settings.ApplyParams{
+		Operations: []settings.ApplyOperation{
+			{
+				Operation: "set",
+				Setting:   viewportWidthSetting,
+				Value:     json.RawMessage(`800`),
+			},
+		},
+	}); err != nil {
+		t.Fatalf("expected the no-op batch to succeed: %v", err)
+	}
+
+	if after := projectFileModTime(t, session); !after.Equal(before) {
+		t.Fatalf(
+			"all-no-op batch rewrote project.godot: before %s, after %s",
+			before,
+			after,
+		)
+	}
+}
+
+func projectFileModTime(t *testing.T, session *harness.Session) time.Time {
+	t.Helper()
+
+	info, err := os.Stat(filepath.Join(session.Root(), "project.godot"))
+	if err != nil {
+		t.Fatalf("stating project.godot: %v", err)
+	}
+
+	return info.ModTime()
 }
 
 func TestProjectSettingsApplyRejectsOversizedBatch(t *testing.T) {

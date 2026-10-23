@@ -149,9 +149,12 @@ func newResourceApplyCommand() *cobra.Command {
 		Use:   "apply",
 		Short: core.ResourceApply.Description,
 		Long: "Apply an ordered batch of resource create, set, and delete operations. " +
-			"Every operation is validated before anything is written; dry_run validates the full batch without writing. " +
-			"If a write fails after earlier operations, those files are restored and the error names the failed operation. " +
-			"Accepts 1-100 operations. This batch is domain-local: it makes no promise that resource and project-setting or Input Map changes happen together. " +
+			"Every operation is validated and applied in order; dry_run validates the full batch without writing. " +
+			"Resources created earlier in a batch can be referenced by later create and set operations in both preview and apply mode. " +
+			"Deletes check references introduced by earlier create/set operations as well as references already on disk; this tracking is conservative, so removing a reference earlier in the same batch can still block a later delete. " +
+			"If a write fails after earlier operations, all affected files are restored on a best-effort basis and the error names the failed operation; a rollback failure returns internal_error. " +
+			"Accepts 1-100 operations. dry_run may still run custom Resource scripts and property setters in memory, so scripts with external side effects are not side-effect free. " +
+			"This batch is domain-local: it makes no promise that resource and project-setting or Input Map changes happen together. " +
 			"Does not require an active scene and is not an editor undo step.",
 		Example:     `godot-cli resource apply --operations '[{"operation":"create","resource":"res://materials/metal.tres","type":"StandardMaterial3D"},{"operation":"set","resource":"res://materials/metal.tres","properties":{"roughness":0.4}}]'`,
 		Annotations: map[string]string{skill.ActionKey: core.ResourceApply.Name},

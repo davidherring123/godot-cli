@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/davidherring123/godot-cli/internal/core/batch"
 	"github.com/davidherring123/godot-cli/internal/core/bridge"
@@ -250,6 +251,176 @@ func TestInputMapApplyReportsInvalidOperation(t *testing.T) {
 		if !strings.Contains(apiError.Message, expected) {
 			t.Fatalf("expected %q in %q", expected, apiError.Message)
 		}
+	}
+}
+
+func TestInputMapApplyRejectsFieldsFromOtherOperations(t *testing.T) {
+	deadzone := 0.2
+	event := input.Event{
+		Type:            input.EventTypeKey,
+		PhysicalKeycode: intPtr(32),
+	}
+	index := 0
+
+	cases := []struct {
+		name      string
+		operation input.ApplyOperation
+		field     string
+	}{
+		{
+			name: "add with new_name",
+			operation: input.ApplyOperation{
+				Operation: "add",
+				Action:    "jump",
+				NewName:   "leap",
+			},
+			field: "new_name",
+		},
+		{
+			name: "set with event",
+			operation: input.ApplyOperation{
+				Operation: "set",
+				Action:    "jump",
+				Deadzone:  &deadzone,
+				Event:     &event,
+			},
+			field: "event",
+		},
+		{
+			name: "rename with deadzone",
+			operation: input.ApplyOperation{
+				Operation: "rename",
+				Action:    "jump",
+				NewName:   "leap",
+				Deadzone:  &deadzone,
+			},
+			field: "deadzone",
+		},
+		{
+			name: "delete with index",
+			operation: input.ApplyOperation{
+				Operation: "delete",
+				Action:    "jump",
+				Index:     &index,
+			},
+			field: "index",
+		},
+		{
+			name: "event_add with deadzone",
+			operation: input.ApplyOperation{
+				Operation: "event_add",
+				Action:    "jump",
+				Deadzone:  &deadzone,
+				Event:     &event,
+			},
+			field: "deadzone",
+		},
+		{
+			name: "event_delete with event",
+			operation: input.ApplyOperation{
+				Operation: "event_delete",
+				Action:    "jump",
+				Index:     &index,
+				Event:     &event,
+			},
+			field: "event",
+		},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			_, err := input.Apply("", input.ApplyParams{
+				Operations: []input.ApplyOperation{testCase.operation},
+			})
+
+			assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+
+			var apiError *bridge.APIError
+
+			if !errors.As(err, &apiError) {
+				t.Fatalf("expected an API error, got %v", err)
+			}
+
+			if !strings.Contains(apiError.Message, "does not accept") ||
+				!strings.Contains(apiError.Message, testCase.field) {
+				t.Fatalf(
+					"expected a field exclusivity error for %s, got %q",
+					testCase.field,
+					apiError.Message,
+				)
+			}
+		})
+	}
+}
+
+func TestInputMapApplyAddonRejectsExclusiveFields(t *testing.T) {
+	session := requireSuite(t)
+
+	_, err := bridge.Call[input.ApplyParams, input.ApplyResult](
+		session.Client,
+		input.ApplyName,
+		input.ApplyParams{
+			Operations: []input.ApplyOperation{
+				{
+					Operation: "add",
+					Action:    "cli_test_batch_addon_fields",
+					NewName:   "leap",
+				},
+			},
+		},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+
+	var apiError *bridge.APIError
+
+	if !errors.As(err, &apiError) ||
+		!strings.Contains(apiError.Message, "does not accept new_name") {
+		t.Fatalf("expected an addon field exclusivity error, got %v", err)
+	}
+}
+
+func TestInputMapApplyNoOpDoesNotRewriteProjectFile(t *testing.T) {
+	session := requireSuite(t)
+	name := "cli_test_batch_noop"
+
+	deleteAction(t, session, name)
+	t.Cleanup(func() { deleteAction(t, session, name) })
+
+	if _, err := input.Add(session.Root(), input.AddParams{
+		Action:   name,
+		Deadzone: floatPtr(0.3),
+	}); err != nil {
+		t.Fatalf("seeding the no-op action: %v", err)
+	}
+
+	before := projectFileModTime(t, session)
+
+	time.Sleep(20 * time.Millisecond)
+
+	result, err := input.Apply(session.Root(), input.ApplyParams{
+		Operations: []input.ApplyOperation{
+			{
+				Operation: "set",
+				Action:    name,
+				Deadzone:  floatPtr(0.3),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected the no-op batch to succeed: %v", err)
+	}
+
+	if result.Changed != 0 || result.Unchanged != 1 {
+		t.Fatalf("unexpected no-op summary: %+v", result)
+	}
+
+	if after := projectFileModTime(t, session); !after.Equal(before) {
+		t.Fatalf(
+			"all-no-op batch rewrote project.godot: before %s, after %s",
+			before,
+			after,
+		)
 	}
 }
 

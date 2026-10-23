@@ -193,7 +193,7 @@ var (
 	)
 	ResourceApply = define[resource.ApplyParams, resource.ApplyResult](
 		resource.ApplyName,
-		"Apply ordered resource create, set, and delete operations with prevalidation, optional dry_run, and rollback of this domain's writes on failure",
+		"Apply ordered resource create, set, and delete operations with in-order validation, optional dry_run, and best-effort rollback of this domain's writes on failure",
 		resource.Apply,
 	)
 	ProjectSettingsList = define[settings.ListParams, settings.ListResult](
@@ -220,7 +220,7 @@ var (
 	)
 	ProjectSettingsApply = define[settings.ApplyParams, settings.ApplyResult](
 		settings.ApplyName,
-		"Apply ordered project-setting set and unset operations with prevalidation, optional dry_run, and one rollback-safe project.godot save",
+		"Apply ordered project-setting set and unset operations with in-order validation, optional dry_run, and a single project.godot save with best-effort rollback on save failure",
 		settings.Apply,
 	)
 	InputList        = define[input.ListParams, input.ListResult](input.ListName, "List Input Map actions", input.List, withReadOnly())
@@ -231,9 +231,9 @@ var (
 	InputDelete      = define[input.DeleteParams, input.DeleteResult](input.DeleteName, "Delete an Input Map action and save project.godot immediately", input.Delete)
 	InputEventAdd    = define[input.EventAddParams, input.EventAddResult](input.EventAddName, "Add a binding to an Input Map action and save project.godot immediately", input.EventAdd, withAdditive())
 	InputEventDelete = define[input.EventDeleteParams, input.EventDeleteResult](input.EventDeleteName, "Remove a binding from an Input Map action and save project.godot immediately", input.EventDelete)
-	InputMapApply = define[input.ApplyParams, input.ApplyResult](
+	InputMapApply    = define[input.ApplyParams, input.ApplyResult](
 		input.ApplyName,
-		"Apply ordered Input Map action and binding mutations with prevalidation, optional dry_run, and one rollback-safe project.godot save",
+		"Apply ordered Input Map action and binding mutations with in-order validation, optional dry_run, and a single project.godot save with best-effort rollback on save failure",
 		input.Apply,
 	)
 	RuntimeStart = define[runtime.StartParams, runtime.StatusResult](

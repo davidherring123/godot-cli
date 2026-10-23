@@ -237,7 +237,8 @@ func newInputApplyCommand() *cobra.Command {
 		Short: core.InputMapApply.Description,
 		Long: "Apply an ordered batch of Input Map action and binding operations: add, set, rename, delete, event_add, and event_delete. " +
 			"Every operation is validated in order against the editor's Input Map, then applied in memory and saved to project.godot once. " +
-			"dry_run runs the same validation without saving. If saving fails, in-memory state and project.godot are restored. " +
+			"dry_run runs the same validation without saving and without reloading the Input Map. An all-no-op batch does not rewrite project.godot. " +
+			"If saving fails, in-memory state and project.godot are restored on a best-effort basis; a rollback failure returns internal_error. " +
 			"Accepts 1-100 operations. Binding indexes refer to the state after earlier operations in the same batch. " +
 			"This batch is domain-local and makes no promise that Input Map, resource, or project-setting changes happen together. " +
 			"This is a direct project-file change, not an editor undo step.",

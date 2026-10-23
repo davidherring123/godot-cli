@@ -11,8 +11,11 @@ import (
 // project_settings_apply.
 const ApplyName = "project.settings.apply"
 
-// Apply runs ordered project-setting mutations. The addon validates every
-// operation, applies them in memory, and saves project.godot once.
+// Apply runs ordered project-setting mutations. The addon validates and
+// applies operations in order against batch-local override state, saves
+// project.godot once, and skips the save when every operation is a no-op. A
+// save failure restores in-memory state and attempts to restore the file; a
+// rollback failure is reported as internal_error.
 func Apply(projectRoot string, params ApplyParams) (ApplyResult, error) {
 	if err := validateApply(params); err != nil {
 		return ApplyResult{}, err

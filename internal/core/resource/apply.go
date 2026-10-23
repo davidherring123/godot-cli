@@ -11,9 +11,11 @@ import (
 // resource_apply.
 const ApplyName = "resource.apply"
 
-// Apply runs ordered resource mutations. The addon validates every operation
-// before writing, then applies them in order and restores affected files when
-// a later write fails.
+// Apply runs ordered resource mutations. The addon validates operations in
+// order, resolves references to resources created earlier in the batch, and
+// applies writes only after a no-write preview pass. If a later write fails,
+// every affected file is restored on a best-effort basis and a rollback failure
+// is reported as internal_error.
 func Apply(projectRoot string, params ApplyParams) (ApplyResult, error) {
 	if err := validateApply(params); err != nil {
 		return ApplyResult{}, err
@@ -62,6 +64,15 @@ func validateApply(params ApplyParams) error {
 					operation.Operation,
 					target,
 					"A resource path is required",
+				)
+			}
+
+			if operation.Type != "" {
+				return batch.InvalidOperation(
+					index,
+					operation.Operation,
+					target,
+					"set does not accept a type",
 				)
 			}
 

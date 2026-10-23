@@ -103,7 +103,8 @@ func defaultInstructions(projectRoot string) string {
 		"Scene and node edits are undoable: set save=true once after a batch of edits, not after every change. " +
 		"Resource, project-setting, and Input Map tools save immediately and have no save argument. " +
 		"Use resource_apply, project_settings_apply, and input_map_apply for ordered domain batches of up to 100 operations; " +
-		"each supports dry_run, reports per-operation diagnostics, and rolls back within its own domain on failure. " +
+		"each supports dry_run, reports per-operation diagnostics, and attempts best-effort rollback within its own domain on failure. " +
+		"Rollback failures return internal_error because the editor may be partially changed. " +
 		"Batches are never atomic across domains: apply resource, project-setting, and Input Map batches separately. " +
 		"Tool results are JSON unless an image content block is explicitly available."
 }

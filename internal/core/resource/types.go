@@ -59,13 +59,13 @@ type DeleteResult struct {
 type ApplyOperation struct {
 	Operation  string                     `json:"operation" jsonschema:"enum=create,enum=set,enum=delete,description=Operation kind."`
 	Resource   string                     `json:"resource" jsonschema:"minLength=1,description=Resource file path such as res://materials/metal.tres."`
-	Type       string                     `json:"type,omitempty" jsonschema:"description=Resource class for create, such as StandardMaterial3D."`
+	Type       string                     `json:"type,omitempty" jsonschema:"minLength=1,description=Resource class for create, such as StandardMaterial3D."`
 	Properties map[string]json.RawMessage `json:"properties,omitempty" jsonschema:"description=Property values for create or set; uses the same JSON values as resource.create and resource.set."`
 }
 
 type ApplyParams struct {
 	Operations []ApplyOperation `json:"operations" jsonschema:"minItems=1,maxItems=100,description=Ordered resource operations to validate and apply."`
-	DryRun     bool             `json:"dry_run,omitempty" jsonschema:"description=Validate the full batch without writing any file."`
+	DryRun     bool             `json:"dry_run,omitempty" jsonschema:"description=Validate the full batch without writing any file. Previews resolve references to resources created earlier in the same batch; custom Resource scripts and setters still run in memory."`
 }
 
 type ApplyOperationSummary struct {
@@ -79,7 +79,7 @@ type ApplyOperationSummary struct {
 
 type ApplyResult struct {
 	DryRun         bool                    `json:"dry_run"`
-	Applied        bool                    `json:"applied" jsonschema:"description=Whether the batch committed; false for a dry run."`
+	Applied        bool                    `json:"applied" jsonschema:"description=Whether the batch ran in apply mode; false for a dry run."`
 	OperationCount int                     `json:"operation_count"`
 	Changed        int                     `json:"changed" jsonschema:"description=Number of operations that changed the resource state."`
 	Unchanged      int                     `json:"unchanged"`

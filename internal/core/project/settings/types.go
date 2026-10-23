@@ -70,7 +70,7 @@ type ApplyOperation struct {
 
 type ApplyParams struct {
 	Operations []ApplyOperation `json:"operations" jsonschema:"minItems=1,maxItems=100,description=Ordered project-setting operations to validate and apply."`
-	DryRun     bool             `json:"dry_run,omitempty" jsonschema:"description=Validate the full batch without saving project.godot."`
+	DryRun     bool             `json:"dry_run,omitempty" jsonschema:"description=Validate the full batch without saving project.godot. Override state is simulated in memory, so later unset operations see earlier sets in the same batch."`
 }
 
 type ApplyOperationSummary struct {
@@ -84,7 +84,7 @@ type ApplyOperationSummary struct {
 
 type ApplyResult struct {
 	DryRun         bool                    `json:"dry_run"`
-	Applied        bool                    `json:"applied" jsonschema:"description=Whether project.godot was saved; false for a dry run."`
+	Applied        bool                    `json:"applied" jsonschema:"description=Whether the batch ran in apply mode; false for a dry run. An all-no-op batch does not rewrite project.godot."`
 	OperationCount int                     `json:"operation_count"`
 	Changed        int                     `json:"changed" jsonschema:"description=Number of operations that changed a setting."`
 	Unchanged      int                     `json:"unchanged"`

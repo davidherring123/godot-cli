@@ -2,6 +2,7 @@ package mcp_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,6 +47,73 @@ func TestServerExposesDomainBatchTools(t *testing.T) {
 	} {
 		if !found[name] {
 			t.Errorf("tool %q is not exposed", name)
+		}
+	}
+}
+
+func TestDomainBatchToolSchemasDeclareBounds(t *testing.T) {
+	root := t.TempDir()
+
+	if err := os.WriteFile(
+		filepath.Join(root, "project.godot"),
+		[]byte("[application]\n"),
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	session := connectMCP(t, root, []core.ActionDefinition{
+		core.ResourceApply,
+		core.ProjectSettingsApply,
+		core.InputMapApply,
+	})
+
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("listing tools: %v", err)
+	}
+
+	expectations := map[string][]string{
+		"resource_apply": {
+			`"minItems":1`,
+			`"maxItems":100`,
+			`"minLength":1`,
+		},
+		"project_settings_apply": {
+			`"minItems":1`,
+			`"maxItems":100`,
+			`"minLength":1`,
+		},
+		"input_map_apply": {
+			`"minItems":1`,
+			`"maxItems":100`,
+			`"minLength":1`,
+			`"minimum":0`,
+			`"maximum":1`,
+		},
+	}
+
+	for _, tool := range tools.Tools {
+		expected, ok := expectations[tool.Name]
+
+		if !ok {
+			continue
+		}
+
+		data, err := json.Marshal(tool.InputSchema)
+		if err != nil {
+			t.Fatalf("encoding the %s schema: %v", tool.Name, err)
+		}
+
+		for _, fragment := range expected {
+			if !strings.Contains(string(data), fragment) {
+				t.Errorf(
+					"%s schema is missing %s:\n%s",
+					tool.Name,
+					fragment,
+					data,
+				)
+			}
 		}
 	}
 }

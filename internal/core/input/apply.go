@@ -6,12 +6,16 @@ import (
 	"github.com/davidherring123/godot-cli/internal/core/batch"
 )
 
-// ApplyName is the ordered Input Map batch action. MCP exposes it as
-// input_map_apply.
+// ApplyName is the ordered Input Map batch action. The CLI exposes it as
+// "input apply" and MCP exposes it as input_map_apply; the map_apply suffix
+// keeps the Input Map domain visible in the action name.
 const ApplyName = "input.map_apply"
 
-// Apply runs ordered Input Map mutations. The addon validates every operation,
-// applies them in memory, and saves project.godot once.
+// Apply runs ordered Input Map mutations. The addon validates and applies
+// operations in order, saves project.godot once, and skips the save (and live
+// Input Map reload) when every operation is a no-op. A save failure restores
+// in-memory state and attempts to restore the file; a rollback failure is
+// reported as internal_error.
 func Apply(projectRoot string, params ApplyParams) (ApplyResult, error) {
 	if err := validateApply(params); err != nil {
 		return ApplyResult{}, err
@@ -44,6 +48,10 @@ func validateApplyOperation(index int, operation ApplyOperation) error {
 			target,
 			"An action name is required",
 		)
+	}
+
+	if err := validateApplyFields(index, operation); err != nil {
+		return err
 	}
 
 	switch operation.Operation {
@@ -110,6 +118,54 @@ func validateApplyOperation(index int, operation ApplyOperation) error {
 	}
 
 	return nil
+}
+
+// applyOperationForbiddenFields lists the fields owned by other operations.
+// The addon performs the same check so direct bridge callers get the same
+// errors.
+var applyOperationForbiddenFields = map[string][]string{
+	"add":          {"new_name", "event", "index"},
+	"set":          {"new_name", "event", "index"},
+	"rename":       {"deadzone", "event", "index"},
+	"delete":       {"deadzone", "new_name", "event", "index"},
+	"event_add":    {"deadzone", "new_name", "index"},
+	"event_delete": {"deadzone", "new_name", "event"},
+}
+
+func validateApplyFields(index int, operation ApplyOperation) error {
+	for _, field := range applyOperationForbiddenFields[operation.Operation] {
+		if !applyFieldPresent(operation, field) {
+			continue
+		}
+
+		return batch.InvalidOperation(
+			index,
+			operation.Operation,
+			operation.Action,
+			fmt.Sprintf(
+				"%s does not accept %s",
+				operation.Operation,
+				field,
+			),
+		)
+	}
+
+	return nil
+}
+
+func applyFieldPresent(operation ApplyOperation, field string) bool {
+	switch field {
+	case "deadzone":
+		return operation.Deadzone != nil
+	case "new_name":
+		return operation.NewName != ""
+	case "event":
+		return operation.Event != nil
+	case "index":
+		return operation.Index != nil
+	default:
+		return false
+	}
 }
 
 func validateApplyDeadzone(index int, operation ApplyOperation) error {

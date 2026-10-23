@@ -2,6 +2,8 @@ class_name ProjectSettingsService
 extends ActionService
 
 var defer_save := false
+var batch_overrides: Dictionary = {}
+var track_overrides := false
 
 func get_actions() -> Dictionary:
     return {
@@ -92,10 +94,24 @@ func set_setting_action(request: Request) -> Response:
 
     ProjectSettings.set_setting(name, converted)
 
+    if track_overrides:
+        # project.godot omits values that match the engine default, so a set
+        # back to the default clears the override in the simulated batch state.
+        if converted == default:
+            batch_overrides.erase(name)
+        else:
+            batch_overrides[name] = true
+
     var save_error := _save()
 
     if save_error != null:
         ProjectSettings.set_setting(name, previous)
+
+        if track_overrides:
+            if overridden:
+                batch_overrides[name] = true
+            else:
+                batch_overrides.erase(name)
 
         return save_error
 
@@ -136,10 +152,16 @@ func unset_setting_action(request: Request) -> Response:
 
     ProjectSettings.set_setting(name, default)
 
+    if track_overrides:
+        batch_overrides.erase(name)
+
     var save_error := _save()
 
     if save_error != null:
         ProjectSettings.set_setting(name, previous)
+
+        if track_overrides:
+            batch_overrides[name] = true
 
         return save_error
 
@@ -175,7 +197,17 @@ func apply(request: Request) -> Response:
         else PackedByteArray()
     )
     var summaries: Array = []
+    var allowed_fields := {
+        "set": ["operation", "setting", "value"],
+        "unset": ["operation", "setting"],
+    }
 
+    # A batch has to reason about overrides as it goes: project.godot is not
+    # saved until the end, so reading the file after every operation would
+    # ignore earlier set/unset operations in this same batch.
+    track_overrides = false
+    batch_overrides = _overrides()
+    track_overrides = true
     defer_save = true
 
     for index in operations.size():
@@ -187,7 +219,7 @@ func apply(request: Request) -> Response:
                 "Each operation must be an object"
             )
 
-            defer_save = false
+            _end_batch()
             _restore_settings(snapshot)
             return batch_operation_failure(
                 index,
@@ -199,6 +231,23 @@ func apply(request: Request) -> Response:
 
         var kind := str(operation.get("operation", ""))
         var target := str(operation.get("setting", ""))
+        var field_error := validate_operation_fields(
+            index,
+            operation,
+            allowed_fields
+        )
+
+        if field_error != null:
+            _end_batch()
+            _restore_settings(snapshot)
+            return batch_operation_failure(
+                index,
+                operation,
+                target,
+                field_error,
+                "no changes were saved"
+            )
+
         var response: Response
 
         match kind:
@@ -217,7 +266,7 @@ func apply(request: Request) -> Response:
                 )
 
         if not response.code.is_empty():
-            defer_save = false
+            _end_batch()
             _restore_settings(snapshot)
             return batch_operation_failure(
                 index,
@@ -229,32 +278,58 @@ func apply(request: Request) -> Response:
 
         summaries.append(_apply_operation_summary(index, operation, response.result))
 
-    defer_save = false
-
     if dry_run_requested:
+        _end_batch()
         _restore_settings(snapshot)
         return Response.success(_apply_summary(summaries, true, false))
+
+    if _apply_changed_count(summaries) == 0:
+        _end_batch()
+        return Response.success(_apply_summary(summaries, false, true))
 
     var save_error := ProjectSettings.save()
 
     if save_error != OK:
         _restore_settings(snapshot)
         var restore_error := _restore_project_file(project_existed, project_snapshot)
-        var suffix := "restored project.godot and in-memory state"
+
+        _end_batch()
 
         if not restore_error.is_empty():
-            suffix = "rollback failed: %s" % restore_error
+            return Response.failure(
+                ErrorCode.INTERNAL_ERROR,
+                "Could not save project.godot after %d operation(s): %s; rollback failed: %s" % [
+                    summaries.size(),
+                    error_string(save_error),
+                    restore_error,
+                ]
+            )
 
         return Response.failure(
             ErrorCode.ACTION_FAILED,
-            "Could not save project.godot after %d operation(s): %s; %s" % [
+            "Could not save project.godot after %d operation(s): %s; restored project.godot and in-memory state" % [
                 summaries.size(),
                 error_string(save_error),
-                suffix,
             ]
         )
 
+    _end_batch()
+
     return Response.success(_apply_summary(summaries, false, true))
+
+func _end_batch() -> void:
+    defer_save = false
+    track_overrides = false
+    batch_overrides.clear()
+
+func _apply_changed_count(results: Array) -> int:
+    var changed := 0
+
+    for result in results:
+        if bool(result.get("changed", false)):
+            changed += 1
+
+    return changed
 
 func _apply_operation_summary(
     index: int,
@@ -412,6 +487,9 @@ func _find_definition(name: String) -> Dictionary:
     return {}
 
 func _overrides() -> Dictionary:
+    if track_overrides:
+        return batch_overrides
+
     var overrides := {}
     var config := ConfigFile.new()
 

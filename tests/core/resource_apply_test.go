@@ -265,3 +265,280 @@ func TestResourceApplyReportsInvalidOperationIndex(t *testing.T) {
 		}
 	}
 }
+
+func TestResourceApplyReferencesEarlierCreatedResource(t *testing.T) {
+	session := requireSuite(t)
+	texture := "res://cases/resource_apply_created_reference/texture.tres"
+	atlas := "res://cases/resource_apply_created_reference/atlas.tres"
+
+	operations := []resource.ApplyOperation{
+		{
+			Operation: "create",
+			Resource:  texture,
+			Type:      "PlaceholderTexture2D",
+		},
+		{
+			Operation: "create",
+			Resource:  atlas,
+			Type:      "AtlasTexture",
+			Properties: map[string]json.RawMessage{
+				"atlas": json.RawMessage(
+					`{"resource":"` + texture + `"}`,
+				),
+			},
+		},
+	}
+
+	dryRun, err := resource.Apply(session.Root(), resource.ApplyParams{
+		Operations: operations,
+		DryRun:     true,
+	})
+	if err != nil {
+		t.Fatalf("expected a dry run referencing an earlier create: %v", err)
+	}
+
+	if dryRun.Changed != 2 {
+		t.Fatalf("unexpected dry-run summary: %+v", dryRun)
+	}
+
+	if dryRun.Operations[1].Type != "AtlasTexture" {
+		t.Fatalf("unexpected preview type: %+v", dryRun.Operations[1])
+	}
+
+	for _, path := range []string{texture, atlas} {
+		if _, err := os.Stat(resourceFilesystemPath(session, path)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("dry run wrote %s: %v", path, err)
+		}
+	}
+
+	applied, err := resource.Apply(session.Root(), resource.ApplyParams{
+		Operations: operations,
+	})
+	if err != nil {
+		t.Fatalf("expected apply to reference an earlier create: %v", err)
+	}
+
+	if !applied.Applied || applied.Changed != 2 {
+		t.Fatalf("unexpected apply summary: %+v", applied)
+	}
+
+	text := readResourceFile(t, session, atlas)
+
+	if !strings.Contains(text, texture) {
+		t.Fatalf("expected the atlas to reference %s:\n%s", texture, text)
+	}
+}
+
+func TestResourceApplyDeleteRejectsCreatedReference(t *testing.T) {
+	session := requireSuite(t)
+	texture := "res://cases/resource_apply_created_reference_delete/texture.tres"
+	atlas := "res://cases/resource_apply_created_reference_delete/atlas.tres"
+
+	operations := []resource.ApplyOperation{
+		{
+			Operation: "create",
+			Resource:  texture,
+			Type:      "PlaceholderTexture2D",
+		},
+		{
+			Operation: "create",
+			Resource:  atlas,
+			Type:      "AtlasTexture",
+			Properties: map[string]json.RawMessage{
+				"atlas": json.RawMessage(
+					`{"resource":"` + texture + `"}`,
+				),
+			},
+		},
+		{
+			Operation: "delete",
+			Resource:  texture,
+		},
+	}
+
+	for _, dryRun := range []bool{true, false} {
+		_, err := resource.Apply(session.Root(), resource.ApplyParams{
+			Operations: operations,
+			DryRun:     dryRun,
+		})
+
+		assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+
+		var apiError *bridge.APIError
+
+		if !errors.As(err, &apiError) {
+			t.Fatalf("expected an API error, got %v", err)
+		}
+
+		for _, expected := range []string{"operation 2", "still referenced", atlas} {
+			if !strings.Contains(apiError.Message, expected) {
+				t.Fatalf(
+					"dry_run=%t: expected %q in %q",
+					dryRun,
+					expected,
+					apiError.Message,
+				)
+			}
+		}
+
+		for _, path := range []string{texture, atlas} {
+			if _, err := os.Stat(resourceFilesystemPath(session, path)); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("dry_run=%t wrote %s: %v", dryRun, path, err)
+			}
+		}
+	}
+}
+
+func TestResourceApplyDeleteRejectsSetReference(t *testing.T) {
+	session := requireSuite(t)
+	texture := "res://cases/resource_apply_set_reference/texture.tres"
+	atlas := "res://cases/resource_apply_set_reference/atlas.tres"
+	before := readResourceFile(t, session, atlas)
+
+	operations := []resource.ApplyOperation{
+		{
+			Operation: "create",
+			Resource:  texture,
+			Type:      "PlaceholderTexture2D",
+		},
+		{
+			Operation: "set",
+			Resource:  atlas,
+			Properties: map[string]json.RawMessage{
+				"atlas": json.RawMessage(
+					`{"resource":"` + texture + `"}`,
+				),
+			},
+		},
+		{
+			Operation: "delete",
+			Resource:  texture,
+		},
+	}
+
+	for _, dryRun := range []bool{true, false} {
+		_, err := resource.Apply(session.Root(), resource.ApplyParams{
+			Operations: operations,
+			DryRun:     dryRun,
+		})
+
+		assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+
+		var apiError *bridge.APIError
+
+		if !errors.As(err, &apiError) {
+			t.Fatalf("expected an API error, got %v", err)
+		}
+
+		for _, expected := range []string{"operation 2", "still referenced", atlas} {
+			if !strings.Contains(apiError.Message, expected) {
+				t.Fatalf(
+					"dry_run=%t: expected %q in %q",
+					dryRun,
+					expected,
+					apiError.Message,
+				)
+			}
+		}
+
+		if _, err := os.Stat(resourceFilesystemPath(session, texture)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("dry_run=%t wrote %s: %v", dryRun, texture, err)
+		}
+
+		if after := readResourceFile(t, session, atlas); after != before {
+			t.Fatalf(
+				"dry_run=%t changed the atlas fixture:\nbefore:\n%s\nafter:\n%s",
+				dryRun,
+				before,
+				after,
+			)
+		}
+	}
+}
+
+func TestResourceApplyAddonRejectsExclusiveFields(t *testing.T) {
+	session := requireSuite(t)
+
+	_, err := bridge.Call[resource.ApplyParams, resource.ApplyResult](
+		session.Client,
+		resource.ApplyName,
+		resource.ApplyParams{
+			Operations: []resource.ApplyOperation{
+				{
+					Operation: "set",
+					Resource:  "res://cases/resource_apply_addon_fields/material.tres",
+					Type:      "StandardMaterial3D",
+					Properties: map[string]json.RawMessage{
+						"roughness": json.RawMessage(`0.4`),
+					},
+				},
+			},
+		},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+
+	var apiError *bridge.APIError
+
+	if !errors.As(err, &apiError) ||
+		!strings.Contains(apiError.Message, "does not accept type") {
+		t.Fatalf("expected an addon field exclusivity error, got %v", err)
+	}
+}
+
+func TestResourceApplyRejectsFieldsFromOtherOperations(t *testing.T) {
+	cases := []struct {
+		name      string
+		operation resource.ApplyOperation
+		field     string
+	}{
+		{
+			name: "set with type",
+			operation: resource.ApplyOperation{
+				Operation: "set",
+				Resource:  "res://cases/resource_apply_fields/material.tres",
+				Type:      "StandardMaterial3D",
+				Properties: map[string]json.RawMessage{
+					"roughness": json.RawMessage(`0.4`),
+				},
+			},
+			field: "type",
+		},
+		{
+			name: "delete with properties",
+			operation: resource.ApplyOperation{
+				Operation: "delete",
+				Resource:  "res://cases/resource_apply_fields/material.tres",
+				Properties: map[string]json.RawMessage{
+					"roughness": json.RawMessage(`0.4`),
+				},
+			},
+			field: "properties",
+		},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			_, err := resource.Apply("", resource.ApplyParams{
+				Operations: []resource.ApplyOperation{testCase.operation},
+			})
+
+			assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+
+			var apiError *bridge.APIError
+
+			if !errors.As(err, &apiError) {
+				t.Fatalf("expected an API error, got %v", err)
+			}
+
+			if !strings.Contains(apiError.Message, "does not accept") ||
+				!strings.Contains(apiError.Message, testCase.field) {
+				t.Fatalf(
+					"expected a field exclusivity error for %s, got %q",
+					testCase.field,
+					apiError.Message,
+				)
+			}
+		})
+	}
+}

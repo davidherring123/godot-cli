@@ -21,6 +21,34 @@ func validate_batch_operations(value: Variant) -> Response:
 
     return null
 
+func validate_operation_fields(
+    index: int,
+    operation: Dictionary,
+    allowed: Dictionary
+) -> Response:
+    var kind := str(operation.get("operation", ""))
+
+    if not allowed.has(kind):
+        return null
+
+    var permitted: Array = allowed[kind]
+
+    for key in operation.keys():
+        if permitted.has(str(key)):
+            continue
+
+        return Response.failure(
+            ErrorCode.INVALID_ARGUMENT,
+            "operation %d (%s): %s does not accept %s" % [
+                index,
+                kind,
+                kind,
+                key,
+            ]
+        )
+
+    return null
+
 func batch_operation_failure(
     index: int,
     operation: Variant,

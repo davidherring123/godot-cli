@@ -80,9 +80,14 @@ script classes extending `Resource`; unknown, abstract, and non-resource types
 are rejected, and an existing file is never overwritten. `resource delete`
 fails and lists the project files that still reference the resource, so clear
 those references first. `resource apply` runs 1–100 ordered create, set, and
-delete operations, prevalidates the whole batch, and restores files written by
-earlier operations if a later write fails (rollback failures are reported);
-`--dry-run` validates without writing.
+delete operations, validates and applies them in order, and restores files
+written by earlier operations on a best-effort basis if a later write fails
+(rollback failures return `internal_error`). Later create/set operations may
+reference resources created earlier in the same batch, and deletes check the
+references introduced by those earlier operations as well as references already
+on disk. `--dry-run` validates without writing, but previews still instantiate
+resources and run property setters in memory, so custom Resource scripts with
+external side effects are not side-effect free.
 
 Project settings and the Input Map:
 
@@ -113,8 +118,11 @@ indexes come from `input inspect`. `input event add` accepts `key`,
 
 `project settings apply` and `input apply` run 1–100 ordered operations, validate
 the whole batch in order, apply changes in memory, and save `project.godot` once.
-A failed batch restores in-memory state and leaves no partial save (rollback
-failures are reported); `--dry-run` performs the same validation without saving.
+Set and unset operations in one batch see each other's override state (a set
+followed by unset removes the override, and a second unset reports unchanged).
+A failed batch attempts to restore in-memory state and `project.godot`;
+rollback failures return `internal_error`. All-no-op batches do not rewrite
+`project.godot`, and `input apply --dry-run` does not reload the Input Map.
 Input Map binding indexes refer to the state after earlier operations in the same
 batch. These batches are domain-local — they do not make resource,
 project-setting, and Input Map changes atomic with each other, and they do not

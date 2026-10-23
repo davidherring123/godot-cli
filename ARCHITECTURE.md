@@ -83,14 +83,29 @@ results are returned as both JSON text and structured content. Tool failures use
   (`define[...]` + `All()`) with typed schemas and an `Invoke` function; the
   registry feeds the agent skill docs and the MCP server.
 - Domain batch actions — `resource.apply`, `project.settings.apply`, and
-  `input.map_apply` — sit beside the granular actions and reuse their addon
-  handlers. They accept ordered operations (1–100), validate the full batch,
+  `input.map_apply` (MCP `resource_apply`, `project_settings_apply`,
+  `input_map_apply`) — sit beside the granular actions and reuse their addon
+  handlers. They accept ordered operations (1–100), validate and apply in order,
   support `dry_run`, and report the failed operation index. The resource batch
-  restores files written earlier in the batch and reports rollback failures;
-  the settings and Input Map batches apply in memory and save `project.godot`
-  once, restoring in-memory state and the file if the save fails. Atomicity is
-  per domain only, and none of the batches promise crash recovery mid-write;
-  never describe a resource, settings, and Input Map batch as one transaction.
+  resolves references to resources created earlier in the batch, checks deletes
+  against references introduced by earlier create/set operations, and restores
+  every affected file on a best-effort basis when a later write fails. The
+  settings and Input Map batches apply in memory and save `project.godot` once,
+  simulating setting override state during the batch and skipping the save for
+  all-no-op batches; Input Map dry runs do not reload the live map. Rollback
+  failures return `internal_error` because the editor may be partially changed.
+  Atomicity is per domain only, and none of the batches promise crash recovery
+  mid-write; never describe a resource, settings, and Input Map batch as one
+  transaction. Resource `dry_run` still instantiates resources and runs custom
+  Resource scripts and property setters in memory; batch-local reference
+  tracking derives dependencies from requested property values, so dependencies
+  synthesized inside a custom script are only visible after a real write.
+  Introduced references are remembered conservatively for the rest of the batch,
+  so a set that removes an earlier in-batch reference can still block a later
+  delete rather than risk inspecting untouched custom properties. The reference
+  check for unmodified files relies on the editor filesystem's dependency cache,
+  which can lag external edits. Document these as preview limitations rather than
+  promising a side-effect-free validation pass.
 - `internal/core/bridge` — editor discovery and TCP request/response transport
   used by core actions; defines the API errors also translated by MCP.
 - `internal/agent/mcp` — exposes `core.All()` over the Model Context Protocol.
@@ -143,7 +158,8 @@ results are returned as both JSON text and structured content. Tool failures use
   actions, both saving the project file immediately rather than as undo steps.
   Those services also implement their domain batch action by calling the same
   granular handlers with deferred saves and rollback; resource batches reuse
-  `resource_service.gd` handlers with a no-write validation pass.
+  `resource_service.gd` handlers with an in-memory preview pass, batch-local
+  resource references, and no file writes until apply.
 - Mutations go through `EditorUndoRedoManager` — every command is one undo step.
   Project settings and Input Map commands are the exception: they change
   `project.godot` directly and are not undoable.
