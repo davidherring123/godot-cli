@@ -953,9 +953,9 @@ func verifyProfileCatalog(profile string, tools []mcpToolInfo) error {
 			if present[name] {
 				return fmt.Errorf("legacy-mcp unexpectedly exposes %s", name)
 			}
-		case "improved-mcp":
+		case "improved-mcp", "normal-mcp", "hybrid-mcp":
 			if !present[name] {
-				return fmt.Errorf("improved-mcp does not expose %s", name)
+				return fmt.Errorf("%s does not expose %s", profile, name)
 			}
 		default:
 			return fmt.Errorf("unsupported MCP profile %q", profile)

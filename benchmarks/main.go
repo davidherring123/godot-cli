@@ -28,7 +28,7 @@ func main() {
 		"Benchmark approach: mcp, direct-files, or both",
 	)
 	flag.StringVar(&options.Task, "task", "playable_platformer", "Benchmark task")
-	flag.StringVar(&options.MCPProfile, "mcp-profile", "", "Controlled MCP profile: legacy-mcp or improved-mcp")
+	flag.StringVar(&options.MCPProfile, "mcp-profile", "", "Controlled MCP profile: legacy-mcp, improved-mcp, normal-mcp, or hybrid-mcp")
 	flag.StringVar(&options.GodotPath, "godot", "", "Godot executable (defaults to GODOT_BIN or PATH)")
 	flag.StringVar(&options.OpenCodePath, "opencode", "opencode", "OpenCode executable")
 	flag.StringVar(&options.ResultsDir, "results", "benchmarks/results", "Result directory")

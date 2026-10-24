@@ -265,6 +265,8 @@ func runBenchmark(
 		Task:       task.ID,
 		Approach:   options.Approach,
 		Model:      options.Model,
+		Agent:      options.Agent,
+		TimeoutMS:  options.Timeout.Milliseconds(),
 		MCPProfile: options.MCPProfile,
 	}
 	setupStartedAt := time.Now()
@@ -309,7 +311,7 @@ func runBenchmark(
 	result.SetupMS = time.Since(setupStartedAt).Milliseconds()
 
 	prepared := setup.prepared
-	prompt := taskPrompt(task, options.Approach)
+	prompt := taskPrompt(task, options.Approach, options.MCPProfile)
 
 	logf("Running OpenCode session %s", setup.sessionID)
 	agentStartedAt := time.Now()
@@ -728,24 +730,29 @@ func evaluateResult(input evaluationInput) evaluation {
 				"agent did not invoke godot-cli MCP tools",
 			)
 		}
-		result.TaskFailures = append(
-			result.TaskFailures,
-			directMutationViolations(
-				input.Result.Tools,
-				input.Result.ExecutedTools,
-				input.ToolObservationErr,
-				input.ProjectRoot,
-				input.Task.Semantic,
-			)...,
-		)
+		if input.Result.MCPProfile != agentmcp.BenchmarkProfileHybrid {
+			result.TaskFailures = append(
+				result.TaskFailures,
+				directMutationViolations(
+					input.Result.Tools,
+					input.Result.ExecutedTools,
+					input.ToolObservationErr,
+					input.ProjectRoot,
+					input.Task.Semantic,
+				)...,
+			)
+		}
 	}
 	return result
 }
 
-func taskPrompt(task taskDefinition, approach string) string {
+func taskPrompt(task taskDefinition, approach, profile string) string {
 	if approach == approachDirect {
 		return task.Goal + " Directly edit the Godot project files. " +
 			"Do not use godot-cli, the godot MCP server, or any MCP tools."
+	}
+	if profile == agentmcp.BenchmarkProfileHybrid {
+		return task.Goal + " Use the complete godot MCP toolset for Godot-aware inspection, validation, runtime feedback, and nuanced repairs. You may directly create or rewrite .tscn, .tres, project.godot, scripts, and shaders when that is the most coherent approach. Validate direct semantic-file writes through Godot. Do not invoke the godot-cli command-line executable."
 	}
 	return task.Goal + " Use the godot MCP tools exposed to this session for all " +
 		"scene inspection and changes. Do not edit .tscn files directly. " +
@@ -874,20 +881,8 @@ func collectArtifacts(
 			artifacts.ProfileManifestPath = target
 		}
 	}
-	if prepared.rawLogPath != "" {
-		target := filepath.Join(resultsDir, runName+"-run.log")
-		if copyFile(prepared.rawLogPath, target) == nil {
-			artifacts.RawLogPath = target
-		}
-	}
-	if preserveProject && prepared.projectRoot != "" {
-		target := filepath.Join(resultsDir, "projects", runName)
-		if _, err := os.Stat(target); errors.Is(err, os.ErrNotExist) {
-			if copyDirectory(prepared.projectRoot, target) == nil {
-				artifacts.ProjectPath = target
-			}
-		}
-	}
+	artifacts.RawLogPath = collectRawLogArtifact(resultsDir, runName, prepared.rawLogPath)
+	artifacts.ProjectPath = collectProjectArtifact(resultsDir, runName, prepared.projectRoot, preserveProject)
 	if artifacts.TracePath == "" &&
 		artifacts.MCPConfigPath == "" &&
 		artifacts.VerificationOutputPath == "" &&
@@ -897,6 +892,39 @@ func collectArtifacts(
 		return nil
 	}
 	return artifacts
+}
+
+func collectRawLogArtifact(resultsDir, runName, source string) string {
+	if source == "" {
+		return ""
+	}
+	target := filepath.Join(resultsDir, runName+"-run.log")
+	if copyRedactedFile(source, target) != nil {
+		return ""
+	}
+	return target
+}
+
+func collectProjectArtifact(resultsDir, runName, source string, preserve bool) string {
+	if !preserve || source == "" {
+		return ""
+	}
+	target := filepath.Join(resultsDir, "projects", runName)
+	if _, err := os.Stat(target); !errors.Is(err, os.ErrNotExist) {
+		return ""
+	}
+	if copyDirectory(source, target) != nil {
+		return ""
+	}
+	return target
+}
+
+func copyRedactedFile(source, destination string) error {
+	data, err := os.ReadFile(source)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(destination, []byte(redactSecrets(string(data))), 0o600)
 }
 
 func appendRunLog(path, text string) error {
@@ -921,7 +949,7 @@ func copyFile(source, destination string) error {
 	output, err := os.OpenFile(
 		destination,
 		os.O_CREATE|os.O_WRONLY|os.O_TRUNC,
-		0644,
+		0600,
 	)
 	if err != nil {
 		return err

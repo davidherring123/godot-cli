@@ -6,6 +6,8 @@ type benchmarkResult struct {
 	Task          string               `json:"task"`
 	Approach      string               `json:"approach"`
 	Model         string               `json:"model"`
+	Agent         string               `json:"agent"`
+	TimeoutMS     int64                `json:"timeoutMs"`
 	MCPProfile    string               `json:"mcpProfile,omitempty"`
 	SessionID     string               `json:"sessionId"`
 	Success       bool                 `json:"success"`

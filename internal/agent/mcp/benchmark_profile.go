@@ -9,6 +9,8 @@ import (
 const (
 	BenchmarkProfileLegacy   = "legacy-mcp"
 	BenchmarkProfileImproved = "improved-mcp"
+	BenchmarkProfileNormal   = "normal-mcp"
+	BenchmarkProfileHybrid   = "hybrid-mcp"
 )
 
 var legacyExcludedActions = map[string]bool{
@@ -48,19 +50,28 @@ func ResolveBenchmarkProfile(name, projectRoot string) (BenchmarkProfile, error)
 			profile.Actions = append(profile.Actions, action)
 		}
 		profile.Instructions = legacyInstructions(projectRoot)
-	case BenchmarkProfileImproved:
+	case BenchmarkProfileImproved, BenchmarkProfileNormal:
 		profile.Actions = core.All()
 		profile.Instructions = defaultInstructions(projectRoot)
+	case BenchmarkProfileHybrid:
+		profile.Actions = core.All()
+		profile.Instructions = hybridInstructions(projectRoot)
 	default:
 		return BenchmarkProfile{}, fmt.Errorf(
-			"unknown MCP benchmark profile %q (supported: %s, %s)",
+			"unknown MCP benchmark profile %q (supported: %s, %s, %s, %s)",
 			name,
 			BenchmarkProfileLegacy,
 			BenchmarkProfileImproved,
+			BenchmarkProfileNormal,
+			BenchmarkProfileHybrid,
 		)
 	}
 
 	return profile, nil
+}
+
+func hybridInstructions(projectRoot string) string {
+	return defaultInstructions(projectRoot) + "\n\nFor this hybrid benchmark, direct file writes are allowed for .tscn, .tres, and project.godot as well as scripts and shaders. Prefer coherent direct writes for broad construction when you know the serialization. Use MCP for Godot-aware inspection, import and validation, runtime screenshots and errors, live unsaved state, and reference-sensitive repairs. Validate direct writes through Godot before finishing."
 }
 
 // legacyInstructions is the pre-improvement guidance from commit 8ae1d8f. It
