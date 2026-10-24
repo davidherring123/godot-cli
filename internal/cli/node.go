@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/davidherring123/godot-cli/internal/agent/skill"
 	"github.com/davidherring123/godot-cli/internal/core"
 	"github.com/davidherring123/godot-cli/internal/core/node"
 	"github.com/davidherring123/godot-cli/internal/core/project"
@@ -39,12 +38,11 @@ func newNodeInspectCommand() *cobra.Command {
 	var sceneFlags editorSceneFlags
 	var properties []string
 	cmd := &cobra.Command{
-		Use:         "inspect <node>",
-		Short:       core.NodeInspect.Description,
-		Long:        "Inspect a node's editor-visible properties in the active scene, including unsaved changes. The node path is relative to the scene root (use . for the root). Does not switch scenes.",
-		Example:     "godot-cli node inspect .\ngodot-cli node inspect Player --property position --property visible --expect-scene res://main.tscn",
-		Annotations: map[string]string{skill.ActionKey: core.NodeInspect.Name},
-		Args:        cobra.ExactArgs(1),
+		Use:     "inspect <node>",
+		Short:   core.NodeInspect.Description,
+		Long:    "Inspect a node's editor-visible properties in the active scene, including unsaved changes. The node path is relative to the scene root (use . for the root). Does not switch scenes.",
+		Example: "godot-cli node inspect .\ngodot-cli node inspect Player --property position --property visible --expect-scene res://main.tscn",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return runProperties("", func(
 				project *project.Project,
@@ -122,12 +120,11 @@ func newNodeCommand(spec nodeCommandSpec) *cobra.Command {
 	var name string
 	var rawProperties string
 	cmd := &cobra.Command{
-		Use:         spec.use,
-		Short:       spec.short,
-		Long:        spec.long,
-		Example:     spec.example,
-		Annotations: map[string]string{skill.ActionKey: spec.action},
-		Args:        cobra.ExactArgs(strings.Count(spec.use, " ")),
+		Use:     spec.use,
+		Short:   spec.short,
+		Long:    spec.long,
+		Example: spec.example,
+		Args:    cobra.ExactArgs(strings.Count(spec.use, " ")),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runProperties(rawProperties, spec.parameters(cmd, args, name, flags))
 		},

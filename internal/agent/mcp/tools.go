@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/davidherring123/godot-cli/internal/core"
 	"github.com/davidherring123/godot-cli/internal/core/artifact"
@@ -48,6 +49,7 @@ func ToolName(action string) string {
 func addAction(
 	server *mcpgo.Server,
 	serializer *callSerializer,
+	tracer *callTracer,
 	projectRoot string,
 	action core.ActionDefinition,
 ) error {
@@ -95,7 +97,7 @@ func addAction(
 				OpenWorldHint:   &openWorld,
 			},
 		},
-		toolHandler(serializer, projectRoot, action),
+		toolHandler(serializer, tracer, projectRoot, action),
 	)
 
 	return nil
@@ -120,16 +122,30 @@ func objectSchema(actionName string, schema *jsonschema.Schema) (json.RawMessage
 
 func toolHandler(
 	serializer *callSerializer,
+	tracer *callTracer,
 	projectRoot string,
 	action core.ActionDefinition,
 ) mcpgo.ToolHandler {
 	return func(ctx context.Context, request *mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+		started := time.Now()
+
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 
 		if request == nil || request.Params == nil {
 			return errorResult(errors.New("missing tool request parameters")), nil
+		}
+
+		toolName := request.Params.Name
+		if toolName == "" {
+			toolName = ToolName(action.Name)
+		}
+
+		arguments := request.Params.Arguments
+
+		recordTrace := func(isError bool) {
+			tracer.record(toolName, arguments, isError, started)
 		}
 
 		// The MCP SDK dispatches requests concurrently, but the addon and the
@@ -148,7 +164,6 @@ func toolHandler(
 		}
 
 		finished := make(chan invocation, 1)
-		arguments := request.Params.Arguments
 
 		go func() {
 			result, err := action.Invoke(projectRoot, arguments)
@@ -159,43 +174,50 @@ func toolHandler(
 
 		select {
 		case outcome = <-finished:
+			result := callResult(action, outcome.result, outcome.err)
+
+			// Record before releasing the serializer so trace line order follows
+			// editor execution order. The trace write never changes the result
+			// or retries an already-applied mutation.
+			recordTrace(result.IsError)
 			serializer.release()
+
+			return result, nil
 		case <-ctx.Done():
+			// The client stopped waiting, but the action continues to keep the
+			// editor contract intact. Trace its real outcome when it finishes.
 			go func() {
-				<-finished
+				outcome := <-finished
+				recordTrace(callResult(action, outcome.result, outcome.err).IsError)
 				serializer.release()
 			}()
 
 			return nil, ctx.Err()
 		}
+	}
+}
 
-		if outcome.err != nil {
-			return errorResult(outcome.err), nil
-		}
+func callResult(action core.ActionDefinition, result any, callErr error) *mcpgo.CallToolResult {
+	if callErr != nil {
+		return errorResult(callErr)
+	}
 
-		text, err := json.MarshalIndent(outcome.result, "", "  ")
-		if err != nil {
-			return errorResult(fmt.Errorf("encoding %s result: %w", action.Name, err)), nil
-		}
+	text, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return errorResult(fmt.Errorf("encoding %s result: %w", action.Name, err))
+	}
 
-		content := []mcpgo.Content{&mcpgo.TextContent{Text: string(text)}}
-
-		if source, ok := outcome.result.(artifact.ImageSource); ok {
-			for _, image := range source.Images() {
-				if len(image.Data) == 0 || image.MIMEType == "" {
-					continue
-				}
-
-				content = append(content, &mcpgo.ImageContent{
-					MIMEType: image.MIMEType,
-					Data:     image.Data,
-				})
+	content := []mcpgo.Content{&mcpgo.TextContent{Text: string(text)}}
+	if source, ok := result.(artifact.ImageSource); ok {
+		for _, image := range source.Images() {
+			if len(image.Data) > 0 && image.MIMEType != "" {
+				content = append(content, &mcpgo.ImageContent{MIMEType: image.MIMEType, Data: image.Data})
 			}
 		}
+	}
 
-		return &mcpgo.CallToolResult{
-			Content:           content,
-			StructuredContent: outcome.result,
-		}, nil
+	return &mcpgo.CallToolResult{
+		Content:           content,
+		StructuredContent: result,
 	}
 }

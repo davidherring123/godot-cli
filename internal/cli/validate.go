@@ -4,8 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/agent/skill"
-	"github.com/davidherring123/godot-cli/internal/core"
 	"github.com/davidherring123/godot-cli/internal/core/validate"
 	"github.com/spf13/cobra"
 )
@@ -20,12 +18,11 @@ func NewValidateCommand() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:         "validate [scene]",
-		Short:       "Validate a scene by loading and running it in Godot",
-		Long:        "Load a scene in a fresh headless Godot process, run it briefly, and report load, script, resource, and early runtime errors as JSON. Uses the configured main scene unless a scene path is supplied. Godot is asked to quit gracefully; the project is never opened in the editor, saved, or modified. The project must already be imported: resources without import data fail, as they would when running the game. Prints JSON with valid, scene, and errors, and exits nonzero when validation fails. With --live, validate the active editor scene instead, including unsaved state, through the running editor addon; nothing is saved.",
-		Example:     "godot-cli validate\ngodot-cli validate res://levels/arena.tscn\ngodot-cli validate --live --expect-scene res://main.tscn",
-		Annotations: map[string]string{skill.ActionKey: core.ValidateScene.Name},
-		Args:        cobra.MaximumNArgs(1),
+		Use:     "validate [scene]",
+		Short:   "Validate a scene by loading and running it in Godot",
+		Long:    "Load a scene in a fresh headless Godot process, run it briefly, and report load, script, resource, and early runtime errors as JSON. Uses the configured main scene unless a scene path is supplied. Godot is asked to quit gracefully; the project is never opened in the editor, saved, or modified. The project must already be imported: resources without import data fail, as they would when running the game. Prints JSON with valid, scene, and errors, and exits nonzero when validation fails. With --live, validate the active editor scene instead, including unsaved state, through the running editor addon; nothing is saved.",
+		Example: "godot-cli validate\ngodot-cli validate res://levels/arena.tscn\ngodot-cli validate --live --expect-scene res://main.tscn",
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if live && len(args) > 0 {
 				return errors.New("a scene argument cannot be combined with --live")
