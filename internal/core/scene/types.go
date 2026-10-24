@@ -59,7 +59,7 @@ type CreateResult struct {
 
 type ApplyParams struct {
 	Operations    []ApplyOperation `json:"operations" jsonschema:"minItems=1,maxItems=100,description=Ordered operations to apply as one atomic editor undo step. Every operation is validated on a temporary scene copy before the live scene is edited. A batch may contain at most 100 operations."`
-	DryRun        bool             `json:"dry_run,omitempty" jsonschema:"description=Validate and plan the batch on a temporary scene copy without modifying the live editor scene. This is best-effort: a packed-scene copy omits editor-only and unowned runtime nodes, so the live pass can still fail and roll back. Cannot be combined with save."`
+	DryRun        bool             `json:"dry_run,omitempty" jsonschema:"description=Validate and plan the batch on a temporary scene copy without modifying the live editor scene. The preview never writes remapped paths into resources or animation tracks shared with the live scene. This is still best-effort topology validation: a packed-scene copy omits editor-only and unowned runtime nodes, so the live pass can still fail and roll back. Cannot be combined with save."`
 	ExpectedScene string           `json:"expected_scene,omitempty" jsonschema:"description=Fail if the active scene path differs; does not switch scenes."`
 	Save          bool             `json:"save,omitempty" jsonschema:"description=Save the active scene once after every operation succeeds. Not valid with dry_run. If the save fails, the batch remains applied and undoable."`
 }
@@ -169,7 +169,7 @@ type ApplyResult struct {
 	DryRun     bool                   `json:"dry_run"`
 	Operations []ApplyOperationResult `json:"operations"`
 	Summary    ApplySummary           `json:"summary"`
-	Saved      bool                   `json:"saved" jsonschema:"description=Whether the scene was saved as part of this action. A save failure is reported as an error and leaves the applied batch undoable."`
+	Saved      bool                   `json:"saved" jsonschema:"description=Whether the scene was saved as part of this action. A save failure is reported as an error and leaves the applied batch undoable; retry with scene.save instead of re-running the batch."`
 }
 
 type TreeResult struct {

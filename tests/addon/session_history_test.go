@@ -226,6 +226,43 @@ func _initialize() -> void:
 
     _check(root.get_node_or_null("A/C/B") != null, "redo did not replay the batch in order")
 
+    var rollback_node := Node2D.new()
+    rollback_node.name = "RollbackNode"
+
+    var rollback_session := Session.new(history, "rollback batch", root)
+    rollback_session.create_action("add", UndoRedo.MERGE_DISABLE, root, true)
+    rollback_session.add_do_method(root, "add_child", rollback_node, true)
+    rollback_session.add_do_reference(rollback_node)
+    rollback_session.add_undo_method(root, "remove_child", rollback_node)
+    rollback_session.commit_action()
+
+    var complete_rollback: Dictionary = rollback_session.rollback()
+
+    _check(complete_rollback["ok"], "complete rollback was reported as incomplete")
+    _check(complete_rollback["restored"] == 1, "complete rollback restored count was wrong")
+    _check(complete_rollback["total"] == 1, "references inflated the undo total")
+    _check(complete_rollback["failures"].is_empty(), "complete rollback reported failures")
+    _check(not is_instance_valid(rollback_node), "detached created node was not freed")
+
+    var apply_note_session := Session.new(history, "apply note batch", root)
+    var freed_target := Node2D.new()
+
+    apply_note_session.create_action("partial", UndoRedo.MERGE_DISABLE, root, true)
+    apply_note_session.add_do_method(root, "set_name", "ChangedRoot")
+    apply_note_session.add_do_method(freed_target, "set_name", "NeverRuns")
+    apply_note_session.add_undo_method(root, "set_name", "Root")
+    freed_target.free()
+    apply_note_session.commit_action()
+
+    var noted_rollback: Dictionary = apply_note_session.rollback()
+
+    _check(noted_rollback["ok"], "apply note was treated as an undo failure")
+    _check(noted_rollback["restored"] == 1, "noted rollback restored count was wrong")
+    _check(noted_rollback["total"] == 1, "noted rollback total was wrong")
+    _check(noted_rollback["notes"].size() == 1, "apply note detail was not exposed")
+    _check(noted_rollback["failures"].is_empty(), "noted rollback reported undo failures")
+    _check(root.name == "Root", "noted rollback did not restore the applied change")
+
     var victim := Node2D.new()
     victim.name = "Victim"
     root.add_child(victim)
@@ -243,6 +280,12 @@ func _initialize() -> void:
     _check(not rollback["ok"], "incomplete rollback was reported as complete")
     _check(rollback["restored"] == 0, "incomplete rollback reported restored steps")
     _check(rollback["total"] == 1, "incomplete rollback reported the wrong total")
+    _check(rollback["notes"].is_empty(), "incomplete rollback reported apply notes")
+    _check(rollback["failures"].size() == 1, "undo failure detail was not exposed")
+    _check(
+        "no longer valid" in rollback["failures"][0],
+        "undo failure did not explain the invalid object"
+    )
 
     if failures.is_empty():
         print("SESSION_HISTORY_OK")

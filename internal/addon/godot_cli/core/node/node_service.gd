@@ -450,7 +450,7 @@ func rename(request: Request) -> Response:
             return name_error
 
     var renames := _build_rename_map(node, requested_name)
-    var updates := _collect_rename_updates(root, renames)
+    var updates := _writable_rename_updates(_collect_rename_updates(root, renames))
     var track_updates := _collect_track_updates(root, renames)
 
     undo_redo.create_action(
@@ -678,7 +678,7 @@ func move_node(request: Request) -> Response:
 
     _fill_rename_map(node, NodePath(str(new_parent.get_path()) + "/" + final_name), renames)
 
-    var updates := _collect_rename_updates(root, renames)
+    var updates := _writable_rename_updates(_collect_rename_updates(root, renames))
     var track_updates := _collect_track_updates(root, renames)
     var owner_changes := _move_owner_changes(node, new_parent, root)
 
@@ -862,6 +862,24 @@ func _collect_rename_updates(root: Node, renames: Dictionary) -> Array[Dictionar
     _collect_node_rename_updates(root, renames, updates, {})
 
     return updates
+
+# Prevalidation runs against a packed-scene copy whose built-in subresources
+# are shared with the live scene. Node property updates on the copy are safe,
+# but writing remapped NodePaths into those shared resources (Animation and
+# custom NodePath-bearing Resource instances) would mutate live state. Dry-run
+# still collects the updates so rename/move topology is validated, then drops
+# only the resource-targeted writes.
+func _writable_rename_updates(updates: Array[Dictionary]) -> Array[Dictionary]:
+    if not scene_context.preview:
+        return updates
+
+    var writable: Array[Dictionary] = []
+
+    for update in updates:
+        if update.get("object") is Node:
+            writable.append(update)
+
+    return writable
 
 func _collect_node_rename_updates(
     node: Node,
@@ -1067,6 +1085,13 @@ func _recurse_into_property(property: Dictionary) -> bool:
 
 func _collect_track_updates(root: Node, renames: Dictionary) -> Array[Dictionary]:
     var updates: Array[Dictionary] = []
+
+    # A packed-scene preview shares built-in Animation resources with the live
+    # scene. Never apply or record track remaps for a preview pass: doing so
+    # would edit live animation tracks even during dry_run.
+    if scene_context.preview:
+        return updates
+
     var settings := scene_context.editor.get_editor_settings()
 
     if not bool(settings.get_setting("editors/animation/autorename_animation_tracks")):

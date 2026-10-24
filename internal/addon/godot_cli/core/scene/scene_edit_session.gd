@@ -179,33 +179,76 @@ func finish() -> bool:
 
 # rollback directly executes every accumulated undo item in reverse order.
 # It never commits the failed batch to editor history, so a clean scene stays
-# clean. The returned dictionary reports incomplete rollback distinctly.
+# clean. Apply-time execution notes are reported separately from undo failures:
+# ok only reflects whether every actual undo operation ran. Reference-only
+# entries are bookkeeping for created/deleted nodes, not undo operations, so
+# they do not inflate total. Nodes created by this batch are freed after a
+# successful detach so a failed batch does not leak detached live nodes.
 func rollback() -> Dictionary:
     discard_pending()
 
-    var total := _undo_items.size()
     var notes := _rollback_notes.duplicate()
     var failures: Array[String] = []
+    var created_nodes := _created_nodes()
+    var undo_items: Array[Dictionary] = []
+
+    for item in _undo_items:
+        if item["kind"] != "reference":
+            undo_items.append(item)
+
+    var total := undo_items.size()
 
     for index in range(total - 1, -1, -1):
-        var failure := _execute_undo(_undo_items[index])
+        var failure := _execute_undo(undo_items[index])
 
         if not failure.is_empty():
             failures.append(failure)
 
     var restored := total - failures.size()
-    var all_failures: Array[String] = []
-    all_failures.append_array(notes)
-    all_failures.append_array(failures)
 
+    _free_detached_created_nodes(created_nodes)
     _clear()
 
     return {
-        "ok": all_failures.is_empty(),
+        "ok": failures.is_empty(),
         "restored": restored,
         "total": total,
-        "failures": all_failures,
+        "notes": notes,
+        "failures": failures,
     }
+
+func _created_nodes() -> Array:
+    var nodes: Array = []
+    var seen := {}
+
+    for item in _do_items:
+        if item["kind"] != "reference":
+            continue
+
+        var object = item.get("object")
+
+        if typeof(object) != TYPE_OBJECT or not is_instance_valid(object):
+            continue
+
+        if seen.has(object):
+            continue
+
+        seen[object] = true
+        nodes.append(object)
+
+    return nodes
+
+func _free_detached_created_nodes(nodes: Array) -> void:
+    for object in nodes:
+        if typeof(object) != TYPE_OBJECT or not is_instance_valid(object):
+            continue
+
+        var node := object as Node
+
+        if node == null or node.get_parent() != null:
+            continue
+
+        node.free()
 
 func _clear() -> void:
     _pending_do.clear()
@@ -230,7 +273,7 @@ func _arguments(arg1, arg2, arg3, arg4) -> Array:
 func _execute_do(item: Dictionary) -> String:
     var object = item.get("object")
 
-    if object == null or not is_instance_valid(object):
+    if typeof(object) != TYPE_OBJECT or not is_instance_valid(object):
         return "could not run %s because its object is no longer valid" % _item_label(item)
 
     if _has_invalid_argument(item):
@@ -250,7 +293,7 @@ func _execute_undo(item: Dictionary) -> String:
 
     var object = item.get("object")
 
-    if object == null or not is_instance_valid(object):
+    if typeof(object) != TYPE_OBJECT or not is_instance_valid(object):
         return "could not undo %s because its object is no longer valid" % _item_label(item)
 
     if _has_invalid_argument(item):
@@ -266,7 +309,10 @@ func _execute_undo(item: Dictionary) -> String:
 
 func _has_invalid_argument(item: Dictionary) -> bool:
     for argument in item.get("args", []):
-        if argument is Object and not is_instance_valid(argument):
+        # `argument is Object` errors for a previously freed instance. typeof
+        # still reports TYPE_OBJECT for it, so check validity without touching
+        # the freed value.
+        if typeof(argument) == TYPE_OBJECT and not is_instance_valid(argument):
             return true
 
     return false

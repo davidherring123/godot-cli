@@ -67,18 +67,22 @@ per node. A batch accepts 1–100 operations. Operations run in order and commit
 as a single editor undo step. Each operation uses the `operation` field and only
 the fields valid for that kind. The batch is prevalidated on a temporary copy of
 the scene, so a failed operation leaves the live scene untouched and the error
-names the failed operation index, `operation`, and id. A live failure reverses
-earlier operations directly without adding the failed batch to undo history, so
-a previously clean scene stays clean; an incomplete rollback is reported as an
-`internal_error`. Give an operation an `id` and later operations can target its
-resulting node with `@id` in `node` or `parent`; an id cannot be referenced
-after its node is deleted. Use `--dry-run` to preview paths and summaries without
-editing. Dry-run is best-effort because packed copies omit editor-only and
-unowned runtime nodes. Result paths are snapshots from when each operation
-completed, not final paths after later renames, moves, or deletes.
-`--properties` is not used here; each operation carries its own `properties`
-object. Add `--save` once to save after the batch succeeds; if the save fails,
-the batch remains applied and undoable.
+names the failed operation index, `operation`, and id. Prevalidation does not
+write remapped paths into live shared subresources, so it cannot alter animation
+tracks or NodePath-bearing resources. A live failure reverses earlier
+operations directly without adding the failed batch to undo history, so a
+previously clean scene stays clean; nodes created by the failed batch are freed,
+and an incomplete rollback is reported as an `internal_error` with restored and
+total undo counts plus failure details. Give an operation an `id` and later
+operations can target its resulting node with `@id` in `node` or `parent`; an id
+cannot be referenced after its node is deleted. Use `--dry-run` to preview paths
+and summaries without editing. Dry-run is best-effort topology validation because
+packed copies omit editor-only and unowned runtime nodes. Result paths are
+snapshots from when each operation completed, not final paths after later
+renames, moves, or deletes. `--properties` is not used here; each operation
+carries its own `properties` object. Add `--save` once to save after the batch
+succeeds; if the save fails, the batch remains applied and undoable. Retry with
+`scene save` instead of re-running the batch.
 
 ```shell
 godot-cli scene apply --expect-scene <scene> --operations '[
@@ -163,7 +167,8 @@ between steps. Each granular mutation is its own editor undo step and a whole
 `scene apply` batch is one undo step. `saved: false` in a response only means the
 scene still has unsaved changes; do not re-inspect to confirm a change. If
 `--save` fails, the edits remain applied and undoable, and the error says the
-action completed before the save failure.
+action completed before the save failure. Retry with `scene save`; do not re-run
+the mutation or batch.
 
 `--properties` takes a JSON object of property names to values. Vectors are
 `{"x":..,"y":..}` (add `z`/`w` as needed), colors `{"r":..,"g":..,"b":..,"a":..}`,

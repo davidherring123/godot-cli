@@ -401,6 +401,15 @@ func TestSceneApplyRollsBackWhenLiveStateDrifts(t *testing.T) {
 	// Rollback must not commit the failed batch to editor history: a scene
 	// that was clean before the batch must still be clean afterwards.
 	requireSceneUnsaved(t, session, path, false)
+
+	// Rename and move use the same path remapping as their granular tools.
+	// Rollback must restore the shared Animation track as well as the tree.
+	saveScene(t, session, path)
+	saved := readSavedScene(t, session, path)
+
+	if !strings.Contains(saved, `tracks/0/path = NodePath("World/Existing:position")`) {
+		t.Fatalf("rollback did not restore the animation track:\n%s", saved)
+	}
 }
 
 func TestSceneApplyDeletedIDCannotBeReferenced(t *testing.T) {
@@ -521,6 +530,91 @@ func TestSceneApplyDryRunDoesNotMutateScene(t *testing.T) {
 	}
 }
 
+func TestSceneApplyDryRunDoesNotMutateSharedPaths(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_apply_dry_run_paths/main.tscn"
+
+	openFixtureScene(t, session, path)
+
+	result := applyScene(t, session, scene.ApplyParams{
+		ExpectedScene: path,
+		DryRun:        true,
+		Operations: []scene.ApplyOperation{
+			{Operation: "node.rename", Node: "Player", Name: "Hero"},
+		},
+	})
+
+	if result.Applied || !result.DryRun {
+		t.Fatalf("unexpected dry-run result: %+v", result)
+	}
+
+	saveScene(t, session, path)
+	assertSavedPaths(t, session, path, "Player", "Player:position")
+}
+
+func TestSceneApplyFailedPrevalidationDoesNotMutateSharedPaths(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_apply_prevalidation_paths/main.tscn"
+
+	openFixtureScene(t, session, path)
+
+	_, err := bridge.Call[scene.ApplyParams, scene.ApplyResult](
+		session.Client,
+		scene.ApplyName,
+		scene.ApplyParams{
+			ExpectedScene: path,
+			Operations: []scene.ApplyOperation{
+				{Operation: "node.rename", Node: "Player", Name: "Hero"},
+				{
+					Operation: "node.set",
+					Node:      "Hero",
+					Properties: map[string]json.RawMessage{
+						"definitely_missing": json.RawMessage(`true`),
+					},
+				},
+			},
+		},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertApplyErrorMessage(t, err, "Prevalidation failed", "operation 1")
+
+	saveScene(t, session, path)
+	assertSavedPaths(t, session, path, "Player", "Player:position")
+}
+
+func TestSceneApplyRenameRemapsPathsLikeGranularTool(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_apply_rename_paths/main.tscn"
+
+	openFixtureScene(t, session, path)
+	applyScene(t, session, scene.ApplyParams{
+		ExpectedScene: path,
+		Save:          true,
+		Operations: []scene.ApplyOperation{
+			{Operation: "node.rename", Node: "Player", Name: "Hero"},
+		},
+	})
+
+	assertSavedPaths(t, session, path, "Hero", "Hero:position")
+}
+
+func TestSceneApplyMoveRemapsPathsLikeGranularTool(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_apply_move_paths/main.tscn"
+
+	openFixtureScene(t, session, path)
+	applyScene(t, session, scene.ApplyParams{
+		ExpectedScene: path,
+		Save:          true,
+		Operations: []scene.ApplyOperation{
+			{Operation: "node.move", Node: "Player", Parent: "World"},
+		},
+	})
+
+	assertSavedPaths(t, session, path, "World/Player", "World/Player:position")
+}
+
 func TestSceneApplyPrevalidationRejectsConflict(t *testing.T) {
 	session := requireSuite(t)
 	path := "res://cases/scene_apply_prevalidation/main.tscn"
@@ -555,6 +649,39 @@ func TestSceneApplyPrevalidationRejectsConflict(t *testing.T) {
 	}
 
 	requireSceneUnsaved(t, session, path, false)
+}
+
+func TestSceneApplyAddonDiagnosticHasOneOperationPrefix(t *testing.T) {
+	session := requireSuite(t)
+	path := "res://cases/scene_apply_prevalidation/main.tscn"
+
+	openFixtureScene(t, session, path)
+
+	_, err := bridge.Call[scene.ApplyParams, scene.ApplyResult](
+		session.Client,
+		scene.ApplyName,
+		scene.ApplyParams{
+			ExpectedScene: path,
+			Operations: []scene.ApplyOperation{
+				{
+					Operation: "node.delete",
+					Node:      "World/Existing",
+					Type:      "Marker2D",
+				},
+			},
+		},
+	)
+
+	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+
+	var apiError *bridge.APIError
+	if !errors.As(err, &apiError) {
+		t.Fatalf("expected an API error, got %v", err)
+	}
+
+	if count := strings.Count(apiError.Message, "operation 0"); count != 1 {
+		t.Fatalf("expected one operation prefix, got %d in %q", count, apiError.Message)
+	}
 }
 
 func TestSceneApplyExpectedSceneConflict(t *testing.T) {
@@ -739,6 +866,39 @@ func applyScene(
 	}
 
 	return result
+}
+
+func saveScene(t *testing.T, session *harness.Session, path string) {
+	t.Helper()
+
+	if _, err := bridge.Call[scene.SaveParams, scene.SaveResult](
+		session.Client,
+		scene.SaveName,
+		scene.SaveParams{ExpectedScene: path},
+	); err != nil {
+		t.Fatalf("saving scene %s: %v", path, err)
+	}
+}
+
+func assertSavedPaths(
+	t *testing.T,
+	session *harness.Session,
+	path string,
+	resourcePath string,
+	trackPath string,
+) {
+	t.Helper()
+
+	saved := readSavedScene(t, session, path)
+
+	for _, expected := range []string{
+		`target = NodePath("` + resourcePath + `")`,
+		`tracks/0/path = NodePath("` + trackPath + `")`,
+	} {
+		if !strings.Contains(saved, expected) {
+			t.Fatalf("expected saved scene to contain %q:\n%s", expected, saved)
+		}
+	}
 }
 
 func sceneTree(

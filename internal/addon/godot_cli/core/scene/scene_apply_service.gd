@@ -112,11 +112,7 @@ func apply(request: Request) -> Response:
         return _failure_with_context(
             Response.failure(
                 ErrorCode.INTERNAL_ERROR,
-                "Rollback was incomplete (%d of %d undo steps restored): %s" % [
-                    rollback["restored"],
-                    rollback["total"],
-                    outcome["error"].message,
-                ]
+                _rollback_message(rollback, outcome["error"])
             ),
             outcome,
             "Batch failed and rollback was incomplete"
@@ -477,12 +473,13 @@ func _resolve_ref(
             "path": "",
         }
 
-    var node: Node = entry["node"]
+    var referenced_node = entry.get("node")
 
     if (
-        node == null
-        or not is_instance_valid(node)
-        or (node != root and not root.is_ancestor_of(node))
+        typeof(referenced_node) != TYPE_OBJECT
+        or not is_instance_valid(referenced_node)
+        or not referenced_node is Node
+        or (referenced_node != root and not root.is_ancestor_of(referenced_node))
     ):
         return {
             "error": Response.failure(
@@ -492,6 +489,8 @@ func _resolve_ref(
             "node": null,
             "path": "",
         }
+
+    var node := referenced_node as Node
 
     return {
         "error": null,
@@ -673,6 +672,23 @@ func _outcome_error(
         "failed_target": target,
         "results": results,
     }
+
+func _rollback_message(rollback: Dictionary, apply_error: Response) -> String:
+    var message := "Rollback was incomplete (%d of %d undo steps restored): %s" % [
+        rollback["restored"],
+        rollback["total"],
+        apply_error.message,
+    ]
+    var notes: Array = rollback.get("notes", [])
+    var failures: Array = rollback.get("failures", [])
+
+    if not notes.is_empty():
+        message += "; apply notes: %s" % "; ".join(notes)
+
+    if not failures.is_empty():
+        message += "; rollback failures: %s" % "; ".join(failures)
+
+    return message
 
 func _failure_with_context(
     error: Response,
@@ -860,9 +876,12 @@ func _orphaned_nodes(nodes: Array, root: Node) -> Array[Node]:
     var orphans: Array[Node] = []
 
     for value in nodes:
+        if typeof(value) != TYPE_OBJECT or not is_instance_valid(value):
+            continue
+
         var node := value as Node
 
-        if node == null or not is_instance_valid(node):
+        if node == null:
             continue
 
         if is_instance_valid(root):
