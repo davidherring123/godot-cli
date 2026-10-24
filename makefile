@@ -10,7 +10,7 @@ TEST_ARGS ?=
 # BENCHMARK_APPROACH: godot-cli | direct-files | both
 # BENCHMARK_RUNS > 1 or BENCHMARK_APPROACH=both prints a median summary.
 
-BENCHMARK_MODEL ?= opencode-go/deepseek-v4.1-flash
+BENCHMARK_MODEL ?= deepseek/deepseek-flash
 BENCHMARK_APPROACH ?= godot-cli
 BENCHMARK_TASK ?= move_player
 BENCHMARK_RUNS ?= 1

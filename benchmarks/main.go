@@ -8,7 +8,10 @@ import (
 	"time"
 )
 
-const approachBoth = "both"
+const (
+	approachBoth          = "both"
+	defaultBenchmarkModel = "deepseek/deepseek-flash"
+)
 
 func main() {
 	var options runOptions
@@ -16,7 +19,7 @@ func main() {
 	var runs int
 	var parallel int
 
-	flag.StringVar(&options.Model, "model", "", "OpenCode model in provider/model#variant format")
+	flag.StringVar(&options.Model, "model", defaultBenchmarkModel, "OpenCode model in provider/model#variant format")
 	flag.StringVar(&options.Agent, "agent", "build", "OpenCode agent")
 	flag.StringVar(&options.Approach, "approach", approachCLI, "Benchmark approach: godot-cli, direct-files, or both")
 	flag.StringVar(&options.Task, "task", "move_player", "Benchmark task")
@@ -30,10 +33,6 @@ func main() {
 	flag.IntVar(&parallel, "parallel", 1, "Maximum concurrent runs; wall-clock timings are unreliable above 1")
 	flag.Parse()
 
-	if options.Model == "" && !smokeAPI {
-		fmt.Fprintln(os.Stderr, "--model is required")
-		os.Exit(2)
-	}
 	if runs < 1 {
 		fmt.Fprintln(os.Stderr, "--runs must be at least 1")
 		os.Exit(2)
