@@ -72,11 +72,14 @@ func (call *mcpTraceCall) UnmarshalJSON(data []byte) error {
 // deliberately independent of the model-visible tool list: Code Mode wraps
 // calls in its execute tool, so session messages alone undercount MCP usage.
 type mcpTraceStats struct {
-	Calls        int            `json:"calls"`
-	Errors       int            `json:"errors"`
-	DurationMS   int64          `json:"durationMs"`
-	Tools        map[string]int `json:"tools,omitempty"`
-	InvalidLines int            `json:"invalidLines,omitempty"`
+	Calls                    int            `json:"calls"`
+	Errors                   int            `json:"errors"`
+	DurationMS               int64          `json:"durationMs"`
+	Tools                    map[string]int `json:"tools,omitempty"`
+	InvalidLines             int            `json:"invalidLines,omitempty"`
+	BatchCalls               int            `json:"batchCalls"`
+	RuntimeCalls             int            `json:"runtimeCalls"`
+	RuntimeFeedbackSucceeded bool           `json:"runtimeFeedbackSucceeded"`
 }
 
 // readMCPTrace reads trace records written at or after offset. The offset is
@@ -173,6 +176,15 @@ func summarizeMCPTrace(calls []mcpTraceCall, sessionID string) mcpTraceStats {
 		}
 		stats.DurationMS += int64(call.DurationMS)
 		stats.Tools[call.Tool]++
+		switch call.Tool {
+		case "scene_apply", "resource_apply", "project_settings_apply", "input_map_apply":
+			stats.BatchCalls++
+		case "runtime_start", "runtime_status", "runtime_capture", "runtime_stop":
+			stats.RuntimeCalls++
+			if !call.IsError && (call.Tool == "runtime_status" || call.Tool == "runtime_capture") {
+				stats.RuntimeFeedbackSucceeded = true
+			}
+		}
 	}
 	if len(stats.Tools) == 0 {
 		stats.Tools = nil

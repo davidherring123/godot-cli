@@ -93,7 +93,7 @@ func verifyAndEvaluate(
 	traceErr error,
 	toolObservationErr error,
 	logf func(format string, args ...any),
-) (evaluation, string) {
+) (evaluation, probeResult, string) {
 	logf("Verifying persisted project state")
 
 	verifyContext, cancelVerify := context.WithTimeout(
@@ -125,7 +125,7 @@ func verifyAndEvaluate(
 		VerifyErr:          verifyErr,
 		MCPTraceErr:        traceErr,
 		ToolObservationErr: toolObservationErr,
-	}), verifyOutput
+	}), probe, verifyOutput
 }
 
 // verificationFailures converts a probe report into task failures, keeping

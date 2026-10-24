@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,20 +15,25 @@ import (
 	"time"
 
 	"github.com/davidherring123/godot-cli/internal/addon"
-	"github.com/davidherring123/godot-cli/internal/agent/skill"
+	agentmcp "github.com/davidherring123/godot-cli/internal/agent/mcp"
 )
 
+//go:embed benchmark_skill.md
+var benchmarkSkill []byte
+
 type runOptions struct {
-	Model        string
-	Agent        string
-	Approach     string
-	Task         string
-	GodotPath    string
-	OpenCodePath string
-	ResultsDir   string
-	KeepProject  bool
-	Timeout      time.Duration
-	Label        string
+	Model           string
+	Agent           string
+	Approach        string
+	Task            string
+	GodotPath       string
+	OpenCodePath    string
+	ResultsDir      string
+	KeepProject     bool
+	PreserveProject bool
+	Timeout         time.Duration
+	Label           string
+	MCPProfile      string
 }
 
 const (
@@ -183,6 +190,18 @@ func startBenchmarkSetup(
 			_ = setup.cleanup(nil)
 			return setup, fmt.Errorf("MCP preflight: %w", err)
 		}
+		if options.MCPProfile != "" {
+			if err := verifyProfileCatalog(options.MCPProfile, setup.preflight.Tools); err != nil {
+				_ = setup.cleanup(nil)
+				return setup, err
+			}
+			setup.prepared.profileManifestPath = filepath.Join(tempDir, "mcp-profile-manifest.json")
+			if err := writeProfileManifest(setup.prepared.profileManifestPath, options.MCPProfile, prepared.projectRoot, setup.preflight.Tools); err != nil {
+				_ = setup.cleanup(nil)
+				return setup, err
+			}
+			prepared = setup.prepared
+		}
 	}
 
 	// Capture the trace offset only after preflight and immediately before the
@@ -223,6 +242,7 @@ func runBenchmark(
 	runName := strings.Join([]string{
 		stamp,
 		task.ID,
+		options.MCPProfile,
 		options.Approach,
 		sanitizePath(options.Model),
 	}, "-")
@@ -242,9 +262,10 @@ func runBenchmark(
 	}
 
 	result := benchmarkResult{
-		Task:     task.ID,
-		Approach: options.Approach,
-		Model:    options.Model,
+		Task:       task.ID,
+		Approach:   options.Approach,
+		Model:      options.Model,
+		MCPProfile: options.MCPProfile,
 	}
 	setupStartedAt := time.Now()
 	var setup benchmarkSetup
@@ -266,6 +287,7 @@ func runBenchmark(
 			result,
 			setup.prepared,
 			"",
+			options.PreserveProject,
 		)
 		if writeErr != nil {
 			return "", errors.Join(setupErr, writeErr)
@@ -305,6 +327,7 @@ func runBenchmark(
 		options.Agent,
 		prompt,
 		prepared.environment,
+		prepared.rawLogPath,
 	)
 	cancelRun()
 	result.AgentMS = time.Since(agentStartedAt).Milliseconds()
@@ -333,6 +356,13 @@ func runBenchmark(
 		)
 		cancelObserve()
 	}
+	if prepared.rawLogPath != "" {
+		_ = appendRunLog(
+			prepared.rawLogPath,
+			"\n\n=== Godot editor logs ===\n"+setup.editor.logs()+
+				"\n\n=== OpenCode server logs ===\n"+setup.server.logs()+"\n",
+		)
+	}
 
 	runErr = setup.cleanup(runErr)
 
@@ -351,7 +381,7 @@ func runBenchmark(
 		}
 	}
 
-	evaluation, verifyOutput := verifyAndEvaluate(
+	evaluation, probe, verifyOutput := verifyAndEvaluate(
 		repositoryRoot,
 		task,
 		prepared,
@@ -362,6 +392,7 @@ func runBenchmark(
 		toolObservationErr,
 		logf,
 	)
+	result.Verification = summarizeVerification(probe)
 	result.AgentFailure = strings.Join(evaluation.AgentFailures, "; ")
 	result.TaskFailure = strings.Join(evaluation.TaskFailures, "; ")
 
@@ -378,6 +409,7 @@ func runBenchmark(
 		result,
 		prepared,
 		verifyOutput,
+		options.PreserveProject,
 	)
 	if err != nil {
 		return "", err
@@ -391,12 +423,14 @@ func runBenchmark(
 }
 
 type preparedRun struct {
-	projectRoot   string
-	godotPath     string
-	opencodePath  string
-	environment   []string
-	tracePath     string
-	mcpConfigPath string
+	projectRoot         string
+	godotPath           string
+	opencodePath        string
+	environment         []string
+	tracePath           string
+	mcpConfigPath       string
+	profileManifestPath string
+	rawLogPath          string
 }
 
 func prepareRun(
@@ -446,8 +480,8 @@ func prepareRun(
 		if err := addon.Install(projectRoot); err != nil {
 			return preparedRun{}, fmt.Errorf("installing addon: %w", err)
 		}
-		if _, err := skill.Install(projectRoot); err != nil {
-			return preparedRun{}, fmt.Errorf("installing OpenCode skill: %w", err)
+		if err := installBenchmarkSkill(projectRoot); err != nil {
+			return preparedRun{}, fmt.Errorf("installing benchmark OpenCode skill: %w", err)
 		}
 		if err := enableAddon(projectRoot); err != nil {
 			return preparedRun{}, err
@@ -456,7 +490,7 @@ func prepareRun(
 		tracePath = filepath.Join(tempDir, "mcp-trace.jsonl")
 		logf("Configuring isolated godot MCP server")
 
-		mcpConfigPath, err = writeMCPConfig(projectRoot, cliPath, tracePath)
+		mcpConfigPath, err = writeMCPConfig(projectRoot, cliPath, tracePath, options.MCPProfile)
 		if err != nil {
 			return preparedRun{}, fmt.Errorf("configuring godot MCP server: %w", err)
 		}
@@ -478,12 +512,14 @@ func prepareRun(
 		return preparedRun{}, err
 	}
 	return preparedRun{
-		projectRoot:   projectRoot,
-		godotPath:     godotPath,
-		opencodePath:  opencodePath,
-		environment:   environment,
-		tracePath:     tracePath,
-		mcpConfigPath: mcpConfigPath,
+		projectRoot:         projectRoot,
+		godotPath:           godotPath,
+		opencodePath:        opencodePath,
+		environment:         environment,
+		tracePath:           tracePath,
+		mcpConfigPath:       mcpConfigPath,
+		profileManifestPath: filepath.Join(tempDir, "mcp-profile-manifest.json"),
+		rawLogPath:          filepath.Join(tempDir, "run.log"),
 	}, nil
 }
 
@@ -520,6 +556,7 @@ func writeMCPConfig(
 	projectRoot string,
 	binaryPath string,
 	tracePath string,
+	profile string,
 ) (string, error) {
 	root, err := filepath.Abs(projectRoot)
 	if err != nil {
@@ -545,18 +582,22 @@ func writeMCPConfig(
 	if _, ok := config["$schema"]; !ok {
 		config["$schema"] = "https://opencode.ai/config.json"
 	}
+	command := []string{
+		binary,
+		"mcp",
+		"--project",
+		root,
+		"--trace-file",
+		trace,
+	}
+	if profile != "" {
+		command = append(command, "--benchmark-profile", profile)
+	}
 	config["mcp"] = map[string]any{
 		"servers": map[string]any{
 			"godot": map[string]any{
-				"type": "local",
-				"command": []string{
-					binary,
-					"mcp",
-					"--project",
-					root,
-					"--trace-file",
-					trace,
-				},
+				"type":     "local",
+				"command":  command,
 				"cwd":      root,
 				"codemode": true,
 			},
@@ -578,6 +619,41 @@ func writeMCPConfig(
 		return "", err
 	}
 	return configPath, nil
+}
+
+func installBenchmarkSkill(projectRoot string) error {
+	path := filepath.Join(projectRoot, ".agents", "skills", "godot-cli", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, benchmarkSkill, 0o644)
+}
+
+type profileManifest struct {
+	Profile         string   `json:"profile"`
+	ToolIDs         []string `json:"toolIds"`
+	ExcludedActions []string `json:"excludedActions,omitempty"`
+	Instructions    string   `json:"instructions"`
+	SkillSHA256     string   `json:"skillSha256"`
+}
+
+func writeProfileManifest(path, profile, projectRoot string, tools []mcpToolInfo) error {
+	details, err := agentmcp.ResolveBenchmarkProfile(profile, projectRoot)
+	if err != nil {
+		return err
+	}
+	manifest := profileManifest{
+		Profile:         profile,
+		ExcludedActions: details.ExcludedActions,
+		Instructions:    details.Instructions,
+		SkillSHA256:     fmt.Sprintf("%x", sha256.Sum256(benchmarkSkill)),
+	}
+	for _, tool := range tools {
+		if strings.HasPrefix(tool.ID, mcpBenchmarkServerName+"_") {
+			manifest.ToolIDs = append(manifest.ToolIDs, tool.ID)
+		}
+	}
+	return writeJSON(path, manifest)
 }
 
 func closeRunResources(
@@ -698,6 +774,9 @@ type runArtifacts struct {
 	TracePath              string `json:"tracePath,omitempty"`
 	MCPConfigPath          string `json:"mcpConfigPath,omitempty"`
 	VerificationOutputPath string `json:"verificationOutputPath,omitempty"`
+	ProfileManifestPath    string `json:"profileManifestPath,omitempty"`
+	RawLogPath             string `json:"rawLogPath,omitempty"`
+	ProjectPath            string `json:"projectPath,omitempty"`
 }
 
 func persistBenchmarkResult(
@@ -707,6 +786,7 @@ func persistBenchmarkResult(
 	result benchmarkResult,
 	prepared preparedRun,
 	verificationOutput string,
+	preserveProject bool,
 ) (string, error) {
 	// Setup diagnostics can include tails of client logs. Redact obvious
 	// credential shapes before persisting failure text or verifier output.
@@ -721,6 +801,7 @@ func persistBenchmarkResult(
 		runName,
 		prepared,
 		verificationOutput,
+		preserveProject,
 	)
 	if err := writeJSON(resultPath, result); err != nil {
 		return "", err
@@ -755,14 +836,14 @@ func redactSecrets(value string) string {
 	return value
 }
 
-// collectArtifacts copies only benchmark-owned diagnostics into the results
-// directory. Environment variables, OpenCode logs, and prompts are never
-// persisted because they can contain credentials.
+// collectArtifacts copies benchmark-owned diagnostics and optionally the
+// generated project into the stable results directory.
 func collectArtifacts(
 	resultsDir string,
 	runName string,
 	prepared preparedRun,
 	verificationOutput string,
+	preserveProject bool,
 ) *runArtifacts {
 	if resultsDir == "" {
 		return nil
@@ -787,12 +868,47 @@ func collectArtifacts(
 			artifacts.VerificationOutputPath = target
 		}
 	}
+	if prepared.profileManifestPath != "" {
+		target := filepath.Join(resultsDir, runName+"-mcp-profile.json")
+		if copyFile(prepared.profileManifestPath, target) == nil {
+			artifacts.ProfileManifestPath = target
+		}
+	}
+	if prepared.rawLogPath != "" {
+		target := filepath.Join(resultsDir, runName+"-run.log")
+		if copyFile(prepared.rawLogPath, target) == nil {
+			artifacts.RawLogPath = target
+		}
+	}
+	if preserveProject && prepared.projectRoot != "" {
+		target := filepath.Join(resultsDir, "projects", runName)
+		if _, err := os.Stat(target); errors.Is(err, os.ErrNotExist) {
+			if copyDirectory(prepared.projectRoot, target) == nil {
+				artifacts.ProjectPath = target
+			}
+		}
+	}
 	if artifacts.TracePath == "" &&
 		artifacts.MCPConfigPath == "" &&
-		artifacts.VerificationOutputPath == "" {
+		artifacts.VerificationOutputPath == "" &&
+		artifacts.ProfileManifestPath == "" &&
+		artifacts.RawLogPath == "" &&
+		artifacts.ProjectPath == "" {
 		return nil
 	}
 	return artifacts
+}
+
+func appendRunLog(path, text string) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := file.WriteString(text); err != nil {
+		_ = file.Close()
+		return err
+	}
+	return file.Close()
 }
 
 func copyFile(source, destination string) error {

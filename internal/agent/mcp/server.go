@@ -18,6 +18,9 @@ type Options struct {
 	ProjectRoot  string
 	Actions      []core.ActionDefinition
 	Instructions string
+	// BenchmarkProfile selects a controlled benchmark-only tool surface. An
+	// empty value preserves the production defaults.
+	BenchmarkProfile string
 
 	// TraceWriter, when non-nil, receives one newline-delimited JSON object
 	// per completed tools/call. Tracing is disabled by default; it never
@@ -32,6 +35,15 @@ type Options struct {
 // NewServer creates an MCP server that exposes actions. When Actions is nil,
 // all core actions are exposed.
 func NewServer(options Options) (*mcpgo.Server, error) {
+	if options.BenchmarkProfile != "" {
+		profile, err := ResolveBenchmarkProfile(options.BenchmarkProfile, options.ProjectRoot)
+		if err != nil {
+			return nil, err
+		}
+		options.Actions = profile.Actions
+		options.Instructions = profile.Instructions
+	}
+
 	actions := options.Actions
 	if actions == nil {
 		actions = core.All()

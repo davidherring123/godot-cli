@@ -937,6 +937,33 @@ func countMCPTools(tools []mcpToolInfo) int {
 	return count
 }
 
+func verifyProfileCatalog(profile string, tools []mcpToolInfo) error {
+	controlled := []string{
+		"godot_scene_apply", "godot_resource_apply", "godot_project_settings_apply",
+		"godot_input_map_apply", "godot_runtime_start", "godot_runtime_status",
+		"godot_runtime_capture", "godot_runtime_stop",
+	}
+	present := make(map[string]bool, len(tools))
+	for _, tool := range tools {
+		present[tool.ID] = true
+	}
+	for _, name := range controlled {
+		switch profile {
+		case "legacy-mcp":
+			if present[name] {
+				return fmt.Errorf("legacy-mcp unexpectedly exposes %s", name)
+			}
+		case "improved-mcp":
+			if !present[name] {
+				return fmt.Errorf("improved-mcp does not expose %s", name)
+			}
+		default:
+			return fmt.Errorf("unsupported MCP profile %q", profile)
+		}
+	}
+	return nil
+}
+
 func isRPCMethodUnavailable(err error) bool {
 	message := err.Error()
 

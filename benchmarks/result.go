@@ -3,24 +3,47 @@ package main
 import "encoding/json"
 
 type benchmarkResult struct {
-	Task          string         `json:"task"`
-	Approach      string         `json:"approach"`
-	Model         string         `json:"model"`
-	SessionID     string         `json:"sessionId"`
-	Success       bool           `json:"success"`
-	Failure       string         `json:"failure,omitempty"`
-	SetupMS       int64          `json:"setupMs"`
-	SetupFailure  string         `json:"setupFailure,omitempty"`
-	AgentFailure  string         `json:"agentFailure,omitempty"`
-	TaskFailure   string         `json:"taskFailure,omitempty"`
-	AgentMS       int64          `json:"agentMs"`
-	CostUSD       *float64       `json:"costUsd"`
-	Tokens        *resultTokens  `json:"tokens"`
-	Context       contextMetrics `json:"context"`
-	Tools         []toolCall     `json:"tools"`
-	ExecutedTools []toolCall     `json:"executedTools,omitempty"`
-	MCP           *mcpTraceStats `json:"mcp,omitempty"`
-	Artifacts     *runArtifacts  `json:"artifacts,omitempty"`
+	Task          string               `json:"task"`
+	Approach      string               `json:"approach"`
+	Model         string               `json:"model"`
+	MCPProfile    string               `json:"mcpProfile,omitempty"`
+	SessionID     string               `json:"sessionId"`
+	Success       bool                 `json:"success"`
+	Failure       string               `json:"failure,omitempty"`
+	SetupMS       int64                `json:"setupMs"`
+	SetupFailure  string               `json:"setupFailure,omitempty"`
+	AgentFailure  string               `json:"agentFailure,omitempty"`
+	TaskFailure   string               `json:"taskFailure,omitempty"`
+	AgentMS       int64                `json:"agentMs"`
+	CostUSD       *float64             `json:"costUsd"`
+	Tokens        *resultTokens        `json:"tokens"`
+	Context       contextMetrics       `json:"context"`
+	Tools         []toolCall           `json:"tools"`
+	ExecutedTools []toolCall           `json:"executedTools,omitempty"`
+	MCP           *mcpTraceStats       `json:"mcp,omitempty"`
+	Artifacts     *runArtifacts        `json:"artifacts,omitempty"`
+	Verification  *verificationSummary `json:"verification,omitempty"`
+}
+
+type verificationSummary struct {
+	Loaded bool         `json:"loaded"`
+	Passed int          `json:"passed"`
+	Total  int          `json:"total"`
+	Score  float64      `json:"score"`
+	Checks []probeCheck `json:"checks,omitempty"`
+}
+
+func summarizeVerification(probe probeResult) *verificationSummary {
+	summary := &verificationSummary{Loaded: probe.Loaded, Total: len(probe.Checks), Checks: probe.Checks}
+	for _, check := range probe.Checks {
+		if check.Passed {
+			summary.Passed++
+		}
+	}
+	if summary.Total > 0 {
+		summary.Score = float64(summary.Passed) / float64(summary.Total)
+	}
+	return summary
 }
 
 type tokenUsage struct {

@@ -28,11 +28,13 @@ func main() {
 		"Benchmark approach: mcp, direct-files, or both",
 	)
 	flag.StringVar(&options.Task, "task", "playable_platformer", "Benchmark task")
+	flag.StringVar(&options.MCPProfile, "mcp-profile", "", "Controlled MCP profile: legacy-mcp or improved-mcp")
 	flag.StringVar(&options.GodotPath, "godot", "", "Godot executable (defaults to GODOT_BIN or PATH)")
 	flag.StringVar(&options.OpenCodePath, "opencode", "opencode", "OpenCode executable")
 	flag.StringVar(&options.ResultsDir, "results", "benchmarks/results", "Result directory")
 	flag.DurationVar(&options.Timeout, "timeout", 5*time.Minute, "Maximum agent run duration")
 	flag.BoolVar(&options.KeepProject, "keep-project", false, "Keep the temporary project after the run")
+	flag.BoolVar(&options.PreserveProject, "preserve-project", false, "Copy the generated project into the results directory")
 	flag.BoolVar(&smoke, "smoke", false, "Validate the full godot MCP benchmark path without invoking a model")
 	flag.IntVar(&runs, "runs", 1, "Number of benchmark repetitions per approach")
 	flag.IntVar(&parallel, "parallel", 1, "Maximum concurrent runs; wall-clock timings are unreliable above 1")

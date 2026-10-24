@@ -264,6 +264,7 @@ func (server *openCodeServer) run(
 	agent string,
 	prompt string,
 	environment []string,
+	logPath string,
 ) error {
 	command := exec.CommandContext(
 		ctx,
@@ -288,6 +289,17 @@ func (server *openCodeServer) run(
 	})
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
+	var logFile *os.File
+	if logPath != "" {
+		var err error
+		logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+		if err != nil {
+			return fmt.Errorf("opening raw run log: %w", err)
+		}
+		defer func() { _ = logFile.Close() }()
+		command.Stdout = io.MultiWriter(os.Stdout, logFile)
+		command.Stderr = io.MultiWriter(os.Stderr, logFile)
+	}
 
 	if err := command.Run(); err != nil {
 		return fmt.Errorf("OpenCode run failed: %w", err)

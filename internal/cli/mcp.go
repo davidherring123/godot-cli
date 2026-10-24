@@ -14,6 +14,7 @@ import (
 func NewMCPCommand(version string) *cobra.Command {
 	var projectPath string
 	var tracePath string
+	var benchmarkProfile string
 
 	cmd := &cobra.Command{
 		Use:   "mcp",
@@ -38,8 +39,9 @@ func NewMCPCommand(version string) *cobra.Command {
 			}
 
 			options := mcp.Options{
-				Version:     version,
-				ProjectRoot: resolved.Root,
+				Version:          version,
+				ProjectRoot:      resolved.Root,
+				BenchmarkProfile: benchmarkProfile,
 			}
 
 			if traceFile != nil {
@@ -79,6 +81,13 @@ func NewMCPCommand(version string) *cobra.Command {
 		"",
 		"Append one JSON object per completed MCP tool call to this JSONL file; disabled by default",
 	)
+	cmd.Flags().StringVar(
+		&benchmarkProfile,
+		"benchmark-profile",
+		"",
+		"Select a controlled MCP benchmark surface",
+	)
+	_ = cmd.Flags().MarkHidden("benchmark-profile")
 
 	return cmd
 }
