@@ -9,6 +9,7 @@ type benchmarkResult struct {
 	Agent         string               `json:"agent"`
 	TimeoutMS     int64                `json:"timeoutMs"`
 	MCPProfile    string               `json:"mcpProfile,omitempty"`
+	Label         string               `json:"label,omitempty"`
 	SessionID     string               `json:"sessionId"`
 	Success       bool                 `json:"success"`
 	Failure       string               `json:"failure,omitempty"`

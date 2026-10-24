@@ -32,6 +32,7 @@ func main() {
 	flag.StringVar(&options.GodotPath, "godot", "", "Godot executable (defaults to GODOT_BIN or PATH)")
 	flag.StringVar(&options.OpenCodePath, "opencode", "opencode", "OpenCode executable")
 	flag.StringVar(&options.ResultsDir, "results", "benchmarks/results", "Result directory")
+	flag.StringVar(&options.Label, "label", "", "Run label used in progress output")
 	flag.DurationVar(&options.Timeout, "timeout", 5*time.Minute, "Maximum agent run duration")
 	flag.BoolVar(&options.KeepProject, "keep-project", false, "Keep the temporary project after the run")
 	flag.BoolVar(&options.PreserveProject, "preserve-project", false, "Copy the generated project into the results directory")

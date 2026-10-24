@@ -239,13 +239,16 @@ func runBenchmark(
 		options.Timeout = 5 * time.Minute
 	}
 	stamp := startedAt.UTC().Format("20060102T150405.000000000Z")
-	runName := strings.Join([]string{
+	runParts := []string{
 		stamp,
 		task.ID,
 		options.MCPProfile,
-		options.Approach,
-		sanitizePath(options.Model),
-	}, "-")
+	}
+	if options.Label != "" {
+		runParts = append(runParts, sanitizePath(options.Label))
+	}
+	runParts = append(runParts, options.Approach, sanitizePath(options.Model))
+	runName := strings.Join(runParts, "-")
 	resultPath := filepath.Join(options.ResultsDir, runName+".json")
 
 	if err := os.MkdirAll(options.ResultsDir, 0755); err != nil {
@@ -268,6 +271,7 @@ func runBenchmark(
 		Agent:      options.Agent,
 		TimeoutMS:  options.Timeout.Milliseconds(),
 		MCPProfile: options.MCPProfile,
+		Label:      options.Label,
 	}
 	setupStartedAt := time.Now()
 	var setup benchmarkSetup
