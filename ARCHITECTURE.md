@@ -126,7 +126,7 @@ results are returned as both JSON text and structured content. Tool failures use
 
 - `internal/cli` — cobra commands ONLY. No editor logic, no direct use of
   `internal/adapter` or transport types.
-- `internal/core/<node|scene|resource|validate>` and the project-scoped
+- `internal/core/<node|scene|resource|validation>` and the project-scoped
   domains under `internal/core/project/<editor|runtime|input|settings>`
   — one action per file: constant name, `Params`, `Result`, thin function that
   validates and calls `invocation.Call`. Registered in `core/schema.go`
