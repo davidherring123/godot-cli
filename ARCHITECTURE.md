@@ -32,7 +32,7 @@ internal/core/
     editor/        editor.open / editor.status
     runtime/       runtime.* game process lifecycle
     input/         input.* Input Map actions
-    path/          scene-path resolution (imported as scenepath)
+    scenepath/     scene-path resolution within a project
     settings/      project.settings.* actions
   bridge/          editor transport (shared; stage 2 may relocate)
   godot/           executable discovery (shared; stage 2 may relocate)
@@ -163,10 +163,8 @@ results are returned as both JSON text and structured content. Tool failures use
 - `internal/core/property` — shared property metadata used by the node,
   resource, and project settings domains. This is model/support code, not a
   domain.
-- `internal/core/project/path` — resolves explicit scenes and the configured
+- `internal/core/project/scenepath` — resolves explicit scenes and the configured
   main scene for `validate` and `runtime`, rejecting paths outside the project.
-  Imported as `scenepath` to avoid clashing with the standard library `path`
-  package.
 - `internal/core/artifact` — protocol-neutral image payload interface used by
   action results and rendered as MCP image content. Shared infrastructure left
   at the `core` root for stage 2.

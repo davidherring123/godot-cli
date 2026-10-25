@@ -11,7 +11,7 @@ import (
 
 	"github.com/davidherring123/godot-cli/internal/core/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/godot"
-	scenepath "github.com/davidherring123/godot-cli/internal/core/project/path"
+	"github.com/davidherring123/godot-cli/internal/core/project/scenepath"
 )
 
 //go:embed runner.gd

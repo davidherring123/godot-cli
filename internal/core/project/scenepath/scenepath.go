@@ -1,11 +1,11 @@
-// Package path resolves scene arguments to Godot resource paths.
-package path
+// Package scenepath resolves scene arguments to Godot resource paths.
+package scenepath
 
 import (
 	"errors"
 	"fmt"
 	"os"
-	stdpath "path"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -70,7 +70,7 @@ func normalizeResPath(scene string) (string, error) {
 		}
 	}
 
-	relative = strings.TrimPrefix(stdpath.Clean(relative), "/")
+	relative = strings.TrimPrefix(path.Clean(relative), "/")
 
 	if relative == "" || relative == "." {
 		return "", fmt.Errorf("invalid scene path: %s", scene)
