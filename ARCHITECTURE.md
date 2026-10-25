@@ -55,7 +55,7 @@ godot-cli node move Player World --save
   ──────────────── wire ────────────────
   bridge.gd       TCP server (127.0.0.1, ports 49152–49252), polled each frame
   requests/       request_handler.gd routes by action name → *Service
-  core/*.gd       editor_scene_context.gd validates; Scene/NodeService executes
+  core/           editor_scene_context.gd validates; Scene/NodeService executes
 ```
 
 Editor discovery: on enable, the addon writes
@@ -187,15 +187,22 @@ results are returned as both JSON text and structured content. Tool failures use
   godot-cli never writes OpenCode configuration itself.
 - `internal/addon` — embeds the GDScript addon, installs/updates it, and enables
   `res://addons/godot_cli/plugin.cfg` in `project.godot` during `init`.
-- `internal/addon/godot_cli/` — `plugin.gd` (lifecycle) → `requests/`
-  (transport + routing) → `core/` (Godot logic). `node_service.gd` is the
+- `internal/addon/godot_cli/` — `plugin.gd` (lifecycle) → `bridge/` (TCP
+  transport) and `requests/` (request/response model, routing, error codes) →
+  `core/` (Godot logic). Domain code lives under `core/node/`, `core/scene/`,
+  `core/resource/`, and `core/project/{settings,input}/`. Shared core support
+  stays at the `core/` root because every domain uses it: `action_service.gd`
+  (service and batch base class), `editor_scene_context.gd` (active-scene
+  validation), `variant_serializer.gd`/`variant_deserializer.gd`/
+  `property_hint_serializer.gd` (wire values and metadata), and
+  `property_codec.gd` (property validation, application, and serialization
+  shared by the scene, node, and resource services). `node_service.gd` is the
   largest file; `node_builder.gd`/`node_path_util.gd` are its helpers.
-  `property_codec.gd` holds the property validation, application, and
-  serialization shared by the scene, node, and resource services;
   `resource/resource_service.gd` manages `.tres`/`.res` files on disk.
   `project/settings/settings_service.gd` edits `project.godot` settings and
-  `input/input_service.gd` (with `input/input_event_codec.gd`) edits Input Map
-  actions, both saving the project file immediately rather than as undo steps.
+  `project/input/input_service.gd` (with
+  `project/input/input_event_codec.gd`) edits Input Map actions, both saving
+  the project file immediately rather than as undo steps.
   Those services also implement their domain batch action by calling the same
   granular handlers with deferred saves and rollback; resource batches reuse
   `resource_service.gd` handlers with an in-memory preview pass, batch-local
