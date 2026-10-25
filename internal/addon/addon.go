@@ -39,6 +39,21 @@ func Install(projectRoot string) error {
 
 	destination := filepath.Join(projectRoot, addonPath)
 
+	// Remove paths owned by older managed installations after files move.
+	// Leaving these scripts in place can register duplicate GDScript class_name
+	// declarations alongside their new locations.
+	if IsManaged(projectRoot) {
+		obsoletePaths := []string{
+			filepath.Join(destination, "core", "input"),
+		}
+
+		for _, obsoletePath := range obsoletePaths {
+			if err := os.RemoveAll(obsoletePath); err != nil {
+				return err
+			}
+		}
+	}
+
 	err = fs.WalkDir(source, ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
