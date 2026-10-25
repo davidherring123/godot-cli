@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/davidherring123/godot-cli/internal/core/godot"
-	"github.com/davidherring123/godot-cli/internal/core/scenepath"
+	scenepath "github.com/davidherring123/godot-cli/internal/core/project/path"
 )
 
 const (

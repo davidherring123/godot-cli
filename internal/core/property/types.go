@@ -1,4 +1,5 @@
-// Package property describes Godot object property metadata.
+// Package property describes Godot object property metadata shared by the node,
+// resource, and project settings domains.
 package property
 
 import "encoding/json"

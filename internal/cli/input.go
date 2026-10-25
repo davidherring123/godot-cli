@@ -6,7 +6,7 @@ import (
 
 	"github.com/davidherring123/godot-cli/internal/agent/skill"
 	"github.com/davidherring123/godot-cli/internal/core"
-	"github.com/davidherring123/godot-cli/internal/core/input"
+	"github.com/davidherring123/godot-cli/internal/core/project/input"
 	"github.com/spf13/cobra"
 )
 

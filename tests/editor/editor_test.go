@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/davidherring123/godot-cli/internal/core/bridge"
-	"github.com/davidherring123/godot-cli/internal/core/editor"
+	"github.com/davidherring123/godot-cli/internal/core/project/editor"
 )
 
 // deadPID is above every supported platform's maximum PID so liveness checks

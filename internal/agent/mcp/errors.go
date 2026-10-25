@@ -7,7 +7,7 @@ import (
 	"github.com/davidherring123/godot-cli/internal/core"
 	"github.com/davidherring123/godot-cli/internal/core/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/godot"
-	"github.com/davidherring123/godot-cli/internal/core/runtime"
+	"github.com/davidherring123/godot-cli/internal/core/project/runtime"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

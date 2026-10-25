@@ -1,4 +1,6 @@
-// Package project locates and describes Godot project roots.
+// Package project locates and describes Godot project roots. Its subpackages
+// cover project-scoped concerns: editor lifecycle, runtime sessions, the Input
+// Map, project settings, and scene path resolution.
 package project
 
 import (

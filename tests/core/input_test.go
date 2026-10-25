@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/davidherring123/godot-cli/internal/core/bridge"
-	"github.com/davidherring123/godot-cli/internal/core/input"
+	"github.com/davidherring123/godot-cli/internal/core/project/input"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
 
