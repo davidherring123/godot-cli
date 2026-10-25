@@ -5,8 +5,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
 	"github.com/davidherring123/godot-cli/internal/core/batch"
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/invocation"
 )
 
 const ApplyName = "scene.apply"
@@ -61,14 +62,7 @@ func Apply(projectRoot string, params ApplyParams) (ApplyResult, error) {
 		return ApplyResult{}, err
 	}
 
-	client, err := bridge.Connect(projectRoot)
-	if err != nil {
-		return ApplyResult{}, err
-	}
-
-	defer func() { _ = client.Close() }()
-
-	return bridge.Call[ApplyParams, ApplyResult](client, ApplyName, params)
+	return invocation.Call[ApplyParams, ApplyResult](projectRoot, ApplyName, params)
 }
 
 func validateApply(params ApplyParams) error {
@@ -77,8 +71,8 @@ func validateApply(params ApplyParams) error {
 	}
 
 	if params.DryRun && params.Save {
-		return &bridge.APIError{
-			Code:    bridge.ErrorCodeInvalidArgument,
+		return &apierr.Error{
+			Code:    apierr.CodeInvalidArgument,
 			Message: "save cannot be combined with dry_run",
 		}
 	}

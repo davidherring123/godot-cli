@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/editorinstance"
 	"github.com/davidherring123/godot-cli/internal/core/project/editor"
 )
 
@@ -82,7 +82,7 @@ func TestStatusRejectsMultipleEditors(t *testing.T) {
 	writeInstance(t, root, os.Getppid(), 49153, "test")
 
 	_, err := editor.Status(root, editor.StatusParams{})
-	if !errors.Is(err, bridge.ErrMultipleEditors) {
+	if !errors.Is(err, editorinstance.ErrMultipleEditors) {
 		t.Fatalf("status error = %v; want ErrMultipleEditors", err)
 	}
 }
@@ -134,7 +134,7 @@ func writeInstance(t *testing.T, root string, pid int, port int, version string)
 		t.Fatal(err)
 	}
 
-	data, err := json.Marshal(bridge.Instance{
+	data, err := json.Marshal(editorinstance.Instance{
 		PID:     pid,
 		Port:    port,
 		Project: root,

@@ -1,6 +1,6 @@
 package input
 
-import "github.com/davidherring123/godot-cli/internal/core/bridge"
+import "github.com/davidherring123/godot-cli/internal/core/apierr"
 
 const EventDeleteName = "input.event_delete"
 
@@ -10,8 +10,8 @@ func EventDelete(projectRoot string, params EventDeleteParams) (EventDeleteResul
 	}
 
 	if params.Index < 0 {
-		return EventDeleteResult{}, &bridge.APIError{
-			Code:    bridge.ErrorCodeInvalidArgument,
+		return EventDeleteResult{}, &apierr.Error{
+			Code:    apierr.CodeInvalidArgument,
 			Message: "An event index is required",
 		}
 	}

@@ -3,13 +3,15 @@ package bridge
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
+	"github.com/davidherring123/godot-cli/internal/core/editorinstance"
 )
 
 const HOST = "127.0.0.1"
@@ -21,23 +23,6 @@ const (
 	// editor must not block the caller forever.
 	requestTimeout = 10 * time.Second
 )
-
-var (
-	// ErrNoEditor reports that no running Godot editor is registered for the
-	// project.
-	ErrNoEditor = errors.New("no running Godot editor found")
-
-	// ErrMultipleEditors reports that more than one editor is registered for
-	// the project.
-	ErrMultipleEditors = errors.New("multiple Godot editor instances found")
-)
-
-type Instance struct {
-	PID     int    `json:"pid"`
-	Port    int    `json:"port"`
-	Project string `json:"project"`
-	Version string `json:"version"`
-}
 
 type Client struct {
 	conn    net.Conn
@@ -52,9 +37,9 @@ type Request[P any] struct {
 }
 
 type Response[R any] struct {
-	Result  R         `json:"result,omitempty"`
-	Code    ErrorCode `json:"code,omitempty"`
-	Message string    `json:"message,omitempty"`
+	Result  R           `json:"result,omitempty"`
+	Code    apierr.Code `json:"code,omitempty"`
+	Message string      `json:"message,omitempty"`
 }
 
 func Success[R any](result R) Response[R] {
@@ -63,7 +48,7 @@ func Success[R any](result R) Response[R] {
 	}
 }
 
-func Failure[R any](code ErrorCode, message string) Response[R] {
+func Failure[R any](code apierr.Code, message string) Response[R] {
 	return Response[R]{
 		Code:    code,
 		Message: message,
@@ -159,7 +144,7 @@ func Call[P any, R any](
 	}
 
 	if response.Code != "" {
-		return emptyResult, &APIError{
+		return emptyResult, &apierr.Error{
 			Code:    response.Code,
 			Message: response.Message,
 		}
@@ -169,9 +154,9 @@ func Call[P any, R any](
 }
 
 // FindInstance returns the single running Godot editor registered for the
-// project. It returns ErrNoEditor when none is running and ErrMultipleEditors
-// when more than one is.
-func FindInstance(projectRoot string) (Instance, error) {
+// project. It returns editorinstance.ErrNoEditor when none is running and
+// editorinstance.ErrMultipleEditors when more than one is.
+func FindInstance(projectRoot string) (editorinstance.Instance, error) {
 	instancesDir := filepath.Join(
 		projectRoot,
 		".godot",
@@ -182,13 +167,13 @@ func FindInstance(projectRoot string) (Instance, error) {
 	entries, err := os.ReadDir(instancesDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return Instance{}, ErrNoEditor
+			return editorinstance.Instance{}, editorinstance.ErrNoEditor
 		}
 
-		return Instance{}, err
+		return editorinstance.Instance{}, err
 	}
 
-	var instances []Instance
+	var instances []editorinstance.Instance
 
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
@@ -202,7 +187,7 @@ func FindInstance(projectRoot string) (Instance, error) {
 			continue
 		}
 
-		var instance Instance
+		var instance editorinstance.Instance
 
 		if err := json.Unmarshal(data, &instance); err != nil {
 			continue
@@ -221,11 +206,11 @@ func FindInstance(projectRoot string) (Instance, error) {
 	}
 
 	if len(instances) == 0 {
-		return Instance{}, ErrNoEditor
+		return editorinstance.Instance{}, editorinstance.ErrNoEditor
 	}
 
 	if len(instances) > 1 {
-		return Instance{}, ErrMultipleEditors
+		return editorinstance.Instance{}, editorinstance.ErrMultipleEditors
 	}
 
 	return instances[0], nil

@@ -3,14 +3,14 @@ package editor
 import (
 	"errors"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/editorinstance"
 )
 
 // Status reports whether a Godot editor with the addon is registered for the
 // project.
 func Status(projectRoot string, _ StatusParams) (StatusResult, error) {
-	instance, err := bridge.FindInstance(projectRoot)
-	if errors.Is(err, bridge.ErrNoEditor) {
+	instance, err := editorinstance.Find(projectRoot)
+	if errors.Is(err, editorinstance.ErrNoEditor) {
 		return StatusResult{}, nil
 	}
 

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/davidherring123/godot-cli/internal/compose"
 )
 
 const (
@@ -14,6 +16,8 @@ const (
 )
 
 func main() {
+	compose.Install()
+
 	var options runOptions
 	var smoke bool
 	var runs int

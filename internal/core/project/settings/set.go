@@ -1,28 +1,26 @@
 package settings
 
-import "github.com/davidherring123/godot-cli/internal/core/bridge"
+import (
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
+	"github.com/davidherring123/godot-cli/internal/core/invocation"
+)
 
 const SetName = "project.settings.set"
 
 func Set(projectRoot string, params SetParams) (SetResult, error) {
 	if params.Setting == "" {
-		return SetResult{}, &bridge.APIError{
-			Code:    bridge.ErrorCodeInvalidArgument,
+		return SetResult{}, &apierr.Error{
+			Code:    apierr.CodeInvalidArgument,
 			Message: "A project setting name is required",
 		}
 	}
 
 	if len(params.Value) == 0 {
-		return SetResult{}, &bridge.APIError{
-			Code:    bridge.ErrorCodeInvalidArgument,
+		return SetResult{}, &apierr.Error{
+			Code:    apierr.CodeInvalidArgument,
 			Message: "A value is required",
 		}
 	}
 
-	client, err := bridge.Connect(projectRoot)
-	if err != nil {
-		return SetResult{}, err
-	}
-	defer func() { _ = client.Close() }()
-	return bridge.Call[SetParams, SetResult](client, SetName, params)
+	return invocation.Call[SetParams, SetResult](projectRoot, SetName, params)
 }

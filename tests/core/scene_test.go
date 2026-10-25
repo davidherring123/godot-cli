@@ -6,7 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
@@ -49,7 +50,7 @@ func TestSceneOpenMissingReturnsNotFound(t *testing.T) {
 		scene.OpenParams{Scene: "res://cases/missing/main.tscn"},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestSceneCurrentSucceeds(t *testing.T) {
@@ -89,7 +90,7 @@ func TestSceneCurrentConflict(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 }
 
 func TestSceneTreeSucceeds(t *testing.T) {
@@ -267,7 +268,7 @@ func TestSceneCreateExistingFileConflict(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 }
 
 func TestSceneCreateUnknownTypeRejected(t *testing.T) {
@@ -285,7 +286,7 @@ func TestSceneCreateUnknownTypeRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 }
 
 func TestSceneCreateInvalidExtensionRejected(t *testing.T) {
@@ -303,7 +304,7 @@ func TestSceneCreateInvalidExtensionRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 }
 
 func TestSceneListEmptyReturnsEmptyArray(t *testing.T) {
@@ -361,7 +362,7 @@ func TestSceneCurrentWithNoSceneSucceeds(t *testing.T) {
 		scene.CurrentParams{ExpectedScene: "res://main.tscn"},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+	assertAPIErrorCode(t, err, apierr.CodeFailedPrecondition)
 
 	if err := session.LogJSON(scene.CurrentName, result); err != nil {
 		t.Fatal(err)
@@ -394,7 +395,7 @@ func openFixtureScene(
 func assertAPIErrorCode(
 	t *testing.T,
 	err error,
-	expected bridge.ErrorCode,
+	expected apierr.Code,
 ) {
 	t.Helper()
 
@@ -402,7 +403,7 @@ func assertAPIErrorCode(
 		t.Fatalf("expected %s error", expected)
 	}
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) {
 		t.Fatalf("expected API error, got %v", err)

@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/davidherring123/godot-cli/internal/compose"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
 
@@ -17,6 +18,8 @@ var (
 
 func TestMain(m *testing.M) {
 	flag.Parse()
+
+	compose.Install()
 
 	suiteSession, suiteError = harness.Start(suiteLogf)
 

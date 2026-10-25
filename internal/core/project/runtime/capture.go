@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
 )
 
 const capturePoll = 25 * time.Millisecond
@@ -24,7 +24,7 @@ func Capture(projectRoot string, params CaptureParams) (CaptureResult, error) {
 
 	if info.metadata.Headless {
 		return CaptureResult{}, newError(
-			string(bridge.ErrorCodeUnsupported),
+			string(apierr.CodeUnsupported),
 			"screenshots require a rendering display, but session %s was started with headless=true; stop it and start a windowed session",
 			info.metadata.Session,
 		)
@@ -47,7 +47,7 @@ func Capture(projectRoot string, params CaptureParams) (CaptureResult, error) {
 	// root consistently even when the host path contains symbolic links.
 	if err := writeJSONAtomic(requestPath, map[string]string{"path": output}); err != nil {
 		return CaptureResult{}, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"writing capture request: %v",
 			err,
 		)
@@ -81,7 +81,7 @@ func waitForCapture(
 		found, err := readJSON(responsePath, &response)
 		if err != nil {
 			return CaptureResult{}, newError(
-				string(bridge.ErrorCodeInternalError),
+				string(apierr.CodeInternalError),
 				"reading capture response: %v",
 				err,
 			)
@@ -102,7 +102,7 @@ func waitForCapture(
 
 		if !sameProcess(info.metadata.PID, info.metadata.ProcessIdentity) {
 			return CaptureResult{}, newError(
-				string(bridge.ErrorCodeFailedPrecondition),
+				string(apierr.CodeFailedPrecondition),
 				"runtime session %s exited before the screenshot completed; call runtime.status for errors",
 				info.metadata.Session,
 			)
@@ -111,7 +111,7 @@ func waitForCapture(
 		select {
 		case <-deadline.C:
 			return CaptureResult{}, newError(
-				string(bridge.ErrorCodeActionFailed),
+				string(apierr.CodeActionFailed),
 				"timed out after %s waiting for a screenshot from session %s; the runtime may be stalled",
 				timeout,
 				info.metadata.Session,
@@ -125,7 +125,7 @@ func captureError(response captureResponse) error {
 	code := response.Code
 
 	if code == "" {
-		code = string(bridge.ErrorCodeActionFailed)
+		code = string(apierr.CodeActionFailed)
 	}
 
 	message := response.Message
@@ -146,7 +146,7 @@ func captureResult(
 	data, err := os.ReadFile(absoluteOutput)
 	if err != nil {
 		return CaptureResult{}, newError(
-			string(bridge.ErrorCodeActionFailed),
+			string(apierr.CodeActionFailed),
 			"reading captured screenshot: %v",
 			err,
 		)
@@ -155,7 +155,7 @@ func captureResult(
 	config, err := png.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		return CaptureResult{}, newError(
-			string(bridge.ErrorCodeActionFailed),
+			string(apierr.CodeActionFailed),
 			"Godot wrote a screenshot that is not a readable PNG: %v",
 			err,
 		)
@@ -164,7 +164,7 @@ func captureResult(
 	artifactPath, err := resPath(projectRoot, absoluteOutput)
 	if err != nil {
 		return CaptureResult{}, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"resolving screenshot artifact path: %v",
 			err,
 		)
@@ -207,7 +207,7 @@ func requireRunningSession(projectRoot string, session string) (*sessionInfo, er
 
 	if info == nil {
 		return nil, newError(
-			string(bridge.ErrorCodeFailedPrecondition),
+			string(apierr.CodeFailedPrecondition),
 			"no runtime session is active for this project; call runtime.start first",
 		)
 	}
@@ -215,19 +215,19 @@ func requireRunningSession(projectRoot string, session string) (*sessionInfo, er
 	switch info.state {
 	case StateExited:
 		return nil, newError(
-			string(bridge.ErrorCodeFailedPrecondition),
+			string(apierr.CodeFailedPrecondition),
 			"runtime session %s has exited; call runtime.status for errors or runtime.start for a new session",
 			info.metadata.Session,
 		)
 	case StateStarting:
 		return nil, newError(
-			string(bridge.ErrorCodeFailedPrecondition),
+			string(apierr.CodeFailedPrecondition),
 			"runtime session %s is still starting; retry after runtime.start returns",
 			info.metadata.Session,
 		)
 	case StateUnresponsive:
 		return nil, newError(
-			string(bridge.ErrorCodeFailedPrecondition),
+			string(apierr.CodeFailedPrecondition),
 			"runtime session %s is alive but not responding; stop it with force=true and start a new session",
 			info.metadata.Session,
 		)
@@ -235,7 +235,7 @@ func requireRunningSession(projectRoot string, session string) (*sessionInfo, er
 
 	if !info.responsive {
 		return nil, newError(
-			string(bridge.ErrorCodeFailedPrecondition),
+			string(apierr.CodeFailedPrecondition),
 			"runtime session %s has not reported a recent heartbeat; stop it with force=true and start a new session",
 			info.metadata.Session,
 		)

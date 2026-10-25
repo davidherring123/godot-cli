@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
 	"github.com/davidherring123/godot-cli/internal/core/node"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
 	"github.com/davidherring123/godot-cli/tests/harness"
@@ -52,7 +53,7 @@ func TestNodeInspectMissingReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestNodeSetSucceeds(t *testing.T) {
@@ -94,7 +95,7 @@ func TestNodeSetMissingPropertyReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestNodeSetResourceSucceeds(t *testing.T) {
@@ -274,7 +275,7 @@ func TestNodeAddDuplicateNameConflict(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 }
 
 func TestNodeAddMissingParentReturnsNotFound(t *testing.T) {
@@ -293,7 +294,7 @@ func TestNodeAddMissingParentReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestNodeAddUnknownTypeRejected(t *testing.T) {
@@ -312,7 +313,7 @@ func TestNodeAddUnknownTypeRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 }
 
 func TestNodeAddWithScriptResource(t *testing.T) {
@@ -385,7 +386,7 @@ func TestNodeAddMissingResourceReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestNodeDeleteSucceeds(t *testing.T) {
@@ -428,7 +429,7 @@ func TestNodeDeleteSucceeds(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 
 	if err := session.LogJSON(node.DeleteName, result); err != nil {
 		t.Fatal(err)
@@ -450,7 +451,7 @@ func TestNodeDeleteRootRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+	assertAPIErrorCode(t, err, apierr.CodeFailedPrecondition)
 }
 
 func TestNodeDeleteMissingReturnsNotFound(t *testing.T) {
@@ -468,7 +469,7 @@ func TestNodeDeleteMissingReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestNodeInstantiateSucceeds(t *testing.T) {
@@ -570,7 +571,7 @@ func TestNodeInstantiateMissingSceneReturnsNotFound(t *testing.T) {
 		Scene:         "res://scenes/missing.tscn",
 		Parent:        ".",
 		ExpectedScene: path,
-	}, bridge.ErrorCodeNotFound)
+	}, apierr.CodeNotFound)
 }
 
 func TestNodeInstantiateSelfReferenceRejected(t *testing.T) {
@@ -583,7 +584,7 @@ func TestNodeInstantiateSelfReferenceRejected(t *testing.T) {
 		Scene:         path,
 		Parent:        ".",
 		ExpectedScene: path,
-	}, bridge.ErrorCodeFailedPrecondition)
+	}, apierr.CodeFailedPrecondition)
 }
 
 func TestNodeInstantiateUnsavedSourceRejected(t *testing.T) {
@@ -609,7 +610,7 @@ func TestNodeInstantiateUnsavedSourceRejected(t *testing.T) {
 		Scene:         source,
 		Parent:        ".",
 		ExpectedScene: destination,
-	}, bridge.ErrorCodeFailedPrecondition)
+	}, apierr.CodeFailedPrecondition)
 
 	openFixtureScene(t, session, source)
 
@@ -695,7 +696,7 @@ func TestNodeRenameSucceeds(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 
 	if err := session.LogJSON(node.RenameName, result); err != nil {
 		t.Fatal(err)
@@ -718,7 +719,7 @@ func TestNodeRenameConflict(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 }
 
 func TestNodeRenameSameNameIsNoOp(t *testing.T) {
@@ -769,7 +770,7 @@ func TestNodeRenameMissingReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestNodeRenameRootSucceeds(t *testing.T) {
@@ -831,7 +832,7 @@ func TestNodeRenameInstanceChildRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+	assertAPIErrorCode(t, err, apierr.CodeFailedPrecondition)
 }
 
 func TestNodeDuplicateSucceeds(t *testing.T) {
@@ -1028,7 +1029,7 @@ func TestNodeDuplicateRootRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+	assertAPIErrorCode(t, err, apierr.CodeFailedPrecondition)
 }
 
 func TestNodeDuplicateNameConflict(t *testing.T) {
@@ -1047,7 +1048,7 @@ func TestNodeDuplicateNameConflict(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 }
 
 func TestNodeDuplicateMissingReturnsNotFound(t *testing.T) {
@@ -1065,7 +1066,7 @@ func TestNodeDuplicateMissingReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestNodeMoveReparentsWithReferences(t *testing.T) {
@@ -1138,7 +1139,7 @@ func TestNodeMoveReparentsWithReferences(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 
 	if err := session.LogJSON(node.MoveName, result); err != nil {
 		t.Fatal(err)
@@ -1244,7 +1245,7 @@ func TestNodeMoveUnderSelfRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+	assertAPIErrorCode(t, err, apierr.CodeFailedPrecondition)
 }
 
 func TestNodeMoveRootRejected(t *testing.T) {
@@ -1263,7 +1264,7 @@ func TestNodeMoveRootRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+	assertAPIErrorCode(t, err, apierr.CodeFailedPrecondition)
 }
 
 func TestNodeMoveGeneratesUniqueName(t *testing.T) {
@@ -1317,7 +1318,7 @@ func TestNodeMoveMissingReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 
 	_, err = bridge.Call[node.MoveParams, node.MoveResult](
 		session.Client,
@@ -1329,7 +1330,7 @@ func TestNodeMoveMissingReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestNodeMoveKeepsLocalTransform(t *testing.T) {
@@ -1446,7 +1447,7 @@ func assertInstantiateErrorCode(
 	t *testing.T,
 	session *harness.Session,
 	params node.InstantiateParams,
-	expected bridge.ErrorCode,
+	expected apierr.Code,
 ) {
 	t.Helper()
 

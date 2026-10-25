@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
 	"github.com/davidherring123/godot-cli/internal/addon"
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
 )
 
 const (

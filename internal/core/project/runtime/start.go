@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
 	"github.com/davidherring123/godot-cli/internal/core/godot"
 	"github.com/davidherring123/godot-cli/internal/core/project/scenepath"
 )
@@ -37,7 +37,7 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 
 	if active != nil {
 		return StatusResult{}, newError(
-			string(bridge.ErrorCodeConflict),
+			string(apierr.CodeConflict),
 			"a runtime session is already active for this project (%s); call runtime.status, or stop it with force=true if it is unresponsive",
 			active.metadata.Session,
 		)
@@ -48,7 +48,7 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 	scene, err := scenepath.Resolve(projectRoot, params.Scene)
 	if err != nil {
 		return StatusResult{}, newError(
-			string(bridge.ErrorCodeInvalidArgument),
+			string(apierr.CodeInvalidArgument),
 			"%v",
 			err,
 		)
@@ -64,7 +64,7 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 
 	if err := prepareSession(directory); err != nil {
 		return StatusResult{}, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"creating runtime session directory: %v",
 			err,
 		)
@@ -76,7 +76,7 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 		_ = os.RemoveAll(directory)
 
 		return StatusResult{}, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"writing runtime runner: %v",
 			err,
 		)
@@ -116,7 +116,7 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 		_ = os.RemoveAll(directory)
 
 		return StatusResult{}, newError(
-			string(bridge.ErrorCodeActionFailed),
+			string(apierr.CodeActionFailed),
 			"starting Godot runtime: %v",
 			err,
 		)
@@ -147,7 +147,7 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 		_ = os.RemoveAll(directory)
 
 		return StatusResult{}, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"writing runtime session metadata: %v",
 			err,
 		)
@@ -219,13 +219,13 @@ func waitForReady(
 }
 
 func startError(projectRoot string, directory string, fallback string) error {
-	code := string(bridge.ErrorCodeActionFailed)
+	code := string(apierr.CodeActionFailed)
 	message := fallback
 
 	if report, found := readExit(directory); found {
 		switch report.Reason {
 		case "scene_not_found", "scene_load_failed", "scene_instantiate_failed":
-			code = string(bridge.ErrorCodeInvalidArgument)
+			code = string(apierr.CodeInvalidArgument)
 		}
 
 		if message == "" {
@@ -297,7 +297,7 @@ func openLogs(directory string) (*os.File, *os.File, error) {
 	)
 	if err != nil {
 		return nil, nil, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"opening runtime stdout log: %v",
 			err,
 		)
@@ -312,7 +312,7 @@ func openLogs(directory string) (*os.File, *os.File, error) {
 		_ = stdout.Close()
 
 		return nil, nil, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"opening runtime stderr log: %v",
 			err,
 		)
@@ -332,7 +332,7 @@ func closeFiles(files ...*os.File) {
 func acquireStartLock(projectRoot string) (func(), error) {
 	if err := os.MkdirAll(sessionsRoot(projectRoot), 0755); err != nil {
 		return nil, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"creating runtime directory: %v",
 			err,
 		)
@@ -348,7 +348,7 @@ func acquireStartLock(projectRoot string) (func(), error) {
 
 		if !os.IsExist(err) {
 			return nil, newError(
-				string(bridge.ErrorCodeInternalError),
+				string(apierr.CodeInternalError),
 				"acquiring runtime start lock: %v",
 				err,
 			)
@@ -363,13 +363,13 @@ func acquireStartLock(projectRoot string) (func(), error) {
 		}
 
 		return nil, newError(
-			string(bridge.ErrorCodeBusy),
+			string(apierr.CodeBusy),
 			"another runtime start is in progress; retry after it finishes",
 		)
 	}
 
 	return nil, newError(
-		string(bridge.ErrorCodeBusy),
+		string(apierr.CodeBusy),
 		"another runtime start is in progress; retry after it finishes",
 	)
 }

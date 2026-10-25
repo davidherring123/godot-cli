@@ -3,7 +3,7 @@ package runtime
 import (
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
 )
 
 // Stop asks a runtime to quit, then kills it if it does not exit within the
@@ -32,7 +32,7 @@ func Stop(projectRoot string, params StopParams) (StopResult, error) {
 	if info.state == StateUnresponsive {
 		if !params.Force {
 			return StopResult{}, newError(
-				string(bridge.ErrorCodeFailedPrecondition),
+				string(apierr.CodeFailedPrecondition),
 				"runtime session %s is alive but not responding; pass force=true to kill pid %d",
 				info.metadata.Session,
 				info.metadata.PID,
@@ -48,7 +48,7 @@ func Stop(projectRoot string, params StopParams) (StopResult, error) {
 
 	if !terminate(info.metadata, info.directory, timeout) {
 		return StopResult{}, newError(
-			string(bridge.ErrorCodeActionFailed),
+			string(apierr.CodeActionFailed),
 			"runtime session %s did not exit after %s; pid %d is still alive",
 			info.metadata.Session,
 			timeout,

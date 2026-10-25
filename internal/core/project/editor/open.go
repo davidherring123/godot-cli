@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/editorinstance"
 	"github.com/davidherring123/godot-cli/internal/core/godot"
 )
 
@@ -19,11 +19,11 @@ const (
 // addon bridge to register. It returns the existing instance when an editor is
 // already running.
 func Open(projectRoot string, params OpenParams) (OpenResult, error) {
-	instance, err := bridge.FindInstance(projectRoot)
+	instance, err := editorinstance.Find(projectRoot)
 	switch {
 	case err == nil:
 		return openResult(instance, false, true), nil
-	case !errors.Is(err, bridge.ErrNoEditor):
+	case !errors.Is(err, editorinstance.ErrNoEditor):
 		return OpenResult{}, err
 	}
 
@@ -61,12 +61,12 @@ func Open(projectRoot string, params OpenParams) (OpenResult, error) {
 	for {
 		select {
 		case <-ticker.C:
-			instance, err := bridge.FindInstance(projectRoot)
+			instance, err := editorinstance.Find(projectRoot)
 			if err == nil {
 				return openResult(instance, true, false), nil
 			}
 
-			if !errors.Is(err, bridge.ErrNoEditor) {
+			if !errors.Is(err, editorinstance.ErrNoEditor) {
 				return OpenResult{}, err
 			}
 		case err := <-waited:
@@ -89,7 +89,7 @@ func Open(projectRoot string, params OpenParams) (OpenResult, error) {
 	}
 }
 
-func openResult(instance bridge.Instance, opened bool, alreadyRunning bool) OpenResult {
+func openResult(instance editorinstance.Instance, opened bool, alreadyRunning bool) OpenResult {
 	return OpenResult{
 		Opened:         opened,
 		AlreadyRunning: alreadyRunning,

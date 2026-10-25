@@ -5,7 +5,8 @@ import (
 	"errors"
 
 	"github.com/davidherring123/godot-cli/internal/core"
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
+	"github.com/davidherring123/godot-cli/internal/core/editorinstance"
 	"github.com/davidherring123/godot-cli/internal/core/godot"
 	"github.com/davidherring123/godot-cli/internal/core/project/runtime"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -18,12 +19,12 @@ type errorPayload struct {
 
 func errorResult(err error) *mcpgo.CallToolResult {
 	payload := errorPayload{
-		Code:    string(bridge.ErrorCodeInternalError),
+		Code:    string(apierr.CodeInternalError),
 		Message: err.Error(),
 	}
 
 	var argumentError *core.ArgumentError
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 	var runtimeError *runtime.Error
 
 	switch {
@@ -37,12 +38,12 @@ func errorResult(err error) *mcpgo.CallToolResult {
 
 		payload.Message = runtimeError.Message
 	case errors.As(err, &argumentError):
-		payload.Code = string(bridge.ErrorCodeInvalidArgument)
+		payload.Code = string(apierr.CodeInvalidArgument)
 		payload.Message = argumentError.Error()
-	case errors.Is(err, bridge.ErrNoEditor),
-		errors.Is(err, bridge.ErrMultipleEditors),
+	case errors.Is(err, editorinstance.ErrNoEditor),
+		errors.Is(err, editorinstance.ErrMultipleEditors),
 		errors.Is(err, godot.ErrNotFound):
-		payload.Code = string(bridge.ErrorCodeFailedPrecondition)
+		payload.Code = string(apierr.CodeFailedPrecondition)
 	}
 
 	data, _ := json.Marshal(payload)

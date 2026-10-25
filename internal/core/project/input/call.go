@@ -4,25 +4,17 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
+	"github.com/davidherring123/godot-cli/internal/core/invocation"
 )
 
 func call[P any, R any](projectRoot, name string, params P) (R, error) {
-	var empty R
-
-	client, err := bridge.Connect(projectRoot)
-	if err != nil {
-		return empty, err
-	}
-
-	defer func() { _ = client.Close() }()
-
-	return bridge.Call[P, R](client, name, params)
+	return invocation.Call[P, R](projectRoot, name, params)
 }
 
-func validationError(message string) *bridge.APIError {
-	return &bridge.APIError{
-		Code:    bridge.ErrorCodeInvalidArgument,
+func validationError(message string) *apierr.Error {
+	return &apierr.Error{
+		Code:    apierr.CodeInvalidArgument,
 		Message: message,
 	}
 }

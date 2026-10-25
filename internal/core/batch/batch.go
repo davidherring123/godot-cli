@@ -5,7 +5,7 @@ package batch
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
 )
 
 // MaxOperations is the maximum number of operations accepted by one apply
@@ -16,15 +16,15 @@ const MaxOperations = 100
 // ValidateOperationCount checks the batch size before any editor call.
 func ValidateOperationCount(count int) error {
 	if count == 0 {
-		return &bridge.APIError{
-			Code:    bridge.ErrorCodeInvalidArgument,
+		return &apierr.Error{
+			Code:    apierr.CodeInvalidArgument,
 			Message: "A nonempty operations array is required",
 		}
 	}
 
 	if count > MaxOperations {
-		return &bridge.APIError{
-			Code: bridge.ErrorCodeInvalidArgument,
+		return &apierr.Error{
+			Code: apierr.CodeInvalidArgument,
 			Message: fmt.Sprintf(
 				"At most %d operations are allowed",
 				MaxOperations,
@@ -39,8 +39,8 @@ func ValidateOperationCount(count int) error {
 // mirrors the addon so direct bridge callers and MCP callers see identical
 // diagnostics.
 func InvalidOperation(index int, operation, target, message string) error {
-	return &bridge.APIError{
-		Code:    bridge.ErrorCodeInvalidArgument,
+	return &apierr.Error{
+		Code:    apierr.CodeInvalidArgument,
 		Message: OperationMessage(index, operation, target, message),
 	}
 }

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
 )
 
 const (
@@ -102,7 +102,7 @@ func validSessionID(session string) bool {
 func sessionDirectory(projectRoot string, session string) (string, error) {
 	if !validSessionID(session) {
 		return "", newError(
-			string(bridge.ErrorCodeInvalidArgument),
+			string(apierr.CodeInvalidArgument),
 			"invalid runtime session ID %q",
 			session,
 		)
@@ -112,7 +112,7 @@ func sessionDirectory(projectRoot string, session string) (string, error) {
 
 	if info, err := os.Stat(directory); err != nil || !info.IsDir() {
 		return "", newError(
-			string(bridge.ErrorCodeNotFound),
+			string(apierr.CodeNotFound),
 			"runtime session %q was not found",
 			session,
 		)
@@ -205,7 +205,7 @@ func inspectDirectory(directory string) (*sessionInfo, error) {
 	found, err := readJSON(filepath.Join(directory, "session.json"), &metadata)
 	if err != nil {
 		return nil, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"reading runtime session metadata: %v",
 			err,
 		)
@@ -213,7 +213,7 @@ func inspectDirectory(directory string) (*sessionInfo, error) {
 
 	if !found {
 		return nil, newError(
-			string(bridge.ErrorCodeInternalError),
+			string(apierr.CodeInternalError),
 			"runtime session metadata is missing in %s",
 			directory,
 		)
@@ -316,7 +316,7 @@ func activeSession(projectRoot string) (*sessionInfo, error) {
 		sort.Strings(names)
 
 		return nil, newError(
-			string(bridge.ErrorCodeConflict),
+			string(apierr.CodeConflict),
 			"multiple runtime sessions are active (%s); stop them with runtime.stop",
 			strings.Join(names, ", "),
 		)

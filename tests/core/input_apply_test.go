@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/apierr"
 	"github.com/davidherring123/godot-cli/internal/core/batch"
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/project/input"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
@@ -181,9 +182,9 @@ func TestInputMapApplyFailureRestoresInMemoryState(t *testing.T) {
 		},
 	})
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) {
 		t.Fatalf("expected an API error, got %v", err)
@@ -220,9 +221,9 @@ func TestInputMapApplyRejectsOversizedBatch(t *testing.T) {
 
 	_, err := input.Apply("", input.ApplyParams{Operations: operations})
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) || !strings.Contains(apiError.Message, "At most 100") {
 		t.Fatalf("expected an operation limit error, got %v", err)
@@ -239,9 +240,9 @@ func TestInputMapApplyReportsInvalidOperation(t *testing.T) {
 		},
 	})
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) {
 		t.Fatalf("expected an API error, got %v", err)
@@ -333,9 +334,9 @@ func TestInputMapApplyRejectsFieldsFromOtherOperations(t *testing.T) {
 				Operations: []input.ApplyOperation{testCase.operation},
 			})
 
-			assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+			assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 
-			var apiError *bridge.APIError
+			var apiError *apierr.Error
 
 			if !errors.As(err, &apiError) {
 				t.Fatalf("expected an API error, got %v", err)
@@ -370,9 +371,9 @@ func TestInputMapApplyAddonRejectsExclusiveFields(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) ||
 		!strings.Contains(apiError.Message, "does not accept new_name") {
@@ -464,5 +465,5 @@ func assertInputMissing(
 		input.InspectParams{Action: name},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
