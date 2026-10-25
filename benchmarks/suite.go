@@ -38,9 +38,13 @@ type approachStats struct {
 	Runs               int     `json:"runs"`
 	Completed          int     `json:"completed"`
 	Successes          int     `json:"successes"`
+	SetupFailures      int     `json:"setupFailures"`
 	SuccessRate        float64 `json:"successRate"`
+	MedianSetupMS      float64 `json:"medianSetupMs"`
 	MedianAgentMS      float64 `json:"medianAgentMs"`
 	MedianTools        float64 `json:"medianTools"`
+	MedianMCPCalls     float64 `json:"medianMcpCalls"`
+	MedianMCPErrors    float64 `json:"medianMcpErrors"`
 	MedianInputTokens  float64 `json:"medianInputTokens"`
 	MedianOutputTokens float64 `json:"medianOutputTokens"`
 	MedianPromptTokens float64 `json:"medianPromptTokens"`
@@ -96,9 +100,13 @@ func runSuite(
 			outcome.Path = path
 			outcome.Err = err
 
-			if err == nil {
+			// A setup failure still writes a result. Read it so setup duration
+			// and failure counts are represented in the summary.
+			if path != "" {
 				if result, readErr := readResult(path); readErr == nil {
 					outcome.Result = &result
+				} else if err == nil {
+					outcome.Err = readErr
 				}
 			}
 			outcomes[position] = outcome
@@ -161,8 +169,11 @@ func summarizeApproach(
 ) approachStats {
 	stats := approachStats{Approach: approach}
 
+	var setupMS []float64
 	var agentMS []float64
 	var tools []float64
+	var mcpCalls []float64
+	var mcpErrors []float64
 	var inputTokens []float64
 	var outputTokens []float64
 	var promptTokens []float64
@@ -182,14 +193,24 @@ func summarizeApproach(
 		}
 		stats.Completed++
 
+		if outcome.Result.SetupFailure != "" {
+			stats.SetupFailures++
+		}
+		setupMS = append(setupMS, float64(outcome.Result.SetupMS))
+
 		if !outcome.Result.Success {
 			continue
 		}
 		stats.Successes++
 
 		agentMS = append(agentMS, float64(outcome.Result.AgentMS))
-		tools = append(tools, float64(len(outcome.Result.Tools)))
+		tools = append(tools, float64(toolUsageCount(*outcome.Result)))
 		contextBytes = append(contextBytes, float64(outcome.Result.Context.Bytes))
+
+		if mcp := outcome.Result.MCP; mcp != nil {
+			mcpCalls = append(mcpCalls, float64(mcp.Calls))
+			mcpErrors = append(mcpErrors, float64(mcp.Errors))
+		}
 
 		if tokens := outcome.Result.Tokens; tokens != nil {
 			inputTokens = appendFloat(inputTokens, tokens.Input)
@@ -203,8 +224,11 @@ func summarizeApproach(
 	if stats.Runs > 0 {
 		stats.SuccessRate = float64(stats.Successes) / float64(stats.Runs)
 	}
+	stats.MedianSetupMS = median(setupMS)
 	stats.MedianAgentMS = median(agentMS)
 	stats.MedianTools = median(tools)
+	stats.MedianMCPCalls = median(mcpCalls)
+	stats.MedianMCPErrors = median(mcpErrors)
 	stats.MedianInputTokens = median(inputTokens)
 	stats.MedianOutputTokens = median(outputTokens)
 	stats.MedianPromptTokens = median(promptTokens)
@@ -225,12 +249,15 @@ func printSuiteSummary(summary suiteSummary) {
 	)
 
 	fmt.Printf(
-		"%-14s %5s %9s %9s %7s %8s %8s %10s %7s %9s %9s\n",
+		"%-14s %5s %9s %7s %9s %8s %8s %7s %8s %8s %10s %7s %9s %9s\n",
 		"approach",
 		"runs",
 		"success",
+		"setup",
+		"setupMs",
 		"agentMs",
 		"tools",
+		"mcp",
 		"inTok",
 		"outTok",
 		"promptTok",
@@ -241,12 +268,15 @@ func printSuiteSummary(summary suiteSummary) {
 
 	for _, stats := range summary.Approaches {
 		fmt.Printf(
-			"%-14s %5d %9s %9.0f %7.0f %8.0f %8.0f %10.0f %6.0f%% %9.6f %9.1f\n",
+			"%-14s %5d %9s %7d %9.0f %8.0f %8.0f %7.0f %8.0f %8.0f %10.0f %6.0f%% %9.6f %9.1f\n",
 			stats.Approach,
 			stats.Runs,
 			fmt.Sprintf("%d/%d", stats.Successes, stats.Runs),
+			stats.SetupFailures,
+			stats.MedianSetupMS,
 			stats.MedianAgentMS,
 			stats.MedianTools,
+			stats.MedianMCPCalls,
 			stats.MedianInputTokens,
 			stats.MedianOutputTokens,
 			stats.MedianPromptTokens,

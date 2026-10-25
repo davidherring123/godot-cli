@@ -1,7 +1,7 @@
 class_name VariantSerializer
 extends RefCounted
 
-static func serialize(value: Variant) -> Variant:
+static func serialize(value: Variant, path_overrides: Dictionary = {}) -> Variant:
     if value == null:
         return null
 
@@ -43,21 +43,21 @@ static func serialize(value: Variant) -> Variant:
 
         TYPE_RECT2, TYPE_RECT2I:
             return {
-                "position": serialize(value.position),
-                "size": serialize(value.size)
+                "position": serialize(value.position, path_overrides),
+                "size": serialize(value.size, path_overrides)
             }
 
         TYPE_ARRAY:
-            return _serialize_array(value)
+            return _serialize_array(value, path_overrides)
 
         TYPE_DICTIONARY:
-            return _serialize_dictionary(value)
+            return _serialize_dictionary(value, path_overrides)
 
         TYPE_PACKED_BYTE_ARRAY, TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT64_ARRAY, TYPE_PACKED_FLOAT32_ARRAY, TYPE_PACKED_FLOAT64_ARRAY, TYPE_PACKED_STRING_ARRAY, TYPE_PACKED_VECTOR2_ARRAY, TYPE_PACKED_VECTOR3_ARRAY, TYPE_PACKED_VECTOR4_ARRAY, TYPE_PACKED_COLOR_ARRAY:
-            return _serialize_array(value)
+            return _serialize_array(value, path_overrides)
 
         TYPE_OBJECT:
-            return _serialize_object(value)
+            return _serialize_object(value, path_overrides)
 
         TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING:
             return value
@@ -65,26 +65,31 @@ static func serialize(value: Variant) -> Variant:
         _:
             return str(value)
 
-static func _serialize_array(value: Variant) -> Array:
+static func _serialize_array(value: Variant, path_overrides: Dictionary) -> Array:
     var result: Array = []
 
     for item in value:
-        result.append(serialize(item))
+        result.append(serialize(item, path_overrides))
 
     return result
 
-static func _serialize_dictionary(value: Dictionary) -> Dictionary:
+static func _serialize_dictionary(value: Dictionary, path_overrides: Dictionary) -> Dictionary:
     var result := {}
 
     for key in value:
-        result[str(key)] = serialize(value[key])
+        result[str(key)] = serialize(value[key], path_overrides)
 
     return result
 
-static func _serialize_object(value: Object) -> Variant:
+static func _serialize_object(value: Object, path_overrides: Dictionary) -> Variant:
     if value is Resource:
+        var path := str(value.resource_path)
+
+        if path.is_empty():
+            path = str(path_overrides.get(value.get_instance_id(), ""))
+
         return {
-            "resource": value.resource_path,
+            "resource": path,
             "type": value.get_class()
         }
 

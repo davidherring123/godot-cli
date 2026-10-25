@@ -5,6 +5,7 @@ var actions: Dictionary = {}
 
 var scene_context: EditorSceneContext
 var scene_service: SceneService
+var scene_apply_service: SceneApplyService
 var node_service: NodeService
 var resource_service: ResourceService
 var settings_service: ProjectSettingsService
@@ -15,12 +16,14 @@ func _init(editor_interface: EditorInterface, undo_redo: EditorUndoRedoManager) 
     scene_context = EditorSceneContext.new(editor_interface)
 
     scene_service = SceneService.new(scene_context)
+    scene_apply_service = SceneApplyService.new(scene_context, undo_redo)
     node_service = NodeService.new(scene_context, undo_redo)
     resource_service = ResourceService.new(editor_interface)
     settings_service = ProjectSettingsService.new()
     input_service = InputService.new()
 
     _register_service(scene_service)
+    _register_service(scene_apply_service)
     _register_service(node_service)
     _register_service(resource_service)
     _register_service(settings_service)

@@ -12,6 +12,7 @@ import (
 	"github.com/davidherring123/godot-cli/internal/core/node"
 	"github.com/davidherring123/godot-cli/internal/core/project/settings"
 	"github.com/davidherring123/godot-cli/internal/core/resource"
+	"github.com/davidherring123/godot-cli/internal/core/runtime"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
 	"github.com/davidherring123/godot-cli/internal/core/validate"
 	"github.com/invopop/jsonschema"
@@ -26,6 +27,7 @@ type ActionDefinition struct {
 	Output      *jsonschema.Schema
 	ReadOnly    bool
 	Destructive bool
+	Idempotent  bool
 	Invoke      InvokeFunc
 }
 
@@ -51,6 +53,7 @@ func (err *ArgumentError) Unwrap() error {
 type actionHints struct {
 	readOnly    bool
 	destructive bool
+	idempotent  bool
 }
 
 // actionOption adjusts the behavior hints attached to an action.
@@ -69,6 +72,14 @@ func withReadOnly() actionOption {
 func withAdditive() actionOption {
 	return func(hints *actionHints) {
 		hints.destructive = false
+	}
+}
+
+// withIdempotent marks an action as safe to retry without changing the result
+// beyond its first successful call.
+func withIdempotent() actionOption {
+	return func(hints *actionHints) {
+		hints.idempotent = true
 	}
 }
 
@@ -95,6 +106,7 @@ func define[P, R any](
 		Output:      reflector.ReflectFromType(reflect.TypeFor[R]()),
 		ReadOnly:    hints.readOnly,
 		Destructive: hints.destructive,
+		Idempotent:  hints.readOnly || hints.idempotent,
 		Invoke: func(projectRoot string, input json.RawMessage) (any, error) {
 			var params P
 
@@ -132,6 +144,11 @@ var (
 	SceneCreate  = define[scene.CreateParams, scene.CreateResult](scene.CreateName, "Create a new scene file and open it in the editor", scene.Create, withAdditive())
 	SceneSave    = define[scene.SaveParams, scene.SaveResult](scene.SaveName, "Save the active editor scene", scene.Save)
 	SceneTree    = define[scene.TreeParams, scene.TreeResult](scene.TreeName, "Show the active editor scene's node tree", scene.Tree, withReadOnly())
+	SceneApply   = define[scene.ApplyParams, scene.ApplyResult](
+		scene.ApplyName,
+		"Apply 1-100 ordered node operations to the active scene as one atomic undo step, with best-effort prevalidation, optional dry_run, and deferred history registration",
+		scene.Apply,
+	)
 	ValidateLive = define[validate.LiveParams, validate.LiveResult](
 		validate.LiveName,
 		"Validate the active editor scene, including unsaved state",
@@ -179,6 +196,11 @@ var (
 		"Delete a resource file that nothing else references",
 		resource.Delete,
 	)
+	ResourceApply = define[resource.ApplyParams, resource.ApplyResult](
+		resource.ApplyName,
+		"Apply ordered resource create, set, and delete operations with in-order validation, optional dry_run, and best-effort rollback of this domain's writes on failure",
+		resource.Apply,
+	)
 	ProjectSettingsList = define[settings.ListParams, settings.ListResult](
 		settings.ListName,
 		"List editor-visible project settings",
@@ -201,6 +223,11 @@ var (
 		"Remove a project setting override and save project.godot immediately",
 		settings.Unset,
 	)
+	ProjectSettingsApply = define[settings.ApplyParams, settings.ApplyResult](
+		settings.ApplyName,
+		"Apply ordered project-setting set and unset operations with in-order validation, optional dry_run, and a single project.godot save with best-effort rollback on save failure",
+		settings.Apply,
+	)
 	InputList        = define[input.ListParams, input.ListResult](input.ListName, "List Input Map actions", input.List, withReadOnly())
 	InputInspect     = define[input.InspectParams, input.InspectResult](input.InspectName, "Show one Input Map action and its bindings", input.Inspect, withReadOnly())
 	InputAdd         = define[input.AddParams, input.AddResult](input.AddName, "Add an Input Map action and save project.godot immediately", input.Add, withAdditive())
@@ -209,6 +236,35 @@ var (
 	InputDelete      = define[input.DeleteParams, input.DeleteResult](input.DeleteName, "Delete an Input Map action and save project.godot immediately", input.Delete)
 	InputEventAdd    = define[input.EventAddParams, input.EventAddResult](input.EventAddName, "Add a binding to an Input Map action and save project.godot immediately", input.EventAdd, withAdditive())
 	InputEventDelete = define[input.EventDeleteParams, input.EventDeleteResult](input.EventDeleteName, "Remove a binding from an Input Map action and save project.godot immediately", input.EventDelete)
+	InputMapApply    = define[input.ApplyParams, input.ApplyResult](
+		input.ApplyName,
+		"Apply ordered Input Map action and binding mutations with in-order validation, optional dry_run, and a single project.godot save with best-effort rollback on save failure",
+		input.Apply,
+	)
+	RuntimeStart = define[runtime.StartParams, runtime.StatusResult](
+		runtime.StartName,
+		"Start the project's game process, wait until its scene is ready, and return the runtime session",
+		runtime.Start,
+		withAdditive(),
+	)
+	RuntimeStatus = define[runtime.StatusParams, runtime.StatusResult](
+		runtime.StatusName,
+		"Show the active or most recent runtime session, including errors, frames, and artifacts",
+		runtime.Status,
+		withReadOnly(),
+	)
+	RuntimeCapture = define[runtime.CaptureParams, runtime.CaptureResult](
+		runtime.CaptureName,
+		"Capture a PNG screenshot from the running game; the MCP result includes the image when possible",
+		runtime.Capture,
+		withAdditive(),
+	)
+	RuntimeStop = define[runtime.StopParams, runtime.StopResult](
+		runtime.StopName,
+		"Stop the runtime session, waiting for a graceful exit before killing the game process",
+		runtime.Stop,
+		withIdempotent(),
+	)
 )
 
 func All() []ActionDefinition {
@@ -221,6 +277,7 @@ func All() []ActionDefinition {
 		SceneCreate,
 		SceneSave,
 		SceneTree,
+		SceneApply,
 		ValidateLive,
 		ValidateScene,
 		NodeInspect,
@@ -235,10 +292,12 @@ func All() []ActionDefinition {
 		ResourceInspect,
 		ResourceSet,
 		ResourceDelete,
+		ResourceApply,
 		ProjectSettingsList,
 		ProjectSettingsGet,
 		ProjectSettingsSet,
 		ProjectSettingsUnset,
+		ProjectSettingsApply,
 		InputList,
 		InputInspect,
 		InputAdd,
@@ -247,6 +306,11 @@ func All() []ActionDefinition {
 		InputDelete,
 		InputEventAdd,
 		InputEventDelete,
+		InputMapApply,
+		RuntimeStart,
+		RuntimeStatus,
+		RuntimeCapture,
+		RuntimeStop,
 	}
 }
 

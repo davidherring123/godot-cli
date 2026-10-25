@@ -28,6 +28,7 @@ type openCodeServer struct {
 
 type sessionInfo struct {
 	ID          string           `json:"id"`
+	Agent       string           `json:"agent"`
 	Outcome     string           `json:"outcome"`
 	Cost        *float64         `json:"cost"`
 	Tokens      *tokenUsage      `json:"tokens"`
@@ -188,12 +189,28 @@ func benchmarkPermissions(approach string) []permissionRule {
 			Effect:   "deny",
 		},
 	}
-	if approach == approachCLI {
-		permissions = append(permissions, permissionRule{
-			Action:   "skill",
-			Resource: "godot-cli",
-			Effect:   "allow",
-		})
+	if approach == approachMCP {
+		// OpenCode applies the last matching rule. Keep the wildcard MCP denial
+		// first, then open exactly the godot-cli server and Code Mode. Other MCP
+		// servers remain denied by mcpWildcardAction.
+		permissions = append(
+			permissions,
+			permissionRule{
+				Action:   "godot_*",
+				Resource: "*",
+				Effect:   "allow",
+			},
+			permissionRule{
+				Action:   "execute",
+				Resource: "*",
+				Effect:   "allow",
+			},
+			permissionRule{
+				Action:   "skill",
+				Resource: "godot-cli",
+				Effect:   "allow",
+			},
+		)
 	}
 	return permissions
 }
@@ -247,6 +264,7 @@ func (server *openCodeServer) run(
 	agent string,
 	prompt string,
 	environment []string,
+	logPath string,
 ) error {
 	command := exec.CommandContext(
 		ctx,
@@ -271,6 +289,17 @@ func (server *openCodeServer) run(
 	})
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
+	var logFile *os.File
+	if logPath != "" {
+		var err error
+		logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+		if err != nil {
+			return fmt.Errorf("opening raw run log: %w", err)
+		}
+		defer func() { _ = logFile.Close() }()
+		command.Stdout = io.MultiWriter(os.Stdout, logFile)
+		command.Stderr = io.MultiWriter(os.Stderr, logFile)
+	}
 
 	if err := command.Run(); err != nil {
 		return fmt.Errorf("OpenCode run failed: %w", err)
@@ -448,76 +477,4 @@ func (server *openCodeServer) logs() string {
 		server.stdout.String(),
 		server.stderr.String(),
 	)
-}
-
-func summarizeMessages(
-	messages []sessionMessage,
-) []toolCall {
-	var tools []toolCall
-
-	for _, message := range messages {
-		if message.Type != "assistant" {
-			continue
-		}
-		for _, content := range message.Content {
-			var kind struct {
-				Type string `json:"type"`
-			}
-			if json.Unmarshal(content, &kind) != nil {
-				continue
-			}
-			if kind.Type != "tool" {
-				continue
-			}
-			var part toolPart
-			if json.Unmarshal(content, &part) == nil {
-				tools = append(tools, toolCall{
-					Name:  part.Name,
-					Input: part.State.Input,
-				})
-			}
-		}
-	}
-	return tools
-}
-
-func summarizeTokens(tokens *tokenUsage) *resultTokens {
-	if tokens == nil {
-		return nil
-	}
-	summary := &resultTokens{
-		Input:      tokens.Input,
-		Output:     tokens.Output,
-		Reasoning:  tokens.Reasoning,
-		CacheRead:  tokens.Cache.Read,
-		CacheWrite: tokens.Cache.Write,
-	}
-	if tokens.Input != nil && tokens.Cache.Read != nil {
-		prompt := *tokens.Input + *tokens.Cache.Read
-		summary.PromptTokens = &prompt
-
-		if prompt > 0 {
-			rate := *tokens.Cache.Read / prompt
-			summary.CacheHitRate = &rate
-		}
-	}
-	return summary
-}
-
-func toolOutputBytes(message json.RawMessage) int {
-	var parsed sessionMessage
-
-	if json.Unmarshal(message, &parsed) != nil {
-		return 0
-	}
-	bytes := 0
-
-	for _, content := range parsed.Content {
-		var part toolPart
-
-		if json.Unmarshal(content, &part) == nil && part.Type == "tool" {
-			bytes += len(part.State.Content)
-		}
-	}
-	return bytes
 }

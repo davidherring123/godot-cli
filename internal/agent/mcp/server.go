@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/davidherring123/godot-cli/internal/core"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -17,11 +18,32 @@ type Options struct {
 	ProjectRoot  string
 	Actions      []core.ActionDefinition
 	Instructions string
+	// BenchmarkProfile selects a controlled benchmark-only tool surface. An
+	// empty value preserves the production defaults.
+	BenchmarkProfile string
+
+	// TraceWriter, when non-nil, receives one newline-delimited JSON object
+	// per completed tools/call. Tracing is disabled by default; it never
+	// changes a tool result.
+	TraceWriter io.Writer
+
+	// TraceErrorWriter receives trace persistence diagnostics. When nil,
+	// diagnostics go to stderr. It is only used when TraceWriter is set.
+	TraceErrorWriter io.Writer
 }
 
 // NewServer creates an MCP server that exposes actions. When Actions is nil,
 // all core actions are exposed.
 func NewServer(options Options) (*mcpgo.Server, error) {
+	if options.BenchmarkProfile != "" {
+		profile, err := ResolveBenchmarkProfile(options.BenchmarkProfile, options.ProjectRoot)
+		if err != nil {
+			return nil, err
+		}
+		options.Actions = profile.Actions
+		options.Instructions = profile.Instructions
+	}
+
 	actions := options.Actions
 	if actions == nil {
 		actions = core.All()
@@ -49,6 +71,7 @@ func NewServer(options Options) (*mcpgo.Server, error) {
 
 	seen := make(map[string]string, len(actions))
 	serializer := newCallSerializer()
+	tracer := newCallTracer(options.TraceWriter, options.TraceErrorWriter)
 
 	for _, action := range actions {
 		toolName := ToolName(action.Name)
@@ -62,7 +85,7 @@ func NewServer(options Options) (*mcpgo.Server, error) {
 			)
 		}
 
-		if err := addAction(server, serializer, options.ProjectRoot, action); err != nil {
+		if err := addAction(server, serializer, tracer, options.ProjectRoot, action); err != nil {
 			return nil, err
 		}
 
@@ -93,10 +116,29 @@ func defaultInstructions(projectRoot string) string {
 		projectDescription = "the Godot project at " + projectRoot
 	}
 
-	return "This server inspects and edits " + projectDescription + ". " +
-		"Live-editor tools require Godot 4 to be running with the godot-cli addon installed; " +
-		"start it with the editor_open tool, and run `godot-cli init` once in the project to install and enable the addon. " +
-		"Scene and node edits are undoable: set save=true once after a batch of edits, not after every change. " +
-		"Resource, project-setting, and Input Map tools save immediately and have no save argument. " +
-		"Tool results are JSON."
+	return "This server inspects and edits " + projectDescription + ". Most tools use a running Godot 4 editor; " +
+		"scene_list reads saved files and validate_scene uses a separate headless Godot process.\n\n" +
+		"Prefer these tools for supported semantic inspection and mutation of scenes, nodes, resources, " +
+		"project settings, and the Input Map. Do not parse or rewrite .tscn, .tres, or project.godot files " +
+		"by hand when a tool covers the change. Use file tools for GDScript and shader source, " +
+		"repository-wide searches, line-numbered reads, and raw serialization details the tools do not expose. " +
+		"Use Git for history, diffs, and blame.\n\n" +
+		"Active-scene tools read the live editor's current scene, including unsaved changes; file reads see " +
+		"only saved contents. scene_current reports unsaved state, and scene_save or save=true writes the scene. " +
+		"Node mutations are undoable; set save=true once after related edits. Prefer scene_apply for multiple " +
+		"ordered edits: it accepts up to 100 operations, supports best-effort dry_run and @id references, and " +
+		"commits as one undo step. scene_create writes a new scene file immediately.\n\n" +
+		"Resource, project-setting, and Input Map mutations write their files immediately and are not editor undo " +
+		"steps. Prefer resource_apply, project_settings_apply, and input_map_apply for ordered domain-local batches " +
+		"with dry-run and best-effort rollback. A mutation response reports the values that were applied and, " +
+		"for active-scene edits, whether the scene was saved; it does not confirm gameplay or runtime behavior. " +
+		"Use validation for load, script, and serialization checks and run the project for gameplay. Do not " +
+		"inspect again after a successful mutation unless the response omitted values you need or you are " +
+		"answering a different question.\n\n" +
+		"Use the narrowest tool directly when the target is known; skip redundant status and discovery calls. " +
+		"Runtime tools start the game without an editor: use runtime_start, runtime_status, runtime_capture, and " +
+		"runtime_stop for frames, errors, logs, and windowed PNG captures. Live tools require a running Godot 4 " +
+		"editor with the godot-cli addon. If no editor is running, " +
+		"editor_open launches or reuses an editor; retry the tool afterward. If the addon is missing, run `godot-cli init` once in the " +
+		"project and restart Godot. Tool results are JSON unless image content is explicitly available."
 }

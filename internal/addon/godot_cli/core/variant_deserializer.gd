@@ -5,7 +5,8 @@ static func deserialize(
     value: Variant,
     type: int,
     hint: int = PROPERTY_HINT_NONE,
-    hint_string: String = ""
+    hint_string: String = "",
+    resource_overrides: Dictionary = {}
 ) -> Response:
     match type:
         TYPE_BOOL:
@@ -146,7 +147,7 @@ static func deserialize(
             return _packed(value, type)
 
         TYPE_OBJECT:
-            return _object(value, hint, hint_string)
+            return _object(value, hint, hint_string, resource_overrides)
 
         _:
             return Response.failure(
@@ -162,7 +163,8 @@ static func deserialize(
 static func _object(
     value: Variant,
     hint: int,
-    hint_string: String
+    hint_string: String,
+    resource_overrides: Dictionary = {}
 ) -> Response:
     if value == null:
         return Response.success(null)
@@ -181,19 +183,40 @@ static func _object(
             "A resource reference requires a res:// path"
         )
 
-    if not ResourceLoader.exists(path):
-        return Response.failure(
-            ErrorCode.NOT_FOUND,
-            "Resource not found: %s" % path
-        )
+    path = path.simplify_path()
 
-    var resource = ResourceLoader.load(path)
+    var resource: Resource = null
 
-    if resource == null:
-        return Response.failure(
-            ErrorCode.ACTION_FAILED,
-            "Could not load resource: %s" % path
-        )
+    if resource_overrides.has(path):
+        var pending = resource_overrides[path]
+
+        if pending == null:
+            return Response.failure(
+                ErrorCode.NOT_FOUND,
+                "Resource not found: %s" % path
+            )
+
+        if not pending is Resource:
+            return Response.failure(
+                ErrorCode.ACTION_FAILED,
+                "Could not load resource: %s" % path
+            )
+
+        resource = pending
+    else:
+        if not ResourceLoader.exists(path):
+            return Response.failure(
+                ErrorCode.NOT_FOUND,
+                "Resource not found: %s" % path
+            )
+
+        resource = ResourceLoader.load(path)
+
+        if resource == null:
+            return Response.failure(
+                ErrorCode.ACTION_FAILED,
+                "Could not load resource: %s" % path
+            )
 
     if not resource is Resource:
         return Response.failure(

@@ -6,9 +6,17 @@ class DecodedProperties:
     var previous: Dictionary = {}
     var error: Response = null
 
-static func apply_properties(object: Object, values: Dictionary) -> Response:
+static func apply_properties(
+    object: Object,
+    values: Dictionary,
+    resource_overrides: Dictionary = {}
+) -> Response:
     if values.has("script"):
-        var decoded_script := decode_properties(object, {"script": values["script"]})
+        var decoded_script := decode_properties(
+            object,
+            {"script": values["script"]},
+            resource_overrides
+        )
 
         if decoded_script.error != null:
             return decoded_script.error
@@ -19,7 +27,7 @@ static func apply_properties(object: Object, values: Dictionary) -> Response:
 
     remaining.erase("script")
 
-    var decoded := decode_properties(object, remaining)
+    var decoded := decode_properties(object, remaining, resource_overrides)
 
     if decoded.error != null:
         return decoded.error
@@ -29,7 +37,11 @@ static func apply_properties(object: Object, values: Dictionary) -> Response:
 
     return null
 
-static func decode_properties(object: Object, values: Dictionary) -> DecodedProperties:
+static func decode_properties(
+    object: Object,
+    values: Dictionary,
+    resource_overrides: Dictionary = {}
+) -> DecodedProperties:
     var definitions := {}
 
     for property in object.get_property_list():
@@ -61,7 +73,8 @@ static func decode_properties(object: Object, values: Dictionary) -> DecodedProp
             values[property_name],
             definition.type,
             definition.get("hint", PROPERTY_HINT_NONE),
-            str(definition.get("hint_string", ""))
+            str(definition.get("hint_string", "")),
+            resource_overrides
         )
 
         if not decoded.code.is_empty():
