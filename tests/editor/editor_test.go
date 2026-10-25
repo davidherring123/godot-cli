@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/editorinstance"
 	"github.com/davidherring123/godot-cli/internal/core/project/editor"
+	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
 )
 
 // deadPID is above every supported platform's maximum PID so liveness checks

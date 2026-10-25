@@ -3,7 +3,7 @@ package runtime
 import (
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/apierr"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 )
 
 // Stop asks a runtime to quit, then kills it if it does not exit within the

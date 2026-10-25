@@ -5,10 +5,10 @@ import (
 	"errors"
 
 	"github.com/davidherring123/godot-cli/internal/core"
-	"github.com/davidherring123/godot-cli/internal/core/apierr"
-	"github.com/davidherring123/godot-cli/internal/core/editorinstance"
-	"github.com/davidherring123/godot-cli/internal/core/godot"
 	"github.com/davidherring123/godot-cli/internal/core/project/runtime"
+	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
+	"github.com/davidherring123/godot-cli/internal/port/godot"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

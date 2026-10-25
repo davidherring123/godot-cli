@@ -3,8 +3,8 @@ package settings
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/core/batch"
-	"github.com/davidherring123/godot-cli/internal/core/invocation"
+	"github.com/davidherring123/godot-cli/internal/port/invocation"
+	"github.com/davidherring123/godot-cli/internal/support/batch"
 )
 
 // ApplyName is the ordered project-settings batch action. MCP exposes it as

@@ -3,7 +3,7 @@ package node
 import (
 	"encoding/json"
 
-	"github.com/davidherring123/godot-cli/internal/core/property"
+	"github.com/davidherring123/godot-cli/internal/model/property"
 )
 
 type InspectParams struct {

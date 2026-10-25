@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/apierr"
-	"github.com/davidherring123/godot-cli/internal/core/invocation"
+	"github.com/davidherring123/godot-cli/internal/port/invocation"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 )
 
 type testParams struct {

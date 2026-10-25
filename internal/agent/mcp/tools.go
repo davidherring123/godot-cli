@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/davidherring123/godot-cli/internal/core"
-	"github.com/davidherring123/godot-cli/internal/core/artifact"
+	"github.com/davidherring123/godot-cli/internal/protocol/artifact"
 	"github.com/invopop/jsonschema"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )

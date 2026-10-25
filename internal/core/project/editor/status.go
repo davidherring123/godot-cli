@@ -3,7 +3,7 @@ package editor
 import (
 	"errors"
 
-	"github.com/davidherring123/godot-cli/internal/core/editorinstance"
+	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
 )
 
 // Status reports whether a Godot editor with the addon is registered for the

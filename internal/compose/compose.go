@@ -8,9 +8,9 @@ package compose
 import (
 	adapterbridge "github.com/davidherring123/godot-cli/internal/adapter/bridge"
 	adaptergodot "github.com/davidherring123/godot-cli/internal/adapter/godot"
-	"github.com/davidherring123/godot-cli/internal/core/editorinstance"
-	"github.com/davidherring123/godot-cli/internal/core/godot"
-	"github.com/davidherring123/godot-cli/internal/core/invocation"
+	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
+	"github.com/davidherring123/godot-cli/internal/port/godot"
+	"github.com/davidherring123/godot-cli/internal/port/invocation"
 )
 
 // Install binds the production adapters to the core ports. It is idempotent.

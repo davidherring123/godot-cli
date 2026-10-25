@@ -14,7 +14,7 @@ import (
 	"github.com/davidherring123/godot-cli/internal/core/project/settings"
 	"github.com/davidherring123/godot-cli/internal/core/resource"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
-	"github.com/davidherring123/godot-cli/internal/core/validate"
+	"github.com/davidherring123/godot-cli/internal/core/validation"
 	"github.com/invopop/jsonschema"
 )
 

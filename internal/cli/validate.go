@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/validate"
+	"github.com/davidherring123/godot-cli/internal/core/validation"
 	"github.com/spf13/cobra"
 )
 

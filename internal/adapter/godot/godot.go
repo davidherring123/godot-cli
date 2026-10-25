@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 
-	coregodot "github.com/davidherring123/godot-cli/internal/core/godot"
+	coregodot "github.com/davidherring123/godot-cli/internal/port/godot"
 )
 
 // FindExecutable locates Godot using GODOT_BIN, then the godot and godot4

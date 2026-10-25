@@ -26,20 +26,21 @@ internal/core/
   node/            node.* actions
   scene/           scene.* actions, including scene.apply
   resource/        resource.* actions
-  validate/        validate.* actions
-  property/        shared property model used by node, resource, settings
-  apierr/          transport-neutral action error codes and errors
-  invocation/      transport-neutral action call boundary
-  editorinstance/  neutral editor registration model and discovery port
-  godot/           neutral Godot executable discovery port
+  validation/      validate.* actions
   project/         project discovery and project-scoped concerns
     editor/        editor.open / editor.status
     runtime/       runtime.* game process lifecycle
     input/         input.* Input Map actions
     scenepath/     scene-path resolution within a project
     settings/      project.settings.* actions
-  artifact/        protocol-neutral image payload (shared)
-  batch/           shared batch validation (shared)
+
+internal/model/property/       shared Godot property representation
+internal/protocol/apierr/      stable action error contract
+internal/protocol/artifact/    protocol-neutral image payload
+internal/port/invocation/      action invocation port
+internal/port/editorinstance/  editor registration discovery port
+internal/port/godot/           Godot executable discovery port
+internal/support/batch/        shared batch validation
 
 internal/adapter/
   bridge/          TCP editor transport and instance-file discovery
@@ -48,9 +49,10 @@ internal/adapter/
 internal/compose/  binds adapters to the core ports at process startup
 ```
 
-`property`, `apierr`, `invocation`, `editorinstance`, `artifact`, and `batch`
-are shared model/support packages, not domains. Domains depend only on
-`internal/core` ports and never import `internal/adapter`.
+Only the five product domains live under `internal/core`. Shared models,
+protocol contracts, infrastructure ports, and implementation helpers live in
+their matching `internal` layers. Domains depend on ports and never import
+`internal/adapter`.
 
 ## Request flow
 
@@ -59,7 +61,7 @@ godot-cli node move Player World --save
   cli/*.go        cobra parsing, flags, project discovery, PrintJSON
   core/<domain>/  typed params+result, pre-bridge validation, action name
                   (e.g. core/node, core/project/editor)
-  core/invocation transport-neutral Call[Params, Result]
+  port/invocation transport-neutral Call[Params, Result]
   adapter/bridge/ connect + one request/response over TCP
   ──────────────── wire ────────────────
   bridge.gd       TCP server (127.0.0.1, ports 49152–49252), polled each frame
@@ -113,7 +115,7 @@ refuses to kill an unresponsive process unless `force=true`.
 For editor actions, the MCP server reuses the same path without a subprocess:
 
 ```
-godot-cli mcp  →  internal/agent/mcp  →  core action Invoke  →  core/invocation  →  adapter/bridge  →  addon
+godot-cli mcp  →  internal/agent/mcp  →  core action Invoke  →  port/invocation  →  adapter/bridge  →  addon
 ```
 
 MCP arguments are raw JSON decoded into the action's typed `Params`; successful
@@ -154,15 +156,15 @@ results are returned as both JSON text and structured content. Tool failures use
   check for unmodified files relies on the editor filesystem's dependency cache,
   which can lag external edits. Document these as preview limitations rather than
   promising a side-effect-free validation pass.
-- `internal/core/apierr` — transport-neutral `Code` values and `Error` type
+- `internal/protocol/apierr` — transport-neutral `Code` values and `Error` type
   shared by domain validation, the bridge adapter, and MCP error translation.
   The code strings are wire/CLI/MCP contract and must not change casually.
-- `internal/core/invocation` — the transport-neutral call boundary. Domains
+- `internal/port/invocation` — the transport-neutral call boundary. Domains
   call `invocation.Call[Params, Result]`; `compose.Install()` supplies the
   process-wide `Transport` (the TCP bridge in production). Keeping the default
   here preserves the package-level domain function signatures used by
   `core/schema.go` and the CLI without importing an adapter.
-- `internal/core/editorinstance` — neutral editor registration model
+- `internal/port/editorinstance` — neutral editor registration model
   (`Instance`) and discovery port, including `ErrNoEditor` and
   `ErrMultipleEditors`. `adapter/bridge` implements discovery; `project/editor`
   depends only on this port.
@@ -172,7 +174,7 @@ results are returned as both JSON text and structured content. Tool failures use
   `invocation.Transport`.
 - `internal/adapter/godot` — locates the Godot executable for `validate.scene`,
   `editor.open`, and `runtime.start` (`GODOT_BIN`, then `godot`/`godot4` on
-  PATH). `internal/core/godot` is the neutral port and sentinel.
+  PATH). `internal/port/godot` is the neutral port and sentinel.
 - `internal/compose` — the single composition root. `Install()` binds the
   bridge transport, editor instance finder, and Godot executable finder to
   their core ports. Domain packages must never be wired from inside themselves.
@@ -194,19 +196,19 @@ results are returned as both JSON text and structured content. Tool failures use
   instance file, and reuses an already-registered editor; `status` reports the
   registered instance without starting one. Both use the neutral
   `editorinstance` port and the neutral `godot` executable port.
-- `internal/core/property` — shared property metadata used by the node,
+- `internal/model/property` — shared property metadata used by the node,
   resource, and project settings domains. This is model/support code, not a
   domain.
 - `internal/core/project/scenepath` — resolves explicit scenes and the configured
   main scene for `validate` and `runtime`, rejecting paths outside the project.
-- `internal/core/artifact` — protocol-neutral image payload interface used by
+- `internal/protocol/artifact` — protocol-neutral image payload interface used by
   action results and rendered as MCP image content.
 - `internal/core/project/runtime` — Go-only game process lifecycle: detached
   launch, readiness/heartbeat/exit files, log error extraction, screenshot
   request channel, and safe stop. The runner script is embedded, like the
   validation runner, and runs as a custom `SceneTree`; autoloads still
   initialize normally.
-- `internal/core/validate` — saved-project validation spawns `godot --headless`
+- `internal/core/validation` — saved-project validation spawns `godot --headless`
   with an embedded `runner.gd`, merges the runner's JSON report with Godot's
   `ERROR:`/`SCRIPT ERROR:` output, and never writes to the project.
   `validate.live` packs and re-instantiates the active editor scene in memory:

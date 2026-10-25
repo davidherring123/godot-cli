@@ -1,7 +1,7 @@
 // Package scene inspects and manages scenes in a running Godot editor.
 package scene
 
-import "github.com/davidherring123/godot-cli/internal/core/invocation"
+import "github.com/davidherring123/godot-cli/internal/port/invocation"
 
 const CurrentName = "scene.current"
 

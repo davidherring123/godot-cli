@@ -1,8 +1,8 @@
 package scene
 
 import (
-	"github.com/davidherring123/godot-cli/internal/core/apierr"
-	"github.com/davidherring123/godot-cli/internal/core/invocation"
+	"github.com/davidherring123/godot-cli/internal/port/invocation"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 )
 
 const CreateName = "scene.create"

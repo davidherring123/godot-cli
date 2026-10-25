@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
-	"github.com/davidherring123/godot-cli/internal/core/apierr"
-	"github.com/davidherring123/godot-cli/internal/core/batch"
 	"github.com/davidherring123/godot-cli/internal/core/project/settings"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
+	"github.com/davidherring123/godot-cli/internal/support/batch"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
 

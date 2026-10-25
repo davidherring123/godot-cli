@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/apierr"
-	"github.com/davidherring123/godot-cli/internal/core/godot"
 	"github.com/davidherring123/godot-cli/internal/core/project/scenepath"
+	"github.com/davidherring123/godot-cli/internal/port/godot"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 )
 
 //go:embed runner.gd
