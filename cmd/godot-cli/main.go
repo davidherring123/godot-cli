@@ -6,11 +6,14 @@ import (
 	"os"
 
 	"github.com/davidherring123/godot-cli/internal/cli"
+	"github.com/davidherring123/godot-cli/internal/compose"
 )
 
 const VERSION = "dev"
 
 func main() {
+	compose.Install()
+
 	root := cli.NewRootCommand(VERSION)
 
 	if err := root.Execute(); err != nil {

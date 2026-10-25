@@ -1,15 +1,10 @@
 // Package scene inspects and manages scenes in a running Godot editor.
 package scene
 
-import "github.com/davidherring123/godot-cli/internal/core/bridge"
+import "github.com/davidherring123/godot-cli/internal/port/invocation"
 
 const CurrentName = "scene.current"
 
 func Current(projectRoot string, params CurrentParams) (CurrentResult, error) {
-	client, err := bridge.Connect(projectRoot)
-	if err != nil {
-		return CurrentResult{}, err
-	}
-	defer func() { _ = client.Close() }()
-	return bridge.Call[CurrentParams, CurrentResult](client, CurrentName, params)
+	return invocation.Call[CurrentParams, CurrentResult](projectRoot, CurrentName, params)
 }

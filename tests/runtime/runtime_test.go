@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/godot"
-	gdruntime "github.com/davidherring123/godot-cli/internal/core/runtime"
+	gdruntime "github.com/davidherring123/godot-cli/internal/core/project/runtime"
+	"github.com/davidherring123/godot-cli/internal/port/godot"
 )
 
 const runtimeHelperEnv = "GODOT_CLI_RUNTIME_TEST_HELPER"

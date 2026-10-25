@@ -11,6 +11,35 @@ import (
 
 const pluginPath = "res://addons/godot_cli/plugin.cfg"
 
+func TestInstallRemovesObsoleteManagedPaths(t *testing.T) {
+	root := writeProject(t, "[application]\n\nconfig/name=\"Test\"\n")
+
+	if err := addon.Install(root); err != nil {
+		t.Fatalf("installing addon: %v", err)
+	}
+
+	obsoletePath := filepath.Join(addon.Path(root), "core", "input")
+	if err := os.MkdirAll(obsoletePath, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(obsoletePath, "input_service.gd"), []byte("class_name InputService\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := addon.Install(root); err != nil {
+		t.Fatalf("updating addon: %v", err)
+	}
+
+	if _, err := os.Stat(obsoletePath); !os.IsNotExist(err) {
+		t.Fatalf("obsolete managed path still exists: %v", err)
+	}
+
+	newPath := filepath.Join(addon.Path(root), "core", "project", "input", "input_service.gd")
+	if _, err := os.Stat(newPath); err != nil {
+		t.Fatalf("new input service is missing: %v", err)
+	}
+}
+
 func TestEnableAddsSection(t *testing.T) {
 	root := writeProject(t, "[application]\n\nconfig/name=\"Test\"\n")
 

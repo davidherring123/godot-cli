@@ -11,9 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/node"
-	"github.com/davidherring123/godot-cli/internal/core/validate"
+	"github.com/davidherring123/godot-cli/internal/core/validation"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
 
@@ -151,7 +152,7 @@ func TestValidateLiveExpectedSceneConflict(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 }
 
 func TestValidateLiveWithoutSceneFails(t *testing.T) {
@@ -166,7 +167,7 @@ func TestValidateLiveWithoutSceneFails(t *testing.T) {
 
 	_, err = validate.Live(session.Root(), validate.LiveParams{})
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+	assertAPIErrorCode(t, err, apierr.CodeFailedPrecondition)
 }
 
 const validateProject = `; Validate fixture project.

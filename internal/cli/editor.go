@@ -3,7 +3,7 @@ package cli
 import (
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/core/editor"
+	"github.com/davidherring123/godot-cli/internal/core/project/editor"
 	"github.com/spf13/cobra"
 )
 

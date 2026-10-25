@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/editor"
+	"github.com/davidherring123/godot-cli/internal/core/project/editor"
 )
 
 func TestOpenStartsEditorAndWaitsForBridge(t *testing.T) {

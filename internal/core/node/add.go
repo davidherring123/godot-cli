@@ -2,28 +2,24 @@
 package node
 
 import (
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/port/invocation"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 )
 
 const AddName = "node.add"
 
 func Add(projectRoot string, params AddParams) (AddResult, error) {
 	if params.Type == "" {
-		return AddResult{}, &bridge.APIError{
-			Code:    bridge.ErrorCodeInvalidArgument,
+		return AddResult{}, &apierr.Error{
+			Code:    apierr.CodeInvalidArgument,
 			Message: "A node type is required",
 		}
 	}
 	if params.Parent == "" {
-		return AddResult{}, &bridge.APIError{
-			Code:    bridge.ErrorCodeInvalidArgument,
+		return AddResult{}, &apierr.Error{
+			Code:    apierr.CodeInvalidArgument,
 			Message: "A parent node path is required",
 		}
 	}
-	client, err := bridge.Connect(projectRoot)
-	if err != nil {
-		return AddResult{}, err
-	}
-	defer func() { _ = client.Close() }()
-	return bridge.Call[AddParams, AddResult](client, AddName, params)
+	return invocation.Call[AddParams, AddResult](projectRoot, AddName, params)
 }

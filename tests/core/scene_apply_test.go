@@ -6,9 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/node"
 	"github.com/davidherring123/godot-cli/internal/core/scene"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
 
@@ -256,7 +257,7 @@ func TestSceneApplyFailedPrevalidationLeavesSceneUntouched(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 	assertApplyErrorMessage(t, err,
 		"Prevalidation failed",
 		"operation 2",
@@ -359,7 +360,7 @@ func TestSceneApplyRollsBackWhenLiveStateDrifts(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 	assertApplyErrorMessage(t, err,
 		"Batch failed and was rolled back",
 		"operation 6",
@@ -448,7 +449,7 @@ func TestSceneApplyDeletedIDCannotBeReferenced(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 	assertApplyErrorMessage(t, err, "deleted earlier in the batch")
 
 	requireSceneUnsaved(t, session, path, false)
@@ -576,7 +577,7 @@ func TestSceneApplyFailedPrevalidationDoesNotMutateSharedPaths(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 	assertApplyErrorMessage(t, err, "Prevalidation failed", "operation 1")
 
 	saveScene(t, session, path)
@@ -638,7 +639,7 @@ func TestSceneApplyPrevalidationRejectsConflict(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 	assertApplyErrorMessage(t, err, "Prevalidation failed", "operation 0", "node.add")
 
 	tree := sceneTree(t, session, path)
@@ -672,9 +673,9 @@ func TestSceneApplyAddonDiagnosticHasOneOperationPrefix(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 	if !errors.As(err, &apiError) {
 		t.Fatalf("expected an API error, got %v", err)
 	}
@@ -706,7 +707,7 @@ func TestSceneApplyExpectedSceneConflict(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 }
 
 func TestSceneApplyRejectsInvalidBatchesBeforeConnecting(t *testing.T) {
@@ -782,7 +783,7 @@ func TestSceneApplyRejectsInvalidBatchesBeforeConnecting(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			_, err := scene.Apply("", testCase.params)
 
-			assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+			assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 			assertApplyErrorMessage(t, err, testCase.contains)
 		})
 	}
@@ -821,7 +822,7 @@ func TestSceneApplyRejectsEmptyWireFieldsBeforeConnecting(t *testing.T) {
 
 			_, err := scene.Apply("", params)
 
-			assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+			assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 			assertApplyErrorMessage(t, err, testCase.contains)
 		})
 	}
@@ -988,7 +989,7 @@ func assertApplyErrorMessage(t *testing.T, err error, fragments ...string) {
 		t.Fatal("expected an apply error")
 	}
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) {
 		t.Fatalf("expected an API error, got %v", err)

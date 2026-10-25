@@ -15,18 +15,67 @@ exposed by an embedded GDScript addon. Read this file before touching
 The addon is embedded at build time. There is no version negotiation: the CLI
 copies its matching addon on `init`; a running editor picks it up on next launch.
 
+## Go package layout
+
+`internal/core` is organized by domain. Real editor/resource domains stay at the
+top level; project-scoped concerns are grouped under `project`:
+
+```
+internal/core/
+  schema.go        action registry (one definition per action)
+  node/            node.* actions
+  scene/           scene.* actions, including scene.apply
+  resource/        resource.* actions
+  validation/      validate.* actions
+  project/         project discovery and project-scoped concerns
+    editor/        editor.open / editor.status
+    runtime/       runtime.* game process lifecycle
+    input/         input.* Input Map actions
+    scenepath/     scene-path resolution within a project
+    settings/      project.settings.* actions
+
+internal/model/property/       shared Godot property representation
+internal/protocol/apierr/      stable action error contract
+internal/protocol/artifact/    protocol-neutral image payload
+internal/port/invocation/      action invocation port
+internal/port/editorinstance/  editor registration discovery port
+internal/port/godot/           Godot executable discovery port
+internal/support/batch/        shared batch validation
+
+internal/adapter/
+  bridge/          TCP editor transport and instance-file discovery
+  godot/           Godot executable discovery (GODOT_BIN, PATH)
+
+internal/compose/  binds adapters to the core ports at process startup
+```
+
+Only the five product domains live under `internal/core`. Shared models,
+protocol contracts, infrastructure ports, and implementation helpers live in
+their matching `internal` layers. Domains depend on ports and never import
+`internal/adapter`.
+
 ## Request flow
 
 ```
 godot-cli node move Player World --save
   cli/*.go        cobra parsing, flags, project discovery, PrintJSON
   core/<domain>/  typed params+result, pre-bridge validation, action name
-  core/bridge/    connect + one request/response over TCP
+                  (e.g. core/node, core/project/editor)
+  port/invocation transport-neutral Call[Params, Result]
+  adapter/bridge/ connect + one request/response over TCP
   ──────────────── wire ────────────────
   bridge.gd       TCP server (127.0.0.1, ports 49152–49252), polled each frame
   requests/       request_handler.gd routes by action name → *Service
-  core/*.gd       editor_scene_context.gd validates; Scene/NodeService executes
+  core/           editor_scene_context.gd validates; Scene/NodeService executes
 ```
+
+`internal/compose.Install()` runs once at process startup and binds the
+production adapters to the neutral ports: `adapter/bridge` as the invocation
+transport and editor-instance finder, `adapter/godot` as the executable finder.
+`cmd/godot-cli/main.go` calls it explicitly; test binaries do the same in
+`TestMain`. A domain package used without composition returns
+`invocation.ErrNoTransport` or the ports' not-found errors rather than importing
+an adapter.
 
 Editor discovery: on enable, the addon writes
 `.godot/godot-cli/instances/<pid>.json` (pid, port, project); the CLI reads it
@@ -66,7 +115,7 @@ refuses to kill an unresponsive process unless `force=true`.
 For editor actions, the MCP server reuses the same path without a subprocess:
 
 ```
-godot-cli mcp  →  internal/agent/mcp  →  core action Invoke  →  core/bridge  →  addon
+godot-cli mcp  →  internal/agent/mcp  →  core action Invoke  →  port/invocation  →  adapter/bridge  →  addon
 ```
 
 MCP arguments are raw JSON decoded into the action's typed `Params`; successful
@@ -76,10 +125,11 @@ results are returned as both JSON text and structured content. Tool failures use
 ## Layers and invariants
 
 - `internal/cli` — cobra commands ONLY. No editor logic, no direct use of
-  `internal/core/bridge`.
-- `internal/core/<scene|node|resource|input>` and `internal/core/project/settings`
+  `internal/adapter` or transport types.
+- `internal/core/<node|scene|resource|validation>` and the project-scoped
+  domains under `internal/core/project/<editor|runtime|input|settings>`
   — one action per file: constant name, `Params`, `Result`, thin function that
-  validates and calls `bridge.Call`. Registered in `core/schema.go`
+  validates and calls `invocation.Call`. Registered in `core/schema.go`
   (`define[...]` + `All()`) with typed schemas and an `Invoke` function; the
   registry feeds the agent skill docs and the MCP server.
 - Domain batch actions — `resource.apply`, `project.settings.apply`, and
@@ -106,36 +156,59 @@ results are returned as both JSON text and structured content. Tool failures use
   check for unmodified files relies on the editor filesystem's dependency cache,
   which can lag external edits. Document these as preview limitations rather than
   promising a side-effect-free validation pass.
-- `internal/core/bridge` — editor discovery and TCP request/response transport
-  used by core actions; defines the API errors also translated by MCP.
+- `internal/protocol/apierr` — transport-neutral `Code` values and `Error` type
+  shared by domain validation, the bridge adapter, and MCP error translation.
+  The code strings are wire/CLI/MCP contract and must not change casually.
+- `internal/port/invocation` — the transport-neutral call boundary. Domains
+  call `invocation.Call[Params, Result]`; `compose.Install()` supplies the
+  process-wide `Transport` (the TCP bridge in production). Keeping the default
+  here preserves the package-level domain function signatures used by
+  `core/schema.go` and the CLI without importing an adapter.
+- `internal/port/editorinstance` — neutral editor registration model
+  (`Instance`) and discovery port, including `ErrNoEditor` and
+  `ErrMultipleEditors`. `adapter/bridge` implements discovery; `project/editor`
+  depends only on this port.
+- `internal/adapter/bridge` — TCP request/response transport and instance-file
+  discovery for a running editor. It retains the generic `Connect`/`Call`
+  surface used by wire-level tests and `tests/harness`, and adapts itself to
+  `invocation.Transport`.
+- `internal/adapter/godot` — locates the Godot executable for `validate.scene`,
+  `editor.open`, and `runtime.start` (`GODOT_BIN`, then `godot`/`godot4` on
+  PATH). `internal/port/godot` is the neutral port and sentinel.
+- `internal/compose` — the single composition root. `Install()` binds the
+  bridge transport, editor instance finder, and Godot executable finder to
+  their core ports. Domain packages must never be wired from inside themselves.
 - `internal/agent/mcp` — exposes `core.All()` over the Model Context Protocol.
   Tool names replace dots with underscores (`scene.list` → `scene_list`);
   arguments are decoded into the action's `Params`, results become both JSON
-  text and structured content, and `bridge.APIError` and `runtime.Error` codes
+  text and structured content, and `apierr.Error` and `runtime.Error` codes
   are preserved in `isError` tool responses. Results that implement
   `artifact.ImageSource` (currently `runtime.capture`) also add an MCP image
   content block while the structured result keeps only metadata. Tool calls are
   serialized so the editor only handles one operation at a time. `godot-cli mcp`
   serves stdio and resolves one project for the process lifetime.
 - `internal/core/project` — the `Project` type, `Resolve` path handling, and
-  `FindProjectRoot` project discovery used by every command.
-- `internal/core/editor` — Go-only `editor.open` and `editor.status` actions.
-  `open` launches `godot --editor` detached, waits for the addon's instance file,
-  and reuses an already-registered editor; `status` reports the registered
-  instance without starting one.
-- `internal/core/godot` — locates the Godot executable for `validate.scene` and
-  `editor.open` (`GODOT_BIN`, then `godot`/`godot4` on PATH).
-- `internal/core/property` — property metadata shared by the node and resource
-  domains.
-- `internal/core/scenepath` — resolves explicit scenes and the configured main
-  scene for `validate` and `runtime`, rejecting paths outside the project.
-- `internal/core/artifact` — protocol-neutral image payload interface used by
+  `FindProjectRoot` project discovery used by every command. Its subpackages
+  hold project-scoped domains: `editor`, `runtime`, `input`, `scenepath`, and
+  `settings`.
+- `internal/core/project/editor` — Go-only `editor.open` and `editor.status`
+  actions. `open` launches `godot --editor` detached, waits for the addon's
+  instance file, and reuses an already-registered editor; `status` reports the
+  registered instance without starting one. Both use the neutral
+  `editorinstance` port and the neutral `godot` executable port.
+- `internal/model/property` — shared property metadata used by the node,
+  resource, and project settings domains. This is model/support code, not a
+  domain.
+- `internal/core/project/scenepath` — resolves explicit scenes and the configured
+  main scene for `validate` and `runtime`, rejecting paths outside the project.
+- `internal/protocol/artifact` — protocol-neutral image payload interface used by
   action results and rendered as MCP image content.
-- `internal/core/runtime` — Go-only game process lifecycle: detached launch,
-  readiness/heartbeat/exit files, log error extraction, screenshot request
-  channel, and safe stop. The runner script is embedded, like the validation
-  runner, and runs as a custom `SceneTree`; autoloads still initialize normally.
-- `internal/core/validate` — saved-project validation spawns `godot --headless`
+- `internal/core/project/runtime` — Go-only game process lifecycle: detached
+  launch, readiness/heartbeat/exit files, log error extraction, screenshot
+  request channel, and safe stop. The runner script is embedded, like the
+  validation runner, and runs as a custom `SceneTree`; autoloads still
+  initialize normally.
+- `internal/core/validation` — saved-project validation spawns `godot --headless`
   with an embedded `runner.gd`, merges the runner's JSON report with Godot's
   `ERROR:`/`SCRIPT ERROR:` output, and never writes to the project.
   `validate.live` packs and re-instantiates the active editor scene in memory:
@@ -147,15 +220,22 @@ results are returned as both JSON text and structured content. Tool failures use
   godot-cli never writes OpenCode configuration itself.
 - `internal/addon` — embeds the GDScript addon, installs/updates it, and enables
   `res://addons/godot_cli/plugin.cfg` in `project.godot` during `init`.
-- `internal/addon/godot_cli/` — `plugin.gd` (lifecycle) → `requests/`
-  (transport + routing) → `core/` (Godot logic). `node_service.gd` is the
+- `internal/addon/godot_cli/` — `plugin.gd` (lifecycle) → `bridge/` (TCP
+  transport) and `requests/` (request/response model, routing, error codes) →
+  `core/` (Godot logic). Domain code lives under `core/node/`, `core/scene/`,
+  `core/resource/`, and `core/project/{settings,input}/`. Shared core support
+  stays at the `core/` root because every domain uses it: `action_service.gd`
+  (service and batch base class), `editor_scene_context.gd` (active-scene
+  validation), `variant_serializer.gd`/`variant_deserializer.gd`/
+  `property_hint_serializer.gd` (wire values and metadata), and
+  `property_codec.gd` (property validation, application, and serialization
+  shared by the scene, node, and resource services). `node_service.gd` is the
   largest file; `node_builder.gd`/`node_path_util.gd` are its helpers.
-  `property_codec.gd` holds the property validation, application, and
-  serialization shared by the scene, node, and resource services;
   `resource/resource_service.gd` manages `.tres`/`.res` files on disk.
   `project/settings/settings_service.gd` edits `project.godot` settings and
-  `input/input_service.gd` (with `input/input_event_codec.gd`) edits Input Map
-  actions, both saving the project file immediately rather than as undo steps.
+  `project/input/input_service.gd` (with
+  `project/input/input_event_codec.gd`) edits Input Map actions, both saving
+  the project file immediately rather than as undo steps.
   Those services also implement their domain batch action by calling the same
   granular handlers with deferred saves and rollback; resource batches reuse
   `resource_service.gd` handlers with an in-memory preview pass, batch-local
@@ -207,7 +287,8 @@ results are returned as both JSON text and structured content. Tool failures use
 
 ## Extension recipe
 
-New action: `internal/core/<domain>/<verb>.go` (name + params/result + call) →
+New action: `internal/core/<domain>/<verb>.go` (name + params/result + call) —
+use `internal/core/project/<domain>/<verb>.go` for project-scoped actions — →
 `internal/core/schema.go` (`define` with the function + `All()`) → GDScript
 handler in the matching `*_service.gd` + register in its `get_actions()` →
 CLI command in `internal/cli/` (set `skill.ActionKey` annotation) →
@@ -225,6 +306,8 @@ action in `All()` also exposes it as an MCP tool automatically.
   calls with their own Godot sessions.
 - `tests/addon` checks addon installation and runs a small headless Godot script
   that verifies deferred session history plus one-step undo/redo ordering.
+- `tests/invocation` — transport-neutral unit tests for `invocation.Call` and
+  `apierr` code/error behavior; no Godot process required.
 - `tests/harness` — Godot session management shared by live integration tests.
 - `make check` — gofmt, vet, golangci-lint (repo config in `.golangci.yml`).
 - `make test` — runs Go unit tests, then spins up a real headless Godot editor

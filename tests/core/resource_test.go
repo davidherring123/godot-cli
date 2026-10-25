@@ -9,8 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/resource"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
 
@@ -189,7 +190,7 @@ func TestResourceCreateExistingFileConflict(t *testing.T) {
 		resource.CreateParams{Resource: path, Type: "StandardMaterial3D"},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 
 	text := readResourceFile(t, session, path)
 
@@ -211,7 +212,7 @@ func TestResourceCreateInvalidPathRejected(t *testing.T) {
 			resource.CreateParams{Resource: path, Type: "StandardMaterial3D"},
 		)
 
-		assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+		assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 	}
 }
 
@@ -228,7 +229,7 @@ func TestResourceCreateUnknownTypeRejected(t *testing.T) {
 			},
 		)
 
-		assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+		assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 	}
 }
 
@@ -295,7 +296,7 @@ func TestResourceInspectMissingPropertyReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestResourceInspectMissingReturnsNotFound(t *testing.T) {
@@ -309,7 +310,7 @@ func TestResourceInspectMissingReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestResourceSetSucceeds(t *testing.T) {
@@ -424,7 +425,7 @@ func TestResourceSetInvalidPropertyIsAtomic(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 
 	after := readResourceFile(t, session, path)
 
@@ -451,7 +452,7 @@ func TestResourceSetMissingReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestResourceDeleteSucceeds(t *testing.T) {
@@ -518,9 +519,9 @@ func TestResourceDeleteReferencedConflict(t *testing.T) {
 		resource.DeleteParams{Resource: path},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) {
 		t.Fatalf("expected an API error, got %v", err)
@@ -549,7 +550,7 @@ func TestResourceDeleteMissingReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func createResource(

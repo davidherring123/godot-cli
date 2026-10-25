@@ -1,14 +1,9 @@
 package settings
 
-import "github.com/davidherring123/godot-cli/internal/core/bridge"
+import "github.com/davidherring123/godot-cli/internal/port/invocation"
 
 const ListName = "project.settings.list"
 
 func List(projectRoot string, params ListParams) (ListResult, error) {
-	client, err := bridge.Connect(projectRoot)
-	if err != nil {
-		return ListResult{}, err
-	}
-	defer func() { _ = client.Close() }()
-	return bridge.Call[ListParams, ListResult](client, ListName, params)
+	return invocation.Call[ListParams, ListResult](projectRoot, ListName, params)
 }

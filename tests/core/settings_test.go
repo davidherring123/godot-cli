@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/project/settings"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
 
@@ -94,7 +95,7 @@ func TestProjectGetMissingReturnsNotFound(t *testing.T) {
 		settings.GetParams{Setting: "godot_cli/missing"},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestProjectSetAndUnsetRoundTrip(t *testing.T) {
@@ -187,7 +188,7 @@ func TestProjectSetInvalidTypeRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 }
 
 func TestProjectSetUnknownReturnsNotFound(t *testing.T) {
@@ -205,7 +206,7 @@ func TestProjectSetUnknownReturnsNotFound(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestProjectUnsetNotOverriddenReportsNoChange(t *testing.T) {

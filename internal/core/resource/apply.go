@@ -3,8 +3,8 @@ package resource
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/core/batch"
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/port/invocation"
+	"github.com/davidherring123/godot-cli/internal/support/batch"
 )
 
 // ApplyName is the ordered resource batch action. MCP exposes it as
@@ -21,13 +21,7 @@ func Apply(projectRoot string, params ApplyParams) (ApplyResult, error) {
 		return ApplyResult{}, err
 	}
 
-	client, err := bridge.Connect(projectRoot)
-	if err != nil {
-		return ApplyResult{}, err
-	}
-	defer func() { _ = client.Close() }()
-
-	return bridge.Call[ApplyParams, ApplyResult](client, ApplyName, params)
+	return invocation.Call[ApplyParams, ApplyResult](projectRoot, ApplyName, params)
 }
 
 func validateApply(params ApplyParams) error {

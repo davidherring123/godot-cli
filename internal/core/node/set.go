@@ -1,28 +1,24 @@
 package node
 
 import (
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/port/invocation"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 )
 
 const SetName = "node.set"
 
 func Set(projectRoot string, params SetParams) (SetResult, error) {
 	if params.Node == "" {
-		return SetResult{}, &bridge.APIError{
-			Code:    bridge.ErrorCodeInvalidArgument,
+		return SetResult{}, &apierr.Error{
+			Code:    apierr.CodeInvalidArgument,
 			Message: "A node path is required",
 		}
 	}
 	if len(params.Properties) == 0 {
-		return SetResult{}, &bridge.APIError{
-			Code:    bridge.ErrorCodeInvalidArgument,
+		return SetResult{}, &apierr.Error{
+			Code:    apierr.CodeInvalidArgument,
 			Message: "At least one property is required",
 		}
 	}
-	client, err := bridge.Connect(projectRoot)
-	if err != nil {
-		return SetResult{}, err
-	}
-	defer func() { _ = client.Close() }()
-	return bridge.Call[SetParams, SetResult](client, SetName, params)
+	return invocation.Call[SetParams, SetResult](projectRoot, SetName, params)
 }

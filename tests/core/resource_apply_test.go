@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/batch"
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
 	"github.com/davidherring123/godot-cli/internal/core/resource"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
+	"github.com/davidherring123/godot-cli/internal/support/batch"
 )
 
 func TestResourceApplyDryRunAndApplyOrdered(t *testing.T) {
@@ -154,9 +155,9 @@ func TestResourceApplyFailureReportsOperationAndRollsBack(t *testing.T) {
 		},
 	})
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) {
 		t.Fatalf("expected an API error, got %v", err)
@@ -191,9 +192,9 @@ func TestResourceApplyRejectsOversizedBatch(t *testing.T) {
 
 	_, err := resource.Apply("", resource.ApplyParams{Operations: operations})
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) || !strings.Contains(apiError.Message, "At most 100") {
 		t.Fatalf("expected an operation limit error, got %v", err)
@@ -251,9 +252,9 @@ func TestResourceApplyReportsInvalidOperationIndex(t *testing.T) {
 		},
 	})
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) {
 		t.Fatalf("expected an API error, got %v", err)
@@ -362,9 +363,9 @@ func TestResourceApplyDeleteRejectsCreatedReference(t *testing.T) {
 			DryRun:     dryRun,
 		})
 
-		assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+		assertAPIErrorCode(t, err, apierr.CodeConflict)
 
-		var apiError *bridge.APIError
+		var apiError *apierr.Error
 
 		if !errors.As(err, &apiError) {
 			t.Fatalf("expected an API error, got %v", err)
@@ -422,9 +423,9 @@ func TestResourceApplyDeleteRejectsSetReference(t *testing.T) {
 			DryRun:     dryRun,
 		})
 
-		assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+		assertAPIErrorCode(t, err, apierr.CodeConflict)
 
-		var apiError *bridge.APIError
+		var apiError *apierr.Error
 
 		if !errors.As(err, &apiError) {
 			t.Fatalf("expected an API error, got %v", err)
@@ -476,9 +477,9 @@ func TestResourceApplyAddonRejectsExclusiveFields(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 
-	var apiError *bridge.APIError
+	var apiError *apierr.Error
 
 	if !errors.As(err, &apiError) ||
 		!strings.Contains(apiError.Message, "does not accept type") {
@@ -523,9 +524,9 @@ func TestResourceApplyRejectsFieldsFromOtherOperations(t *testing.T) {
 				Operations: []resource.ApplyOperation{testCase.operation},
 			})
 
-			assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+			assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 
-			var apiError *bridge.APIError
+			var apiError *apierr.Error
 
 			if !errors.As(err, &apiError) {
 				t.Fatalf("expected an API error, got %v", err)

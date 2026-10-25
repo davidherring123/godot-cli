@@ -3,8 +3,9 @@ package core_test
 import (
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/bridge"
-	"github.com/davidherring123/godot-cli/internal/core/input"
+	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
+	"github.com/davidherring123/godot-cli/internal/core/project/input"
+	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 	"github.com/davidherring123/godot-cli/tests/harness"
 )
 
@@ -77,7 +78,7 @@ func TestInputAddInspectDeleteRoundTrip(t *testing.T) {
 		input.InspectParams{Action: name},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestInputAddDefaultDeadzone(t *testing.T) {
@@ -103,7 +104,7 @@ func TestInputAddDuplicateConflict(t *testing.T) {
 		input.AddParams{Action: "ui_accept"},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 }
 
 func TestInputAddInvalidDeadzoneRejected(t *testing.T) {
@@ -115,7 +116,7 @@ func TestInputAddInvalidDeadzoneRejected(t *testing.T) {
 		input.AddParams{Action: "cli_test_bad_deadzone", Deadzone: floatPtr(2)},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 }
 
 func TestInputSetDeadzone(t *testing.T) {
@@ -173,7 +174,7 @@ func TestInputRenameSucceeds(t *testing.T) {
 		input.InspectParams{Action: oldName},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestInputRenameConflict(t *testing.T) {
@@ -197,7 +198,7 @@ func TestInputRenameConflict(t *testing.T) {
 		input.RenameParams{Action: firstName, NewName: secondName},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeConflict)
+	assertAPIErrorCode(t, err, apierr.CodeConflict)
 }
 
 func TestInputRenameBuiltInRejected(t *testing.T) {
@@ -209,7 +210,7 @@ func TestInputRenameBuiltInRejected(t *testing.T) {
 		input.RenameParams{Action: "ui_accept", NewName: "accept_renamed"},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+	assertAPIErrorCode(t, err, apierr.CodeFailedPrecondition)
 }
 
 func TestInputDeleteBuiltInRejected(t *testing.T) {
@@ -221,7 +222,7 @@ func TestInputDeleteBuiltInRejected(t *testing.T) {
 		input.DeleteParams{Action: "ui_accept"},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeFailedPrecondition)
+	assertAPIErrorCode(t, err, apierr.CodeFailedPrecondition)
 }
 
 func TestInputEventAddKeySucceeds(t *testing.T) {
@@ -318,7 +319,7 @@ func TestInputEventAddUnsupportedRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 }
 
 func TestInputEventAddMalformedFieldRejected(t *testing.T) {
@@ -348,7 +349,7 @@ func TestInputEventAddMalformedFieldRejected(t *testing.T) {
 		},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeInvalidArgument)
+	assertAPIErrorCode(t, err, apierr.CodeInvalidArgument)
 }
 
 func TestInputEventDeleteSucceeds(t *testing.T) {
@@ -406,7 +407,7 @@ func TestInputEventDeleteOutOfRangeReturnsNotFound(t *testing.T) {
 		input.EventDeleteParams{Action: name, Index: 3},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func TestInputInspectMissingReturnsNotFound(t *testing.T) {
@@ -418,7 +419,7 @@ func TestInputInspectMissingReturnsNotFound(t *testing.T) {
 		input.InspectParams{Action: "cli_test_missing"},
 	)
 
-	assertAPIErrorCode(t, err, bridge.ErrorCodeNotFound)
+	assertAPIErrorCode(t, err, apierr.CodeNotFound)
 }
 
 func listInputActions(t *testing.T, session *harness.Session) input.ListResult {
