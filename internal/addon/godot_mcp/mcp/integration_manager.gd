@@ -22,6 +22,7 @@ var last_result := ""
 var last_error := ""
 var busy := false
 
+var _status_loaded := false
 var _executable_path := ""
 var _project_root := ""
 var _statuses := {}
@@ -40,6 +41,25 @@ func is_available() -> bool:
 
 func is_busy() -> bool:
     return busy
+
+func is_status_loaded() -> bool:
+    return _status_loaded
+
+func has_any_mcp_configured() -> bool:
+    for client_id in CLIENT_ORDER:
+        var state := str(get_status(client_id).get("mcp", STATE_UNKNOWN))
+
+        if state == STATE_INSTALLED or state == STATE_REPAIR:
+            return true
+
+    return false
+
+func all_mcp_missing() -> bool:
+    for client_id in CLIENT_ORDER:
+        if str(get_status(client_id).get("mcp", STATE_UNKNOWN)) != STATE_MISSING:
+            return false
+
+    return true
 
 func get_status(client_id: String) -> Dictionary:
     if _statuses.has(client_id):
@@ -151,6 +171,7 @@ func _run_command(arguments: Array, action: String, target: String) -> bool:
 
     if action == "status":
         _apply_statuses(data)
+        _update_status_loaded()
 
         if not command_error.is_empty():
             last_result = ""
@@ -164,6 +185,7 @@ func _run_command(arguments: Array, action: String, target: String) -> bool:
 
     last_result = _result_message(data, target)
     _apply_statuses(data)
+    _update_status_loaded()
 
     if command_error.is_empty():
         last_error = ""
@@ -788,8 +810,17 @@ func _unknown_status() -> Dictionary:
         "detail": "",
     }
 
+func _update_status_loaded() -> void:
+    _status_loaded = true
+
+    for client_id in CLIENT_ORDER:
+        if str(_statuses[client_id].get("mcp", STATE_UNKNOWN)) == STATE_UNKNOWN:
+            _status_loaded = false
+            return
+
 func _reset_statuses() -> void:
     _statuses = {}
+    _status_loaded = false
 
     for client_id in CLIENT_ORDER:
         _statuses[client_id] = _unknown_status()

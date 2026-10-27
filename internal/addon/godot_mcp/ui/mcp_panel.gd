@@ -11,26 +11,32 @@ const COLOR_STARTING := Color(0.45, 0.65, 0.95)
 const COLOR_WARNING := Color(0.9, 0.65, 0.25)
 const COLOR_MUTED := Color(0.65, 0.65, 0.65)
 
+const TAB_STATUS := 0
+const TAB_INTEGRATIONS := 1
+
 var _supervisor: BackendSupervisor
 var _integrations: IntegrationManager
 var _addon_version := "unknown"
 var _bridge_active := false
 var _bridge_port := 0
 
+var _tabs: TabContainer
 var _version_label: Label
 var _bridge_label: Label
 var _backend_status_label: Label
 var _endpoint_edit: LineEdit
 var _pid_label: Label
-var _last_error_label: Label
 var _start_button: Button
 var _restart_button: Button
 var _stop_button: Button
 var _copy_button: Button
 var _copy_reset_timer: Timer
+var _integration_warning: Control
+var _integration_warning_label: Label
+var _integration_error_banner: Control
+var _integration_error_label: Label
 var _refresh_integrations_button: Button
 var _install_all_button: Button
-var _integration_result_label: Label
 var _integration_buttons := {}
 var _integration_mcp_labels := {}
 var _integration_skill_labels := {}
@@ -68,15 +74,60 @@ func _exit_tree() -> void:
         _integrations.changed.disconnect(_refresh)
 
 func _build_ui() -> void:
+    var heading := Label.new()
+    heading.name = "PanelHeading"
+    heading.text = "Godot MCP"
+    heading.theme_type_variation = "HeaderLarge"
+    add_child(heading)
+
+    var subtitle := Label.new()
+    subtitle.name = "PanelSubtitle"
+    subtitle.text = "Manage the bundled MCP backend and AI client integrations for this project."
+    subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    add_child(subtitle)
+
+    _tabs = TabContainer.new()
+    _tabs.name = "PanelTabs"
+    _tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    add_child(_tabs)
+
+    var status_tab := _new_tab_scroll("MCPStatusTab")
+    _tabs.add_child(status_tab)
+    _build_status_tab(
+        _new_tab_layout(status_tab, "StatusMargin", "StatusLayout")
+    )
+
+    var integrations_tab := _new_tab_scroll("IntegrationsTab")
+    _tabs.add_child(integrations_tab)
+    _build_integrations_tab(
+        _new_tab_layout(integrations_tab, "IntegrationsMargin", "IntegrationsLayout")
+    )
+
+    _tabs.set_tab_title(TAB_STATUS, "MCP Status")
+    _tabs.set_tab_title(TAB_INTEGRATIONS, "Integrations")
+
+    _copy_reset_timer = Timer.new()
+    _copy_reset_timer.one_shot = true
+    _copy_reset_timer.wait_time = 1.2
+    _copy_reset_timer.timeout.connect(_reset_copy_button)
+    add_child(_copy_reset_timer)
+
+func _new_tab_scroll(node_name: String) -> ScrollContainer:
     var scroll := ScrollContainer.new()
-    scroll.name = "PanelScroll"
+    scroll.name = node_name
     scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-    add_child(scroll)
+    return scroll
 
+func _new_tab_layout(
+    scroll: ScrollContainer,
+    margin_name: String,
+    layout_name: String
+) -> VBoxContainer:
     var margin := MarginContainer.new()
-    margin.name = "PanelMargin"
+    margin.name = margin_name
     margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
     margin.add_theme_constant_override("margin_left", 16)
@@ -86,23 +137,13 @@ func _build_ui() -> void:
     scroll.add_child(margin)
 
     var layout := VBoxContainer.new()
-    layout.name = "PanelLayout"
+    layout.name = layout_name
     layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     layout.add_theme_constant_override("separation", 10)
     margin.add_child(layout)
+    return layout
 
-    var heading := Label.new()
-    heading.name = "PanelHeading"
-    heading.text = "Godot MCP"
-    heading.theme_type_variation = "HeaderLarge"
-    layout.add_child(heading)
-
-    var subtitle := Label.new()
-    subtitle.name = "PanelSubtitle"
-    subtitle.text = "Manage the bundled MCP backend and AI client integrations for this project."
-    subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    layout.add_child(subtitle)
-
+func _build_status_tab(layout: VBoxContainer) -> void:
     var backend_heading := Label.new()
     backend_heading.name = "BackendHeading"
     backend_heading.text = "Editor backend"
@@ -124,6 +165,7 @@ func _build_ui() -> void:
     _add_row(grid, "Editor bridge", _bridge_label, "BridgeStatusValue")
 
     _backend_status_label = _new_value_label("BackendStatusValue")
+    _backend_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _add_row(grid, "MCP backend", _backend_status_label, "BackendStatusValue")
 
     var endpoint_row := HBoxContainer.new()
@@ -150,9 +192,8 @@ func _build_ui() -> void:
     _pid_label = _new_value_label("PIDValue")
     _add_row(grid, "PID", _pid_label, "PIDValue")
 
-    _last_error_label = _new_value_label("LastErrorValue")
-    _last_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    _add_row(grid, "Last error", _last_error_label, "LastErrorValue")
+    _integration_warning = _build_integration_warning()
+    layout.add_child(_integration_warning)
 
     var actions := HBoxContainer.new()
     actions.name = "BackendActions"
@@ -180,10 +221,7 @@ func _build_ui() -> void:
     _stop_button.pressed.connect(_on_stop_pressed)
     actions.add_child(_stop_button)
 
-    var separator := HSeparator.new()
-    separator.name = "IntegrationsSeparator"
-    layout.add_child(separator)
-
+func _build_integrations_tab(layout: VBoxContainer) -> void:
     var integrations_header := HBoxContainer.new()
     integrations_header.name = "IntegrationsHeader"
     integrations_header.add_theme_constant_override("separation", 8)
@@ -216,6 +254,9 @@ func _build_ui() -> void:
     integration_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     layout.add_child(integration_hint)
 
+    _integration_error_banner = _build_integration_error_banner()
+    layout.add_child(_integration_error_banner)
+
     var integrations_grid := GridContainer.new()
     integrations_grid.name = "IntegrationsGrid"
     integrations_grid.columns = 4
@@ -242,27 +283,65 @@ func _build_ui() -> void:
     _install_all_button.pressed.connect(_on_install_all_pressed)
     integration_actions.add_child(_install_all_button)
 
-    var result_row := HBoxContainer.new()
-    result_row.name = "IntegrationResultRow"
-    result_row.add_theme_constant_override("separation", 12)
-    layout.add_child(result_row)
+func _build_integration_warning() -> PanelContainer:
+    var panel := PanelContainer.new()
+    panel.name = "IntegrationWarning"
+    panel.visible = false
+    panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-    var result_key := Label.new()
-    result_key.name = "IntegrationResultKey"
-    result_key.text = "Last integration result"
-    result_key.custom_minimum_size.x = 132
-    result_key.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-    result_row.add_child(result_key)
+    var style := StyleBoxFlat.new()
+    style.bg_color = Color(0.35, 0.26, 0.08, 0.65)
+    style.set_corner_radius_all(4)
+    style.set_content_margin_all(8)
+    panel.add_theme_stylebox_override("panel", style)
 
-    _integration_result_label = _new_value_label("IntegrationResultValue")
-    _integration_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    result_row.add_child(_integration_result_label)
+    var row := HBoxContainer.new()
+    row.name = "IntegrationWarningRow"
+    row.add_theme_constant_override("separation", 8)
+    panel.add_child(row)
 
-    _copy_reset_timer = Timer.new()
-    _copy_reset_timer.one_shot = true
-    _copy_reset_timer.wait_time = 1.2
-    _copy_reset_timer.timeout.connect(_reset_copy_button)
-    add_child(_copy_reset_timer)
+    _integration_warning_label = Label.new()
+    _integration_warning_label.name = "IntegrationWarningLabel"
+    _integration_warning_label.text = \
+        "No AI client has MCP configured for this project. Set one up in Integrations."
+    _integration_warning_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _integration_warning_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _integration_warning_label.add_theme_color_override(
+        "font_color",
+        COLOR_WARNING
+    )
+    row.add_child(_integration_warning_label)
+
+    var button := Button.new()
+    button.name = "IntegrationWarningButton"
+    button.text = "Open Integrations"
+    button.tooltip_text = \
+        "Open the Integrations tab to install MCP and workflow-skill support."
+    button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    button.pressed.connect(_on_integration_warning_pressed)
+    row.add_child(button)
+    return panel
+
+func _build_integration_error_banner() -> PanelContainer:
+    var panel := PanelContainer.new()
+    panel.name = "IntegrationErrorBanner"
+    panel.visible = false
+    panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+    var style := StyleBoxFlat.new()
+    style.bg_color = Color(0.35, 0.1, 0.1, 0.65)
+    style.set_corner_radius_all(4)
+    style.set_content_margin_all(8)
+    panel.add_theme_stylebox_override("panel", style)
+
+    _integration_error_label = _new_value_label("IntegrationErrorLabel")
+    _integration_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _integration_error_label.add_theme_color_override(
+        "font_color",
+        COLOR_ERROR
+    )
+    panel.add_child(_integration_error_label)
+    return panel
 
 func _add_integration_headers(grid: GridContainer) -> void:
     for header_text in ["Client", "MCP", "Skill"]:
@@ -349,11 +428,7 @@ func _refresh() -> void:
         _bridge_label.text = "Unavailable"
 
     _backend_status_label.text = _backend_status_text()
-    _backend_status_label.tooltip_text = ""
-
-    if _supervisor.is_bundled():
-        _backend_status_label.tooltip_text = "Executable: %s" % _supervisor.get_executable_path()
-
+    _backend_status_label.tooltip_text = _backend_status_tooltip()
     _apply_status_color(_backend_status_label, _backend_status_color())
 
     if _endpoint_edit.text != _supervisor.endpoint:
@@ -370,13 +445,6 @@ func _refresh() -> void:
         _pid_label.text = str(pid)
     else:
         _pid_label.text = "—"
-
-    if _supervisor.last_error.is_empty():
-        _last_error_label.text = "None"
-        _last_error_label.remove_theme_color_override("font_color")
-    else:
-        _last_error_label.text = _supervisor.last_error
-        _last_error_label.add_theme_color_override("font_color", COLOR_ERROR)
 
     _start_button.disabled = \
         not _supervisor.is_bundled() or _supervisor.has_process()
@@ -417,29 +485,30 @@ func _refresh_integrations() -> void:
         )
 
         var detail := str(status.get("detail", ""))
-
-        if not detail.is_empty():
-            mcp_label.tooltip_text = detail
-            skill_label.tooltip_text = detail
+        mcp_label.tooltip_text = detail
+        skill_label.tooltip_text = detail
 
         button.text = _integrations.button_text(client_id)
         button.disabled = controls_disabled
 
-    if not _integrations.last_error.is_empty():
-        _integration_result_label.text = _integrations.last_error
-        _integration_result_label.add_theme_color_override(
-            "font_color",
-            COLOR_ERROR
-        )
-    elif not _integrations.last_result.is_empty():
-        _integration_result_label.text = _integrations.last_result
-        _integration_result_label.remove_theme_color_override("font_color")
+    _refresh_integration_error()
+    _refresh_integration_warning()
+
+func _refresh_integration_error() -> void:
+    var error_text := _integrations.last_error
+
+    _integration_error_banner.visible = not error_text.is_empty()
+
+    if _integration_error_banner.visible:
+        _integration_error_label.text = "Integration error: %s" % error_text
     else:
-        _integration_result_label.text = "Not checked"
-        _integration_result_label.add_theme_color_override(
-            "font_color",
-            COLOR_MUTED
-        )
+        _integration_error_label.text = ""
+
+func _refresh_integration_warning() -> void:
+    _integration_warning.visible = \
+        _integrations.is_status_loaded() \
+        and not _integrations.has_any_mcp_configured() \
+        and _integrations.all_mcp_missing()
 
 func _apply_integration_status(
     label: Label,
@@ -482,11 +551,28 @@ func _backend_status_text() -> String:
         BackendSupervisor.Status.RUNNING:
             return "Running"
         BackendSupervisor.Status.ERROR:
+            var suffix := ""
+
+            if not _supervisor.last_error.is_empty():
+                suffix = ": %s" % _supervisor.last_error
+
             if _supervisor.has_process():
-                return "Error (backend still running)"
-            return "Error (backend stopped)"
+                return "Error (backend still running)%s" % suffix
+
+            return "Error (backend stopped)%s" % suffix
         _:
             return "Unknown"
+
+func _backend_status_tooltip() -> String:
+    var parts: PackedStringArray = []
+
+    if _supervisor.is_bundled():
+        parts.append("Executable: %s" % _supervisor.get_executable_path())
+
+    if not _supervisor.last_error.is_empty():
+        parts.append("Error: %s" % _supervisor.last_error)
+
+    return "\n".join(parts)
 
 func _backend_status_color() -> Color:
     match _supervisor.status:
@@ -541,6 +627,9 @@ func _on_install_all_pressed() -> void:
 func _on_integration_install_pressed(client_id: String) -> void:
     _integrations.install(client_id)
     _refresh()
+
+func _on_integration_warning_pressed() -> void:
+    _tabs.current_tab = TAB_INTEGRATIONS
 
 func _read_addon_version() -> String:
     var config := ConfigFile.new()

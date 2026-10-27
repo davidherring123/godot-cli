@@ -38,6 +38,28 @@ func _initialize() -> void:
 
     var panel = PanelScript.new(supervisor)
     panel.set_bridge_status(true, 49152)
+    root.add_child(panel)
+    await process_frame
+
+    var tabs := panel.find_child("PanelTabs", true, false) as TabContainer
+    _check(tabs != null, "panel tabs are missing")
+
+    if tabs != null:
+        _check(tabs.get_tab_count() == 2, "panel should have two tabs")
+        _check(
+            tabs.get_tab_title(0) == "MCP Status",
+            "status tab title is wrong: %s" % tabs.get_tab_title(0)
+        )
+        _check(
+            tabs.get_tab_title(1) == "Integrations",
+            "integrations tab title is wrong: %s" % tabs.get_tab_title(1)
+        )
+        _check(tabs.current_tab == 0, "panel should open on MCP Status")
+
+    var status_tab := panel.find_child("MCPStatusTab", true, false) as ScrollContainer
+    var integrations_tab := panel.find_child("IntegrationsTab", true, false) as ScrollContainer
+    _check(status_tab != null, "MCP Status tab content is missing")
+    _check(integrations_tab != null, "Integrations tab content is missing")
 
     var heading := panel.find_child("PanelHeading", true, false) as Label
     _check(heading != null, "panel heading is missing")
@@ -89,6 +111,47 @@ func _initialize() -> void:
     _check(copy != null and copy.disabled, "copy should be disabled without an endpoint")
     _check(endpoint != null, "endpoint field is missing")
 
+    var warning := panel.find_child("IntegrationWarning", true, false) as Control
+    var warning_label := panel.find_child(
+        "IntegrationWarningLabel", true, false
+    ) as Label
+    var warning_button := panel.find_child(
+        "IntegrationWarningButton", true, false
+    ) as Button
+    var error_banner := panel.find_child(
+        "IntegrationErrorBanner", true, false
+    ) as Control
+    var error_label := panel.find_child(
+        "IntegrationErrorLabel", true, false
+    ) as Label
+
+    _check(
+        warning != null and not warning.visible,
+        "integration warning should stay hidden until status loads"
+    )
+    _check(warning_label != null, "integration warning label is missing")
+    _check(warning_button != null, "integration warning button is missing")
+    _check(
+        error_banner != null and not error_banner.visible,
+        "integration error banner should stay hidden"
+    )
+    _check(
+        error_label != null and error_label.text.is_empty(),
+        "integration error label should start empty"
+    )
+    _check(
+        panel.find_child("LastErrorValue", true, false) == null,
+        "Last error row should be removed"
+    )
+    _check(
+        panel.find_child("IntegrationResultRow", true, false) == null,
+        "Last integration result row should be removed"
+    )
+    _check(
+        panel.find_child("IntegrationResultValue", true, false) == null,
+        "Last integration result value should be removed"
+    )
+
     var integrations_heading := panel.find_child("IntegrationsHeading", true, false) as Label
     _check(integrations_heading != null, "integrations heading is missing")
 
@@ -111,9 +174,6 @@ func _initialize() -> void:
     var opencode_button := panel.find_child("OpenCodeInstallButton", true, false) as Button
     var claude_button := panel.find_child("ClaudeCodeInstallButton", true, false) as Button
     var codex_button := panel.find_child("CodexInstallButton", true, false) as Button
-    var integration_result := panel.find_child(
-        "IntegrationResultValue", true, false
-    ) as Label
 
     _check(
         refresh_integrations != null and refresh_integrations.disabled,
@@ -153,9 +213,37 @@ func _initialize() -> void:
             )
 
     _check(
-        integration_result != null and integration_result.text == "Not checked",
-        "integration result is not clear without a backend"
+        status_tab != null and status_tab.is_ancestor_of(version),
+        "addon version is not on the MCP Status tab"
     )
+    _check(
+        status_tab != null and status_tab.is_ancestor_of(start),
+        "lifecycle controls are not on the MCP Status tab"
+    )
+    _check(
+        status_tab != null and status_tab.is_ancestor_of(warning),
+        "integration warning is not on the MCP Status tab"
+    )
+    _check(
+        integrations_tab != null and integrations_tab.is_ancestor_of(opencode_mcp),
+        "client status is not on the Integrations tab"
+    )
+    _check(
+        integrations_tab != null and integrations_tab.is_ancestor_of(refresh_integrations),
+        "refresh control is not on the Integrations tab"
+    )
+    _check(
+        integrations_tab != null and integrations_tab.is_ancestor_of(error_banner),
+        "integration error banner is not on the Integrations tab"
+    )
+
+    if warning_button != null and tabs != null:
+        warning_button.pressed.emit()
+        _check(
+            tabs.current_tab == 1,
+            "warning button did not open the Integrations tab"
+        )
+        tabs.current_tab = 0
 
     supervisor._apply_state({
         "status": "running",
@@ -184,6 +272,16 @@ func _initialize() -> void:
         "error state was not applied"
     )
     _check(supervisor.last_error == "bind failed", "backend error was not retained")
+
+    panel._refresh()
+    _check(
+        status != null and status.text.contains("bind failed"),
+        "backend error is not shown through backend status: %s" % status.text
+    )
+    _check(
+        status != null and status.tooltip_text.contains("bind failed"),
+        "backend error tooltip is missing"
+    )
 
     panel.free()
 
@@ -294,12 +392,76 @@ func _initialize() -> void:
 
     var panel = PanelScript.new(supervisor)
     panel.set_bridge_status(true, 49152)
+    root.add_child(panel)
+    await process_frame
+
+    var tabs := panel.find_child("PanelTabs", true, false) as TabContainer
+    var status_tab := panel.find_child("MCPStatusTab", true, false) as ScrollContainer
+    var integrations_tab := panel.find_child("IntegrationsTab", true, false) as ScrollContainer
+
+    _check(tabs != null, "panel tabs are missing")
+
+    if tabs != null:
+        _check(tabs.get_tab_count() == 2, "panel should have two tabs")
+        _check(
+            tabs.get_tab_title(0) == "MCP Status",
+            "status tab title is wrong: %s" % tabs.get_tab_title(0)
+        )
+        _check(
+            tabs.get_tab_title(1) == "Integrations",
+            "integrations tab title is wrong: %s" % tabs.get_tab_title(1)
+        )
+        _check(tabs.current_tab == 0, "panel should open on MCP Status")
+
+    _check(status_tab != null, "MCP Status tab content is missing")
+    _check(integrations_tab != null, "Integrations tab content is missing")
 
     var heading := panel.find_child("PanelHeading", true, false) as Label
     _check(heading != null and heading.text == "Godot MCP", "panel heading is wrong")
     _check(
         heading != null and String(heading.theme_type_variation) == "HeaderLarge",
         "panel heading does not use the editor heading style"
+    )
+
+    var warning := panel.find_child("IntegrationWarning", true, false) as Control
+    var warning_label := panel.find_child(
+        "IntegrationWarningLabel", true, false
+    ) as Label
+    var warning_button := panel.find_child(
+        "IntegrationWarningButton", true, false
+    ) as Button
+    var error_banner := panel.find_child(
+        "IntegrationErrorBanner", true, false
+    ) as Control
+    var error_label := panel.find_child(
+        "IntegrationErrorLabel", true, false
+    ) as Label
+
+    _check(
+        warning != null and not warning.visible,
+        "warning should be hidden when a client has MCP configured"
+    )
+    _check(warning_label != null, "integration warning label is missing")
+    _check(warning_button != null, "integration warning button is missing")
+    _check(
+        error_banner != null and not error_banner.visible,
+        "integration error banner should be hidden"
+    )
+    _check(
+        error_label != null and error_label.text.is_empty(),
+        "integration error label should start empty"
+    )
+    _check(
+        panel.find_child("LastErrorValue", true, false) == null,
+        "Last error row should be removed"
+    )
+    _check(
+        panel.find_child("IntegrationResultRow", true, false) == null,
+        "Last integration result row should be removed"
+    )
+    _check(
+        panel.find_child("IntegrationResultValue", true, false) == null,
+        "Last integration result value should be removed"
     )
 
     var refresh := panel.find_child("RefreshIntegrationsButton", true, false) as Button
@@ -313,7 +475,6 @@ func _initialize() -> void:
     var opencode_button := panel.find_child("OpenCodeInstallButton", true, false) as Button
     var claude_button := panel.find_child("ClaudeCodeInstallButton", true, false) as Button
     var codex_button := panel.find_child("CodexInstallButton", true, false) as Button
-    var result := panel.find_child("IntegrationResultValue", true, false) as Label
     var start := panel.find_child("StartButton", true, false) as Button
     var restart := panel.find_child("RestartButton", true, false) as Button
     var stop := panel.find_child("StopButton", true, false) as Button
@@ -366,9 +527,26 @@ func _initialize() -> void:
         codex_skill != null and codex_skill.text == "Installed",
         "codex skill status is wrong"
     )
+
     _check(
-        result != null and result.text.contains("refreshed"),
-        "initial status result is missing: %s" % result.text
+        status_tab != null and status_tab.is_ancestor_of(start),
+        "lifecycle controls are not on the MCP Status tab"
+    )
+    _check(
+        status_tab != null and status_tab.is_ancestor_of(warning),
+        "integration warning is not on the MCP Status tab"
+    )
+    _check(
+        integrations_tab != null and integrations_tab.is_ancestor_of(opencode_mcp),
+        "client status is not on the Integrations tab"
+    )
+    _check(
+        integrations_tab != null and integrations_tab.is_ancestor_of(refresh),
+        "refresh control is not on the Integrations tab"
+    )
+    _check(
+        integrations_tab != null and integrations_tab.is_ancestor_of(error_banner),
+        "integration error banner is not on the Integrations tab"
     )
 
     opencode_button.pressed.emit()
@@ -376,10 +554,7 @@ func _initialize() -> void:
         opencode_skill.text == "Installed",
         "opencode install did not refresh status: %s" % opencode_skill.text
     )
-    _check(
-        result.text.contains("Updated OpenCode"),
-        "opencode install result is missing: %s" % result.text
-    )
+    _check(not error_banner.visible, "opencode install left an integration error")
 
     install_all.pressed.emit()
     _check(
@@ -390,15 +565,13 @@ func _initialize() -> void:
         codex_mcp.text == "Installed",
         "install all did not repair codex MCP: %s" % codex_mcp.text
     )
-    _check(
-        result.text.contains("Updated 2 integrations"),
-        "install all result is missing: %s" % result.text
-    )
+    _check(not error_banner.visible, "install all left an integration error")
 
     refresh.pressed.emit()
+    _check(not error_banner.visible, "refresh left an integration error")
     _check(
-        result.text.contains("refreshed"),
-        "manual refresh result is missing: %s" % result.text
+        not warning.visible,
+        "warning should be hidden when clients have MCP configured"
     )
 
     var fail_marker := FileAccess.open("res://fail-integration", FileAccess.WRITE)
@@ -408,19 +581,99 @@ func _initialize() -> void:
         fail_marker.close()
 
     refresh.pressed.emit()
+    _check(error_banner.visible, "integration failure did not show the error banner")
     _check(
-        result.text.contains("integration failed"),
-        "integration error is missing: %s" % result.text
+        error_label.text.contains("integration failed"),
+        "integration error is missing: %s" % error_label.text
     )
+    _check(not warning.visible, "integration failure incorrectly showed the warning")
     _check(not refresh.disabled, "refresh did not recover after an integration error")
+
+    opencode_button.pressed.emit()
+    _check(
+        error_banner.visible,
+        "install failure did not show the error banner"
+    )
+    _check(
+        error_label.text.contains("integration failed"),
+        "install error is missing: %s" % error_label.text
+    )
+    _check(
+        not warning.visible,
+        "install failure incorrectly showed the warning"
+    )
+
     DirAccess.remove_absolute(
         ProjectSettings.globalize_path("res://fail-integration")
     )
 
     refresh.pressed.emit()
+    _check(not error_banner.visible, "integration error banner did not clear")
+    _check(error_label.text.is_empty(), "integration error text did not clear")
+
+    var no_config_marker := FileAccess.open("res://no-mcp-config", FileAccess.WRITE)
+    _check(no_config_marker != null, "could not create missing configuration marker")
+
+    if no_config_marker != null:
+        no_config_marker.close()
+
+    refresh.pressed.emit()
     _check(
-        result.text.contains("refreshed"),
-        "integration did not recover after an error: %s" % result.text
+        warning.visible,
+        "warning should show when no client has MCP configured"
+    )
+    _check(
+        warning_label.text.contains("No AI client"),
+        "warning text is not clear: %s" % warning_label.text
+    )
+    _check(tabs != null and tabs.current_tab == 0, "warning changed tabs on its own")
+
+    if warning_button != null and tabs != null:
+        warning_button.pressed.emit()
+        _check(
+            tabs.current_tab == 1,
+            "warning button did not open the Integrations tab"
+        )
+        tabs.current_tab = 0
+
+    DirAccess.remove_absolute(
+        ProjectSettings.globalize_path("res://no-mcp-config")
+    )
+    refresh.pressed.emit()
+    _check(
+        not warning.visible,
+        "warning should hide after a client is configured"
+    )
+
+    var initial_fail_marker := FileAccess.open(
+        "res://fail-integration", FileAccess.WRITE
+    )
+    _check(
+        initial_fail_marker != null,
+        "could not create the initial status failure marker"
+    )
+
+    if initial_fail_marker != null:
+        initial_fail_marker.close()
+
+    var failed_panel = PanelScript.new(supervisor)
+    var failed_warning := failed_panel.find_child(
+        "IntegrationWarning", true, false
+    ) as Control
+    var failed_error := failed_panel.find_child(
+        "IntegrationErrorBanner", true, false
+    ) as Control
+    _check(
+        failed_warning != null and not failed_warning.visible,
+        "warning appeared before integration status loaded"
+    )
+    _check(
+        failed_error != null and failed_error.visible,
+        "initial integration status failure did not show a contextual error"
+    )
+    failed_panel.free()
+    DirAccess.remove_absolute(
+        ProjectSettings.globalize_path("res://fail-integration")
     )
 
     panel.free()
@@ -479,6 +732,21 @@ fi
 codex_installed=false
 if [ -f "$codex_marker" ]; then
     codex_installed=true
+fi
+
+no_mcp_config=false
+if [ -f "$project_root/no-mcp-config" ]; then
+    no_mcp_config=true
+fi
+
+opencode_configured=true
+claude_configured=$claude_installed
+codex_configured=true
+
+if [ "$no_mcp_config" = true ]; then
+    opencode_configured=false
+    claude_configured=false
+    codex_configured=false
 fi
 
 if [ "$2" = "install" ]; then
@@ -553,7 +821,7 @@ fi
 
 if [ "$2" = "status" ]; then
     cat <<EOF
-{"project_root":"$project_root","host_path":"$host_path","clients":[{"client":"opencode","config_path":"$project_root/opencode.json","config_exists":true,"configured":true,"up_to_date":$opencode_up_to_date,"command":["$host_path","connect","--project","$project_root"],"skill_path":"$project_root/.agents/skills/godot-mcp/SKILL.md","skill_installed":$opencode_skill_installed,"skill_current":$opencode_skill_current},{"client":"claude","config_path":"$project_root/.mcp.json","config_exists":$claude_installed,"configured":$claude_installed,"up_to_date":$claude_up_to_date,"skill_path":"$project_root/.claude/skills/godot-mcp/SKILL.md","skill_installed":$claude_skill_installed,"skill_current":$claude_skill_current},{"client":"codex","config_path":"$project_root/.codex/config.toml","config_exists":true,"configured":true,"up_to_date":$codex_up_to_date,"command":$codex_command,"skill_path":"$project_root/.agents/skills/godot-mcp/SKILL.md","skill_installed":true,"skill_current":true}]}
+{"project_root":"$project_root","host_path":"$host_path","clients":[{"client":"opencode","config_path":"$project_root/opencode.json","config_exists":true,"configured":$opencode_configured,"up_to_date":$opencode_up_to_date,"command":["$host_path","connect","--project","$project_root"],"skill_path":"$project_root/.agents/skills/godot-mcp/SKILL.md","skill_installed":$opencode_skill_installed,"skill_current":$opencode_skill_current},{"client":"claude","config_path":"$project_root/.mcp.json","config_exists":$claude_installed,"configured":$claude_configured,"up_to_date":$claude_up_to_date,"skill_path":"$project_root/.claude/skills/godot-mcp/SKILL.md","skill_installed":$claude_skill_installed,"skill_current":$claude_skill_current},{"client":"codex","config_path":"$project_root/.codex/config.toml","config_exists":true,"configured":$codex_configured,"up_to_date":$codex_up_to_date,"command":$codex_command,"skill_path":"$project_root/.agents/skills/godot-mcp/SKILL.md","skill_installed":true,"skill_current":true}]}
 EOF
     exit 0
 fi
