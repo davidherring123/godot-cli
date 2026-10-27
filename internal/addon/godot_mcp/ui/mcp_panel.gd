@@ -196,6 +196,7 @@ func _tab_style(
     style.bg_color = background
     style.set_corner_radius_all(4)
     style.set_content_margin_all(10)
+    style.set_content_margin(SIDE_TOP, 14)
 
     if selected:
         style.border_color = accent
