@@ -56,7 +56,7 @@ Runtime state is scoped to one project and one active session at a time. Session
 
 ## MCP server
 
-`godot-cli mcp` exposes the project's actions as a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio by default. It serves one Godot project per process: start it from anywhere inside the project, or pass `--project`.
+`godot-cli connect --project <path>` is the stable stdio entrypoint used by AI client configuration. It serves the same tools as `godot-cli mcp` over stdio for one Godot project. `godot-cli mcp` remains the full server command, including the Streamable HTTP transport.
 
 Use `--transport http` to serve the MCP Streamable HTTP transport instead. The endpoint is `/mcp`. HTTP only binds a loopback `--host` (default `127.0.0.1`) and accepts `--port` (default `0`, which asks the operating system for an available port). With `--state-file`, the server binds first, takes an exclusive lifetime lock for that state path, then atomically writes a discovery document containing `pid`, `transport`, `url`, `version`, `project`, and `started_at`. On shutdown it removes that file only when this process still owns it. A second server cannot publish to the same state path while the first is running.
 
@@ -70,20 +70,25 @@ Live-editor tools require Godot 4 to be running with the godot-cli addon install
 {
   "mcpServers": {
     "godot": {
-      "command": "godot-cli",
-      "args": ["mcp", "--project", "C:/Projects/MyGame"]
+      "command": "/path/to/addons/godot_cli/bin/<os>-<arch>/godot-mcp-host",
+      "args": ["connect", "--project", "C:/Projects/MyGame"]
     }
   }
 }
 ```
 
-For OpenCode, `godot-cli init --agent opencode` prints the project-local registration command:
+## AI client integrations
+
+`godot-cli integrations` manages project-scoped configuration for OpenCode, Claude Code, and Codex:
 
 ```shell
-opencode mcp add godot -- godot-cli mcp
+godot-cli integrations status                         # JSON status for every client
+godot-cli integrations install opencode|claude|codex|all
 ```
 
-`godot-cli` does not modify OpenCode configuration itself; the command above adds only the `godot` MCP server to the current project.
+Install writes the absolute bundled host path followed by `connect --project <absolute-root>`. OpenCode configuration uses `mcp.servers` in `opencode.json(c)` or `.opencode/opencode.json(c)`; Claude Code uses `.mcp.json`; Codex uses `.codex/config.toml`. Existing unrelated configuration is preserved, and repeated installs are no-ops. The canonical skill is installed at `.agents/skills/godot-cli/SKILL.md` for OpenCode and Codex and `.claude/skills/godot-cli/SKILL.md` for Claude Code.
+
+`godot-cli init --agent opencode` still prints a manual `opencode mcp add` command and does not modify client configuration; use `integrations install` when you want godot-cli to manage it.
 
 Tool names use underscores: `editor_open`, `editor_status`, `scene_list`, `scene_apply`, `node_add`, `resource_set`, `input_event_add`, `validate_scene`, `runtime_start`, `runtime_capture`, and so on. Every successful call returns JSON text plus structured content. `runtime_capture` also returns an MCP image content block when the PNG fits the embedding limit; otherwise its structured result keeps the artifact path, dimensions, and byte size. Tool failures set `isError` and preserve the core error code (`invalid_argument`, `not_found`, `failed_precondition`, `unsupported`, and others) so the client can recover.
 

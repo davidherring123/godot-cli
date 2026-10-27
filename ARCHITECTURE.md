@@ -116,7 +116,8 @@ refuses to kill an unresponsive process unless `force=true`.
 For editor actions, the MCP server reuses the same path without a subprocess:
 
 ```
-godot-cli mcp  →  internal/agent/mcp  →  core action Invoke  →  port/invocation  →  adapter/bridge  →  addon
+godot-cli connect  →  internal/agent/mcp  →  core action Invoke  →  port/invocation  →  adapter/bridge  →  addon
+godot-cli mcp      →  the same server, with an optional HTTP transport
 ```
 
 MCP arguments are raw JSON decoded into the action's typed `Params`; successful
@@ -186,12 +187,13 @@ results are returned as both JSON text and structured content. Tool failures use
   are preserved in `isError` tool responses. Results that implement
   `artifact.ImageSource` (currently `runtime.capture`) also add an MCP image
   content block while the structured result keeps only metadata. Tool calls are
-  serialized so the editor only handles one operation at a time. `godot-cli mcp`
-  serves stdio by default and Streamable HTTP on loopback with `--transport
-  http`; HTTP binds before publishing an optional atomic `pid`/`transport`/`url`/
-  `version`/`project`/`started_at` state file and removes it on shutdown only
-  when the process still owns it. Both transports resolve one project for the
-  process lifetime.
+  serialized so the editor only handles one operation at a time. `godot-cli
+  connect --project <root>` is the stable stdio entrypoint written into client
+  configuration; `godot-cli mcp` exposes the same server with stdio by default
+  and Streamable HTTP on loopback with `--transport http`. HTTP binds before
+  publishing an optional atomic `pid`/`transport`/`url`/`version`/`project`/
+  `started_at` state file and removes it on shutdown only when the process still
+  owns it. All transports resolve one project for the process lifetime.
 - `internal/core/project` — the `Project` type, `Resolve` path handling, and
   `FindProjectRoot` project discovery used by every command. Its subpackages
   hold project-scoped domains: `editor`, `runtime`, `input`, `scenepath`, and
@@ -219,10 +221,20 @@ results are returned as both JSON text and structured content. Tool failures use
   `validate.live` packs and re-instantiates the active editor scene in memory:
   it detects scripts that no longer parse and serialization failures without
   saving anything.
-- `internal/agent/skill` — generates `references/commands.md` + JSON schemas from
-  cobra commands / `core` definitions; `godot-cli init --agent` installs them.
-  For OpenCode it also prints the project-local `opencode mcp add` command;
-  godot-cli never writes OpenCode configuration itself.
+- `internal/agent/skill` — owns the canonical portable `SKILL.md` template and
+  the project skill paths used by integrations: `.agents/skills/godot-cli/` for
+  OpenCode and Codex, and `.claude/skills/godot-cli/` for Claude Code. It also
+  generates `references/commands.md` + JSON schemas from cobra commands /
+  `core` definitions. `godot-cli init --agent` installs the portable skill;
+  client MCP configuration is managed by `internal/agent/integration`.
+- `internal/agent/integration` — reusable project-scoped client management.
+  `godot-cli integrations status` reports machine-readable configuration and
+  skill state; `integrations install <opencode|claude|codex|all>` resolves the
+  running or bundled `godot-mcp-host` path, merges OpenCode `mcp.servers`,
+  Claude Code `.mcp.json`, and Codex `.codex/config.toml`, and installs the
+  canonical skill. Installs are idempotent and preserve unrelated user
+  configuration. The written MCP command launches `<host> connect --project
+  <absolute-root>` so clients share the stable stdio entrypoint.
 - `internal/addon` — embeds the GDScript addon, installs/updates it, and enables
   `res://addons/godot_cli/plugin.cfg` in `project.godot` during `init`.
 - `internal/addon/godot_cli/` — `plugin.gd` (lifecycle) → `bridge/` (TCP
@@ -313,9 +325,11 @@ action in `All()` also exposes it as an MCP tool automatically.
   lifecycle/capture tests (windowed capture is opt-in with
   `GODOT_MODE=graphical`); `tests/editor` — isolated editor lifecycle tests,
   including launch behavior with a fake executable.
-- `tests/cli` — CLI interface tests, including `init`; `tests/mcp` — MCP
-  interface tests, including image content, actionable runtime errors, and live
-  calls with their own Godot sessions.
+- `tests/cli` — CLI interface tests, including `init`, `connect`, and
+  `integrations`; `tests/mcp` — MCP interface tests, including image content,
+  actionable runtime errors, and live calls with their own Godot sessions.
+- `tests/integration` — client configuration merging, project-scoped skills,
+  host resolution, status, and idempotent installs; no Godot process required.
 - `tests/addon` checks addon installation and runs a small headless Godot script
   that verifies deferred session history plus one-step undo/redo ordering. It
   also checks the installed MCP panel/supervisor scripts, renders the panel

@@ -15,7 +15,7 @@ func NewInitCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "init",
 		Short:   "Install godot-cli into the current project",
-		Long:    "Install and enable the Godot addon. With --agent, also install or refresh the portable MCP workflow skill. For OpenCode, prints the command to register the MCP server; godot-cli does not modify OpenCode configuration.",
+		Long:    "Install and enable the Godot addon. With --agent, also install or refresh the portable MCP workflow skill. Use `godot-cli integrations install` to merge MCP configuration into a supported AI client.",
 		Example: "godot-cli init\ngodot-cli init --agent codex\ngodot-cli init --agent opencode",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -118,7 +118,8 @@ func printOpenCodeMCPInstructions(cmd *cobra.Command, agents []string) {
 
 	cmd.Println(
 		"\nTo expose this project to OpenCode, run:\n" +
-			"  opencode mcp add godot -- godot-cli mcp\n\n" +
-			"godot-cli does not modify OpenCode configuration.",
+			"  godot-cli integrations install opencode\n\n" +
+			"To register it manually instead:\n" +
+			"  opencode mcp add godot -- godot-cli mcp",
 	)
 }

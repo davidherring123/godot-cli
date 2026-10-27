@@ -61,10 +61,11 @@ binaries are executable (`0755`) in both tar and ZIP archives.
 A launcher or MCP client can invoke the host for the current machine directly:
 
 ```sh
-addons/godot_cli/bin/<os>-<arch>/godot-mcp-host mcp --project /path/to/game
+addons/godot_cli/bin/<os>-<arch>/godot-mcp-host connect --project /path/to/game
 ```
 
-On Windows the file is `godot-mcp-host.exe`.
+`connect` is the stable stdio entrypoint used by client configuration. On
+Windows the file is `godot-mcp-host.exe`.
 
 ## Install options
 

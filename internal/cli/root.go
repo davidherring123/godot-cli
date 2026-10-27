@@ -24,6 +24,8 @@ func NewRootCommand(version string) *cobra.Command {
 		NewValidateCommand(),
 		NewRuntimeCommand(),
 		NewMCPCommand(version),
+		NewConnectCommand(version),
+		NewIntegrationsCommand(),
 	)
 
 	return cmd
