@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -703,7 +704,10 @@ func TestMCPBackendSupervisorManagesBundledHost(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	logPath := filepath.Join(root, "backend_args.log")
 	fakeBackend := `#!/bin/sh
+log="__LOG__"
+printf '%s\n' "$@" > "$log"
 state=""
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -720,6 +724,7 @@ mkdir -p "$(dirname "$state")"
 printf '{"pid":%s,"status":"running","endpoint":"http://127.0.0.1:54321/mcp","port":54321}\n' "$$" > "$state"
 exec sleep 30
 `
+	fakeBackend = strings.ReplaceAll(fakeBackend, "__LOG__", logPath)
 
 	backendPath := filepath.Join(bundleDirectory, "godot-mcp-host")
 	if err := os.WriteFile(backendPath, []byte(fakeBackend), 0755); err != nil {
@@ -728,6 +733,22 @@ exec sleep 30
 
 	writeScript(t, root, "mcp_backend_test.gd", mcpBackendTestScript)
 	runMCPTestScript(t, godot, root, "res://mcp_backend_test.gd", "MCP_BACKEND_OK")
+
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("reading backend arguments: %v", err)
+	}
+
+	arguments := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(arguments) == 0 || arguments[0] != "serve" {
+		t.Fatalf("backend arguments = %v, want serve", arguments)
+	}
+
+	for _, unwanted := range []string{"mcp", "--transport"} {
+		if slices.Contains(arguments, unwanted) {
+			t.Fatalf("backend arguments still contain %q: %v", unwanted, arguments)
+		}
+	}
 }
 
 func TestPluginLoadsMCPPanelWithoutBundledBackend(t *testing.T) {

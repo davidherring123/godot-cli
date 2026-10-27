@@ -15,6 +15,13 @@ exposed by an embedded GDScript addon. Read this file before touching
 The addon is embedded at build time. There is no version negotiation: the CLI
 copies its matching addon on `init`; a running editor picks it up on next launch.
 
+There are two Go entrypoints during the transition. `cmd/godot-mcp-host` is the
+primary release binary and the private host owned by the addon; it exposes only
+the editor-managed HTTP endpoint, the stable stdio client entrypoint,
+integration management, and version reporting. `cmd/godot-cli` and
+`internal/cli` retain the legacy terminal command surface until a separate
+removal track deletes it.
+
 ## Go package layout
 
 `internal/core` is organized by domain. Real editor/resource domains stay at the
@@ -48,6 +55,8 @@ internal/adapter/
   godot/           Godot executable discovery (GODOT_BIN, PATH)
 
 internal/compose/  binds adapters to the core ports at process startup
+internal/hostcmd/  private bundled host commands (serve, connect, integrations, version)
+internal/cli/      legacy terminal commands, retained for a later removal track
 ```
 
 Only the five product domains live under `internal/core`. Shared models,
@@ -115,8 +124,10 @@ refuses to kill an unresponsive process unless `force=true`.
 For editor actions, the MCP server reuses the same path without a subprocess:
 
 ```
-godot-cli connect  →  internal/agent/mcp  →  core action Invoke  →  port/invocation  →  adapter/bridge  →  addon
-godot-cli mcp      →  the same server, with an optional HTTP transport
+godot-mcp-host serve    →  internal/agent/mcp  →  core action Invoke  →  port/invocation  →  adapter/bridge  →  addon
+godot-mcp-host connect  →  the same server over stdio for one project
+godot-cli connect       →  the legacy CLI alias used by development builds
+godot-cli mcp           →  the legacy full server, with an optional HTTP transport
 ```
 
 MCP arguments are raw JSON decoded into the action's typed `Params`; successful
@@ -125,7 +136,14 @@ results are returned as both JSON text and structured content. Tool failures use
 
 ## Layers and invariants
 
-- `internal/cli` — cobra commands ONLY. No editor logic, no direct use of
+- `internal/hostcmd` — the private `godot-mcp-host` cobra surface. It exposes
+  only `serve` (editor-managed loopback Streamable HTTP), `connect` (stable
+  stdio for one project), `integrations status|install`, and `version`. It
+  reuses `internal/agent/mcp`, `internal/agent/integration`, and
+  `internal/core/project`; it must not grow scene, node, resource, runtime, or
+  other terminal editing commands.
+- `internal/cli` — the legacy terminal cobra commands, retained until the
+  separate removal track finishes. No editor logic, no direct use of
   `internal/adapter` or transport types.
 - `internal/core/<node|scene|resource|validation>` and the project-scoped
   domains under `internal/core/project/<editor|runtime|input|settings>`
@@ -187,13 +205,15 @@ results are returned as both JSON text and structured content. Tool failures use
   are preserved in `isError` tool responses. Results that implement
   `artifact.ImageSource` (currently `runtime.capture`) also add an MCP image
   content block while the structured result keeps only metadata. Tool calls are
-  serialized so the editor only handles one operation at a time. `godot-cli
-  connect --project <root>` is the stable stdio entrypoint written into client
-  configuration; `godot-cli mcp` exposes the same server with stdio by default
-  and Streamable HTTP on loopback with `--transport http`. HTTP binds before
-  publishing an optional atomic `pid`/`transport`/`url`/`version`/`project`/
-  `started_at` state file and removes it on shutdown only when the process still
-  owns it. All transports resolve one project for the process lifetime.
+  serialized so the editor only handles one operation at a time.
+  `godot-mcp-host serve` is the private editor-managed loopback Streamable HTTP
+  endpoint; `godot-mcp-host connect --project <root>` is the stable stdio
+  entrypoint written into client configuration. The legacy `godot-cli connect`
+  and `godot-cli mcp` commands expose the same server during the transition.
+  HTTP binds before publishing an optional atomic
+  `pid`/`transport`/`url`/`version`/`project`/`started_at` state file and
+  removes it on shutdown only when the process still owns it. All transports
+  resolve one project for the process lifetime.
 - `internal/core/project` — the `Project` type, `Resolve` path handling, and
   `FindProjectRoot` project discovery used by every command. Its subpackages
   hold project-scoped domains: `editor`, `runtime`, `input`, `scenepath`, and
@@ -225,13 +245,18 @@ results are returned as both JSON text and structured content. Tool failures use
   `core` definitions. `godot-cli init --agent` installs the portable skill;
   client MCP configuration is managed by `internal/agent/integration`.
 - `internal/agent/integration` — reusable project-scoped client management.
-  `godot-cli integrations status` reports machine-readable configuration and
-  skill state; `integrations install <opencode|claude|codex|all>` resolves the
-  running or bundled `godot-mcp-host` path, merges OpenCode `mcp.servers`,
-  Claude Code `.mcp.json`, and Codex `.codex/config.toml`, and installs the
-  canonical skill. Installs are idempotent and preserve unrelated user
-  configuration. The written MCP command launches `<host> connect --project
-  <absolute-root>` so clients share the stable stdio entrypoint.
+  The bundled host exposes it as `godot-mcp-host integrations status|install`;
+  the legacy CLI retains the same commands. Status reports machine-readable
+  configuration and skill state; install targets
+  `<opencode|claude|codex|all>` resolve the running or bundled
+  `godot-mcp-host` path, merge OpenCode `mcp.servers`, Claude Code `.mcp.json`,
+  and Codex `.codex/config.toml`, and install the canonical skill. Installs are
+  idempotent and preserve unrelated user configuration. The written MCP command
+  launches `<host> connect --project <absolute-root>` so clients share the
+  stable stdio entrypoint.
+- `internal/release` — builds deterministic addon archives and cross-compiles
+  `cmd/godot-mcp-host` into each `bin/<platform>-<arch>/godot-mcp-host`
+  (`godot-mcp-host.exe` on Windows). The legacy CLI is not packaged.
 - `internal/addon` — embeds the GDScript addon, installs/updates it, and enables
   `res://addons/godot_cli/plugin.cfg` in `project.godot` during `init`.
 - `internal/addon/godot_cli/` — `plugin.gd` (lifecycle) → `bridge/` (TCP
@@ -326,9 +351,11 @@ action in `All()` also exposes it as an MCP tool automatically.
   lifecycle/capture tests (windowed capture is opt-in with
   `GODOT_MODE=graphical`); `tests/editor` — isolated editor lifecycle tests,
   including launch behavior with a fake executable.
-- `tests/cli` — CLI interface tests, including `init`, `connect`, and
-  `integrations`; `tests/mcp` — MCP interface tests, including image content,
-  actionable runtime errors, and live calls with their own Godot sessions.
+- `tests/cli` — legacy CLI interface tests, including `init`, `connect`, and
+  `integrations`; `tests/host` — the private host command allowlist and
+  integration wiring; `tests/mcp` — MCP interface tests, including image
+  content, actionable runtime errors, and live calls with their own Godot
+  sessions.
 - `tests/integration` — client configuration merging, project-scoped skills,
   host resolution, status, and idempotent installs; no Godot process required.
 - `tests/addon` checks addon installation and runs a small headless Godot script

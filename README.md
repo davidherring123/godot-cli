@@ -56,6 +56,8 @@ Runtime state is scoped to one project and one active session at a time. Session
 
 ## MCP server
 
+The bundled `godot-mcp-host` is the primary host. Its private command surface is limited to `serve` for the editor-managed loopback Streamable HTTP endpoint, `connect --project` for stable stdio client configuration, `integrations status|install --project`, and `version`. It deliberately has no scene, node, resource, or other terminal editing commands. `godot-cli connect --project <path>` and `godot-cli mcp` remain available in the legacy CLI during the transition.
+
 `godot-cli connect --project <path>` is the stable stdio entrypoint used by AI client configuration. It serves the same tools as `godot-cli mcp` over stdio for one Godot project. `godot-cli mcp` remains the full server command, including the Streamable HTTP transport.
 
 Use `--transport http` to serve the MCP Streamable HTTP transport instead. The endpoint is `/mcp`. HTTP only binds a loopback `--host` (default `127.0.0.1`) and accepts `--port` (default `0`, which asks the operating system for an available port). With `--state-file`, the server binds first, takes an exclusive lifetime lock for that state path, then atomically writes a discovery document containing `pid`, `transport`, `url`, `version`, `project`, and `started_at`. On shutdown it removes that file only when this process still owns it. A second server cannot publish to the same state path while the first is running.

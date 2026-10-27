@@ -23,7 +23,7 @@ const (
 	DefaultAddonDir = "internal/addon/godot_cli"
 
 	hostBinaryName     = "godot-mcp-host"
-	hostCommandPackage = "./cmd/godot-cli"
+	hostCommandPackage = "./cmd/godot-mcp-host"
 )
 
 // Target is one GOOS/GOARCH pair that receives a bundled host binary.

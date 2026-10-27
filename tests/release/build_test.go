@@ -33,9 +33,11 @@ func TestBuildUsesRootOutputAndControlledEnvironment(t *testing.T) {
 	}
 
 	environmentPath := filepath.Join(root, "build-environment.txt")
+	argumentsPath := filepath.Join(root, "build-arguments.txt")
 	fakeGo := filepath.Join(root, "fake-go")
 	script := `#!/bin/sh
 env | sort > "` + environmentPath + `"
+printf '%s\n' "$@" > "` + argumentsPath + `"
 while [ "$#" -gt 0 ]; do
     if [ "$1" = "-o" ]; then
         printf 'fake host binary' > "$2"
@@ -83,5 +85,19 @@ exit 1
 	}
 	if !strings.Contains(text, "GOAMD64=v1\n") {
 		t.Fatalf("build did not set the amd64 baseline:\n%s", text)
+	}
+
+	arguments, err := os.ReadFile(argumentsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	commandLine := strings.Split(strings.TrimSpace(string(arguments)), "\n")
+	if len(commandLine) == 0 || commandLine[len(commandLine)-1] != "./cmd/godot-mcp-host" {
+		t.Fatalf("release build command = %v, want ./cmd/godot-mcp-host", commandLine)
+	}
+
+	if strings.Contains(string(arguments), "./cmd/godot-cli\n") {
+		t.Fatalf("release build still packages the legacy CLI:\n%s", arguments)
 	}
 }

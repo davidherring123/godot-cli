@@ -134,9 +134,7 @@ func start() -> bool:
     _startup_elapsed = 0.0
 
     var arguments := PackedStringArray([
-        "mcp",
-        "--transport",
-        "http",
+        "serve",
         "--host",
         HOST,
         "--port",

@@ -64,8 +64,10 @@ A launcher or MCP client can invoke the host for the current machine directly:
 addons/godot_cli/bin/<os>-<arch>/godot-mcp-host connect --project /path/to/game
 ```
 
-`connect` is the stable stdio entrypoint used by client configuration. On
-Windows the file is `godot-mcp-host.exe`.
+`connect` is the stable stdio entrypoint used by client configuration. The
+addon starts the same binary with `serve` for its private loopback HTTP
+endpoint; `integrations status|install --project` and `version` are the only
+other host commands. On Windows the file is `godot-mcp-host.exe`.
 
 ## Install options
 
