@@ -12,7 +12,8 @@ import (
 	"github.com/davidherring123/godot-cli/internal/compose"
 )
 
-const VERSION = "dev"
+// VERSION is replaced with -ldflags "-X main.VERSION=..." in release builds.
+var VERSION = "dev"
 
 func main() {
 	compose.Install()

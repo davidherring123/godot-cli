@@ -95,7 +95,22 @@ stdout is reserved for stdio MCP messages; diagnostics are written to stderr.
 
 ## Installation
 
-Installation instructions will be made available once the first version is released.
+End users need Godot 4; Go is only required to build godot-cli from source.
+Release archives include prebuilt `godot-mcp-host` binaries for macOS, Linux,
+and Windows.
+
+- **Godot Asset Library** — install the `godot-cli` addon from the editor's
+  AssetLib tab.
+- **GitHub** — download `godot-cli-addon-<version>.zip` from the releases page
+  and extract it at your project root. Do not use the repository's
+  auto-generated "Source code" ZIP; it does not contain the host binaries.
+- **GodotEnv** — reference the release ZIP as a `source: "zip"` addon with
+  `subfolder: "addons/godot_cli"`, then run `godotenv addons install`.
+
+Release archives place the addon at `addons/godot_cli/` and the matching host at
+`addons/godot_cli/bin/<os>-<arch>/godot-mcp-host` (`godot-mcp-host.exe` on
+Windows). See [RELEASING.md](RELEASING.md) for archive layout and release
+instructions.
 
 ## License
 

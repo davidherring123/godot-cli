@@ -1,7 +1,10 @@
 BINARY := godot-cli
 CMD := ./cmd/godot-cli
 BIN_DIR := ./bin
+DIST_DIR := ./dist
 INSTALL_DIR := $(HOME)/.local/bin
+
+VERSION ?= dev
 
 TEST_PACKAGES ?= ./internal/... ./tests/...
 TEST_ARGS ?=
@@ -26,7 +29,7 @@ endif
 
 export GOBIN = $(INSTALL_DIR)
 
-.PHONY: build install run format format-check vet lint test check clean benchmark benchmark-smoke
+.PHONY: build install run format format-check vet lint test check clean release-addon benchmark benchmark-smoke
 
 build:
 ifeq ($(OS),Windows_NT)
@@ -35,6 +38,9 @@ else
 	mkdir -p $(BIN_DIR)
 endif
 	go build -o "$(BIN_DIR)/$(BINARY)" $(CMD)
+
+release-addon:
+	go run ./cmd/package-addon --version "$(VERSION)" --out "$(DIST_DIR)"
 
 install:
 	go install $(CMD)

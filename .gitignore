@@ -3,6 +3,7 @@
 
 # Build output
 /bin/
+/dist/
 
 # Benchmark results
 /benchmarks/results/

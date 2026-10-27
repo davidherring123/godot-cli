@@ -41,6 +41,7 @@ internal/port/invocation/      action invocation port
 internal/port/editorinstance/  editor registration discovery port
 internal/port/godot/           Godot executable discovery port
 internal/support/batch/        shared batch validation
+internal/release/              reproducible addon release packaging
 
 internal/adapter/
   bridge/          TCP editor transport and instance-file discovery
@@ -319,6 +320,8 @@ action in `All()` also exposes it as an MCP tool automatically.
   without a backend, and starts/stops a fake bundled host.
 - `tests/invocation` — transport-neutral unit tests for `invocation.Call` and
   `apierr` code/error behavior; no Godot process required.
+- `tests/release` — addon release archive layout, file modes, and deterministic
+  packaging; no Godot process required.
 - `tests/harness` — Godot session management shared by live integration tests.
 - `make check` — gofmt, vet, golangci-lint (repo config in `.golangci.yml`).
 - `make test` — runs Go unit tests, then spins up a real headless Godot editor
