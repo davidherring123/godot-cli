@@ -230,8 +230,10 @@ results are returned as both JSON text and structured content. Tool failures use
   `core/` (Godot logic). `plugin.gd` also creates the programmatic
   `ui/mcp_panel.gd` bottom panel and delegates backend lifecycle to
   `mcp/backend_supervisor.gd`. The supervisor starts and stops only the bundled
-  `bin/<platform>-<arch>/godot-mcp-host` process it launched; the TCP bridge is
-  unchanged and keeps working when no backend bundle is present. Domain code
+  `bin/<platform>-<arch>/godot-mcp-host` process it launched and uses a
+  per-editor discovery file so concurrent editor instances cannot claim or
+  remove each other's backend state. The TCP bridge is unchanged and keeps
+  working when no backend bundle is present. Domain code
   lives under `core/node/`, `core/scene/`, `core/resource/`, and
   `core/project/{settings,input}/`. Shared core support
   stays at the `core/` root because every domain uses it: `action_service.gd`

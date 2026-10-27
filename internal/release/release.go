@@ -409,19 +409,33 @@ func buildEnvironment(environment []string, target Target) []string {
 		name, _, _ := strings.Cut(variable, "=")
 
 		switch name {
-		case "CGO_ENABLED", "GOARCH", "GOOS":
+		case "CGO_ENABLED", "GOARCH", "GOOS", "GOAMD64", "GOARM64", "GO386", "GOARM",
+			"GOEXPERIMENT", "GOFLAGS":
 			continue
 		}
 
 		filtered = append(filtered, variable)
 	}
 
-	return append(
+	filtered = append(
 		filtered,
 		"CGO_ENABLED=0",
 		"GOOS="+target.OS,
 		"GOARCH="+target.Arch,
 	)
+
+	switch target.Arch {
+	case "amd64":
+		filtered = append(filtered, "GOAMD64=v1")
+	case "arm64":
+		filtered = append(filtered, "GOARM64=v8.0")
+	case "386":
+		filtered = append(filtered, "GO386=sse2")
+	case "arm":
+		filtered = append(filtered, "GOARM=7")
+	}
+
+	return filtered
 }
 
 func hostEntry(target Target, source string) ArchiveEntry {

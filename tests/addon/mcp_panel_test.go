@@ -158,6 +158,10 @@ func _initialize() -> void:
     )
     _check(supervisor.get_managed_pid() == pid, "managed PID changed")
     _check(
+        supervisor.get_state_path().get_file().begins_with("backend-"),
+        "state file is not scoped to the editor process: %s" % supervisor.get_state_path()
+    )
+    _check(
         FileAccess.file_exists(supervisor.get_state_path()),
         "state file was not created"
     )
@@ -166,6 +170,7 @@ func _initialize() -> void:
     OS.delay_msec(200)
 
     _check(not supervisor.has_process(), "stop retained the managed PID")
+    _check(not OS.is_process_running(pid), "stop left the backend process running")
     _check(
         supervisor.status == SupervisorScript.Status.STOPPED,
         "status after stop was %d" % supervisor.status

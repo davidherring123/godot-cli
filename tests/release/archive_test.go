@@ -234,6 +234,11 @@ func canonicalNames(t *testing.T, directory string) []string {
 			return nil
 		}
 
+		switch entry.Name() {
+		case ".DS_Store", "Thumbs.db", ".godot-cli-managed":
+			return nil
+		}
+
 		relative, err := filepath.Rel(directory, filePath)
 		if err != nil {
 			return err

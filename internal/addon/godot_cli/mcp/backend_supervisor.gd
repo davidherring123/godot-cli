@@ -12,9 +12,10 @@ enum Status {
 }
 
 const HOST := "127.0.0.1"
-const STATE_RESOURCE_PATH := "res://.godot/godot-cli/mcp/backend.json"
+const STATE_RESOURCE_DIRECTORY := "res://.godot/godot-cli/mcp"
 const EXECUTABLE_BASENAME := "godot-mcp-host"
 const POLL_INTERVAL := 0.4
+const STARTUP_TIMEOUT := 10.0
 
 # Bundles use Godot's operating-system and architecture names, for example
 # bin/macos-arm64, bin/linux-x86_64, or bin/windows-x86_64.
@@ -31,11 +32,14 @@ var _executable_path := ""
 var _managed_pid := 0
 var _state_owned := false
 var _poll_elapsed := 0.0
+var _startup_elapsed := 0.0
 var _state_read_error := ""
 
 func _init() -> void:
-    _project_root = ProjectSettings.globalize_path("res://").trim_suffix("/")
-    _state_path = ProjectSettings.globalize_path(STATE_RESOURCE_PATH)
+    _project_root = ProjectSettings.globalize_path("res://")
+    _state_path = ProjectSettings.globalize_path(
+        STATE_RESOURCE_DIRECTORY
+    ).path_join("backend-%d.json" % OS.get_process_id())
     _executable_path = _find_bundled_executable()
 
     if _executable_path.is_empty():
@@ -127,6 +131,7 @@ func start() -> bool:
     _state_read_error = ""
     _state_owned = false
     _poll_elapsed = 0.0
+    _startup_elapsed = 0.0
 
     var arguments := PackedStringArray([
         "mcp",
@@ -200,7 +205,16 @@ func restart() -> bool:
 func shutdown() -> void:
     if _managed_pid > 0:
         if OS.is_process_running(_managed_pid):
-            OS.kill(_managed_pid)
+            var kill_error := OS.kill(_managed_pid)
+
+            if kill_error != OK:
+                push_error(
+                    "godot-cli: could not stop MCP backend process %d (error %d)" % [
+                        _managed_pid,
+                        kill_error,
+                    ]
+                )
+                return
 
         _managed_pid = 0
 
@@ -213,6 +227,15 @@ func poll(delta: float) -> void:
         return
 
     _poll_elapsed += delta
+
+    if status == Status.STARTING:
+        _startup_elapsed += delta
+
+        if _startup_elapsed >= STARTUP_TIMEOUT:
+            status = Status.ERROR
+            last_error = "The MCP backend did not publish its state within %.0f seconds." % STARTUP_TIMEOUT
+            changed.emit()
+            return
 
     if _poll_elapsed < POLL_INTERVAL:
         return
@@ -294,10 +317,23 @@ func _apply_state(state: Dictionary) -> void:
     if state_host.is_empty():
         state_host = HOST
 
-    state_pid = int(state.get(
+    var reported_pid := int(state.get(
         "pid",
         state.get("process_id", state.get("processId", 0))
     ))
+
+    if _managed_pid > 0 and reported_pid != _managed_pid:
+        status = Status.ERROR
+        endpoint = ""
+        state_pid = 0
+        state_port = 0
+        last_error = "The MCP backend state belongs to process %d, expected %d." % [
+            reported_pid,
+            _managed_pid,
+        ]
+        return
+
+    state_pid = reported_pid
     state_port = int(state.get(
         "port",
         state.get("http_port", state.get("httpPort", 0))

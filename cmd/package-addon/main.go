@@ -14,7 +14,7 @@ import (
 func main() {
 	version := flag.String("version", "dev", "version embedded in binaries and archive names")
 	root := flag.String("root", ".", "repository root")
-	output := flag.String("out", "dist", "output directory for archives")
+	output := flag.String("out", "", "output directory for archives; defaults to <root>/dist")
 	flag.Parse()
 
 	epoch, err := sourceDateEpoch()

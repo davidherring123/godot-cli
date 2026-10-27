@@ -58,7 +58,7 @@ Runtime state is scoped to one project and one active session at a time. Session
 
 `godot-cli mcp` exposes the project's actions as a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio by default. It serves one Godot project per process: start it from anywhere inside the project, or pass `--project`.
 
-Use `--transport http` to serve the MCP Streamable HTTP transport instead. The endpoint is `/mcp`. HTTP only binds a loopback `--host` (default `127.0.0.1`) and accepts `--port` (default `0`, which asks the operating system for an available port). With `--state-file`, the server binds first, then atomically writes a discovery document containing `pid`, `transport`, `url`, `version`, `project`, and `started_at`. On shutdown it removes that file only when this process still owns it.
+Use `--transport http` to serve the MCP Streamable HTTP transport instead. The endpoint is `/mcp`. HTTP only binds a loopback `--host` (default `127.0.0.1`) and accepts `--port` (default `0`, which asks the operating system for an available port). With `--state-file`, the server binds first, takes an exclusive lifetime lock for that state path, then atomically writes a discovery document containing `pid`, `transport`, `url`, `version`, `project`, and `started_at`. On shutdown it removes that file only when this process still owns it. A second server cannot publish to the same state path while the first is running.
 
 ```shell
 godot-cli mcp --transport http --port 8765 --state-file .godot/godot-cli/mcp.json

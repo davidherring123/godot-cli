@@ -79,6 +79,14 @@ func RunHTTP(ctx context.Context, options Options) error {
 	}
 
 	if options.StateFile != "" {
+		stateLock, err := lockServerState(options.StateFile)
+		if err != nil {
+			_ = listener.Close()
+
+			return fmt.Errorf("locking MCP state file: %w", err)
+		}
+		defer stateLock.close()
+
 		if err := writeServerState(options.StateFile, state); err != nil {
 			_ = listener.Close()
 
@@ -245,7 +253,7 @@ func writeServerState(path string, state ServerState) error {
 		return err
 	}
 
-	return os.Rename(temporaryPath, path)
+	return replaceFile(temporaryPath, path)
 }
 
 func removeServerStateIfOwned(path string, expected ServerState) {

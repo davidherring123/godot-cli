@@ -162,6 +162,52 @@ func TestMCPHTTPLeavesStateOwnedByAnotherProcess(t *testing.T) {
 	}
 }
 
+func TestMCPHTTPReplacesExistingState(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "mcp.json")
+	if err := os.WriteFile(statePath, []byte(`{"pid":1}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := startMCPHTTPTestServer(ctx, t, mcp.Options{
+		ProjectRoot: t.TempDir(),
+		Transport:   mcp.TransportHTTP,
+		StateFile:   statePath,
+	})
+
+	state := waitForMCPHTTPTestState(t, statePath)
+	if state.PID != os.Getpid() {
+		t.Fatalf("state pid = %d, want %d", state.PID, os.Getpid())
+	}
+
+	stopMCPHTTPTestServer(t, cancel, done)
+}
+
+func TestMCPHTTPSerializesStateFileOwnership(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "mcp.json")
+	ctx, cancel := context.WithCancel(context.Background())
+	done := startMCPHTTPTestServer(ctx, t, mcp.Options{
+		ProjectRoot: t.TempDir(),
+		Transport:   mcp.TransportHTTP,
+		StateFile:   statePath,
+	})
+	waitForMCPHTTPTestState(t, statePath)
+
+	secondCtx, secondCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer secondCancel()
+	err := mcp.RunHTTP(secondCtx, mcp.Options{
+		ProjectRoot: t.TempDir(),
+		Transport:   mcp.TransportHTTP,
+		StateFile:   statePath,
+	})
+	if err == nil || !strings.Contains(err.Error(), "already managed") {
+		stopMCPHTTPTestServer(t, cancel, done)
+		t.Fatalf("second server error = %v, want ownership conflict", err)
+	}
+
+	stopMCPHTTPTestServer(t, cancel, done)
+}
+
 func startMCPHTTPTestServer(ctx context.Context, t *testing.T, options mcp.Options) <-chan error {
 	t.Helper()
 
