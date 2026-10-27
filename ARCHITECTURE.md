@@ -226,8 +226,13 @@ results are returned as both JSON text and structured content. Tool failures use
   `res://addons/godot_cli/plugin.cfg` in `project.godot` during `init`.
 - `internal/addon/godot_cli/` — `plugin.gd` (lifecycle) → `bridge/` (TCP
   transport) and `requests/` (request/response model, routing, error codes) →
-  `core/` (Godot logic). Domain code lives under `core/node/`, `core/scene/`,
-  `core/resource/`, and `core/project/{settings,input}/`. Shared core support
+  `core/` (Godot logic). `plugin.gd` also creates the programmatic
+  `ui/mcp_panel.gd` bottom panel and delegates backend lifecycle to
+  `mcp/backend_supervisor.gd`. The supervisor starts and stops only the bundled
+  `bin/<platform>-<arch>/godot-mcp-host` process it launched; the TCP bridge is
+  unchanged and keeps working when no backend bundle is present. Domain code
+  lives under `core/node/`, `core/scene/`, `core/resource/`, and
+  `core/project/{settings,input}/`. Shared core support
   stays at the `core/` root because every domain uses it: `action_service.gd`
   (service and batch base class), `editor_scene_context.gd` (active-scene
   validation), `variant_serializer.gd`/`variant_deserializer.gd`/
@@ -309,7 +314,9 @@ action in `All()` also exposes it as an MCP tool automatically.
   interface tests, including image content, actionable runtime errors, and live
   calls with their own Godot sessions.
 - `tests/addon` checks addon installation and runs a small headless Godot script
-  that verifies deferred session history plus one-step undo/redo ordering.
+  that verifies deferred session history plus one-step undo/redo ordering. It
+  also checks the installed MCP panel/supervisor scripts, renders the panel
+  without a backend, and starts/stops a fake bundled host.
 - `tests/invocation` — transport-neutral unit tests for `invocation.Call` and
   `apierr` code/error behavior; no Godot process required.
 - `tests/harness` — Godot session management shared by live integration tests.

@@ -1,10 +1,15 @@
 @tool
 extends EditorPlugin
 
+const McpBackendSupervisor = preload("res://addons/godot_cli/mcp/backend_supervisor.gd")
+const McpPanel = preload("res://addons/godot_cli/ui/mcp_panel.gd")
+
 const INSTANCES_DIR := "res://.godot/godot-cli/instances"
 
 var request_handler: RequestHandler
 var bridge: Bridge
+var mcp_backend: McpBackendSupervisor
+var mcp_panel: McpPanel
 var instance_path := ""
 
 func _enter_tree() -> void:
@@ -20,6 +25,11 @@ func _enter_tree() -> void:
 
     _register_instance(bridge.get_port())
 
+    mcp_backend = McpBackendSupervisor.new()
+    mcp_panel = McpPanel.new(mcp_backend)
+    add_control_to_bottom_panel(mcp_panel, "MCP")
+    mcp_panel.set_bridge_status(true, bridge.get_port())
+
     set_process(true)
 
     print(
@@ -27,12 +37,24 @@ func _enter_tree() -> void:
         bridge.get_port()
     )
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
     if bridge != null:
         bridge.poll()
 
+    if mcp_backend != null:
+        mcp_backend.poll(delta)
+
 func _exit_tree() -> void:
     set_process(false)
+
+    if mcp_backend != null:
+        mcp_backend.shutdown()
+        mcp_backend = null
+
+    if mcp_panel != null:
+        remove_control_from_bottom_panel(mcp_panel)
+        mcp_panel.queue_free()
+        mcp_panel = null
 
     if bridge != null:
         bridge.stop()

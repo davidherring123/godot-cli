@@ -40,6 +40,46 @@ func TestInstallRemovesObsoleteManagedPaths(t *testing.T) {
 	}
 }
 
+func TestInstallIncludesMCPPanel(t *testing.T) {
+	root := writeProject(t, "[application]\n\nconfig/name=\"Test\"\n")
+
+	if err := addon.Install(root); err != nil {
+		t.Fatalf("installing addon: %v", err)
+	}
+
+	for _, relative := range []string{
+		"mcp/backend_supervisor.gd",
+		"ui/mcp_panel.gd",
+	} {
+		path := filepath.Join(addon.Path(root), filepath.FromSlash(relative))
+
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("installed addon is missing %s: %v", relative, err)
+		}
+
+		if info.Size() == 0 {
+			t.Fatalf("installed addon file %s is empty", relative)
+		}
+	}
+
+	plugin, err := os.ReadFile(filepath.Join(addon.Path(root), "plugin.gd"))
+	if err != nil {
+		t.Fatalf("reading installed plugin: %v", err)
+	}
+
+	for _, expected := range []string{
+		"mcp/backend_supervisor.gd",
+		"ui/mcp_panel.gd",
+		"add_control_to_bottom_panel(mcp_panel, \"MCP\")",
+		"mcp_backend.poll(delta)",
+	} {
+		if !strings.Contains(string(plugin), expected) {
+			t.Fatalf("installed plugin is missing %q:\n%s", expected, plugin)
+		}
+	}
+}
+
 func TestEnableAddsSection(t *testing.T) {
 	root := writeProject(t, "[application]\n\nconfig/name=\"Test\"\n")
 
