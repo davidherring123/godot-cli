@@ -19,12 +19,12 @@ func Content() []byte {
 // PortablePath returns the project-scoped skill path shared by OpenCode and
 // Codex.
 func PortablePath(projectRoot string) string {
-	return filepath.Join(projectRoot, ".agents", "skills", "godot-cli", "SKILL.md")
+	return filepath.Join(projectRoot, ".agents", "skills", "godot-mcp", "SKILL.md")
 }
 
 // ClaudePath returns the project-scoped skill path recognized by Claude Code.
 func ClaudePath(projectRoot string) string {
-	return filepath.Join(projectRoot, ".claude", "skills", "godot-cli", "SKILL.md")
+	return filepath.Join(projectRoot, ".claude", "skills", "godot-mcp", "SKILL.md")
 }
 
 // Install writes the portable skill into the project.

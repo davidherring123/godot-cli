@@ -21,7 +21,7 @@ func enableAddon(projectRoot string) error {
 	}
 	_, err = file.WriteString(
 		"\n[editor_plugins]\n\n" +
-			"enabled=PackedStringArray(\"res://addons/godot_cli/plugin.cfg\")\n",
+			"enabled=PackedStringArray(\"res://addons/godot_mcp/plugin.cfg\")\n",
 	)
 	if err != nil {
 		_ = file.Close()

@@ -1,10 +1,10 @@
 @tool
 extends EditorPlugin
 
-const McpBackendSupervisor = preload("res://addons/godot_cli/mcp/backend_supervisor.gd")
-const McpPanel = preload("res://addons/godot_cli/ui/mcp_panel.gd")
+const McpBackendSupervisor = preload("res://addons/godot_mcp/mcp/backend_supervisor.gd")
+const McpPanel = preload("res://addons/godot_mcp/ui/mcp_panel.gd")
 
-const INSTANCES_DIR := "res://.godot/godot-cli/instances"
+const INSTANCES_DIR := "res://.godot/godot-mcp/instances"
 
 var request_handler: RequestHandler
 var bridge: Bridge
@@ -19,7 +19,7 @@ func _enter_tree() -> void:
     var error := bridge.start()
 
     if error != OK:
-        push_error("godot-cli: failed to start bridge")
+        push_error("godot-mcp: failed to start bridge")
         bridge = null
         return
 
@@ -38,7 +38,7 @@ func _enter_tree() -> void:
     set_process(true)
 
     print(
-        "godot-cli: bridge listening on %s:" % Bridge.HOST,
+        "godot-mcp: bridge listening on %s:" % Bridge.HOST,
         bridge.get_port()
     )
 
@@ -69,7 +69,7 @@ func _exit_tree() -> void:
     and FileAccess.file_exists(instance_path):
         DirAccess.remove_absolute(instance_path)
 
-    print("godot-cli: plugin disabled")
+    print("godot-mcp: plugin disabled")
 
 func _register_instance(port: int) -> void:
     var instances_dir := ProjectSettings.globalize_path(INSTANCES_DIR)
@@ -77,7 +77,7 @@ func _register_instance(port: int) -> void:
     var error := DirAccess.make_dir_recursive_absolute(instances_dir)
 
     if error != OK:
-        push_error("godot-cli: failed to create instances directory")
+        push_error("godot-mcp: failed to create instances directory")
         return
 
     _vc_ignore_instance(instances_dir)
@@ -89,7 +89,7 @@ func _register_instance(port: int) -> void:
     var file := FileAccess.open(instance_path, FileAccess.WRITE)
 
     if file == null:
-        push_error("godot-cli: failed to create instance file")
+        push_error("godot-mcp: failed to create instance file")
         return
 
     var data := {

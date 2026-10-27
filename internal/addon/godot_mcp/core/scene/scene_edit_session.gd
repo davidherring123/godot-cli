@@ -8,7 +8,7 @@ extends RefCounted
 # succeeded. A failed batch therefore never leaves phantom history behind:
 # rollback directly runs the accumulated undo methods in reverse order.
 
-const NO_ARG := &"__godot_cli_no_arg__"
+const NO_ARG := &"__godot_mcp_no_arg__"
 
 var target: Object
 var batch_name: String
@@ -25,7 +25,7 @@ var _rollback_notes: Array[String] = []
 
 func _init(
     undo_target: Object = null,
-    title := "godot-cli: Apply scene batch",
+    title := "godot-mcp: Apply scene batch",
     custom_context: Node = null
 ) -> void:
     target = undo_target

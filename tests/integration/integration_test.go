@@ -313,7 +313,7 @@ func TestResolveHostPathPrefersBundledHost(t *testing.T) {
 	bundled := filepath.Join(
 		root,
 		"addons",
-		"godot_cli",
+		"godot_mcp",
 		"bin",
 		target.BundleString(),
 		target.HostBinaryName(),

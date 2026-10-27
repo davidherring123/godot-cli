@@ -191,7 +191,7 @@ func benchmarkPermissions(approach string) []permissionRule {
 	}
 	if approach == approachMCP {
 		// OpenCode applies the last matching rule. Keep the wildcard MCP denial
-		// first, then open exactly the godot-cli server and Code Mode. Other MCP
+		// first, then open exactly the godot-mcp server and Code Mode. Other MCP
 		// servers remain denied by mcpWildcardAction.
 		permissions = append(
 			permissions,
@@ -207,7 +207,7 @@ func benchmarkPermissions(approach string) []permissionRule {
 			},
 			permissionRule{
 				Action:   "skill",
-				Resource: "godot-cli",
+				Resource: "godot-mcp",
 				Effect:   "allow",
 			},
 		)

@@ -1,4 +1,4 @@
-// Package release builds reproducible, installable godot-cli addon archives.
+// Package release builds reproducible, installable godot-mcp addon archives.
 package release
 
 import (
@@ -20,7 +20,7 @@ import (
 
 const (
 	// DefaultAddonDir is the canonical addon source, relative to the repository root.
-	DefaultAddonDir = "internal/addon/godot_cli"
+	DefaultAddonDir = "internal/addon/godot_mcp"
 
 	hostBinaryName     = "godot-mcp-host"
 	hostCommandPackage = "./cmd/godot-mcp-host"
@@ -130,7 +130,7 @@ func Build(options Options) ([]string, error) {
 		return nil, err
 	}
 
-	scratch, err := os.MkdirTemp("", "godot-cli-addon-*")
+	scratch, err := os.MkdirTemp("", "godot-mcp-addon-*")
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func Build(options Options) ([]string, error) {
 	return artifacts, nil
 }
 
-// AddonEntries lists the canonical addon files rooted at addons/godot_cli.
+// AddonEntries lists the canonical addon files rooted at addons/godot_mcp.
 func AddonEntries(addonDir string) ([]ArchiveEntry, error) {
 	pluginPath := filepath.Join(addonDir, "plugin.cfg")
 
@@ -226,7 +226,7 @@ func AddonEntries(addonDir string) ([]ArchiveEntry, error) {
 		}
 
 		switch entry.Name() {
-		case ".DS_Store", "Thumbs.db", ".godot-cli-managed":
+		case ".DS_Store", "Thumbs.db", ".godot-mcp-managed":
 			return nil
 		}
 
@@ -447,7 +447,7 @@ func hostEntry(target Target, source string) ArchiveEntry {
 }
 
 func targetArchiveName(version string, target Target) string {
-	name := "godot-cli-addon-" + version + "-" + target.String()
+	name := "godot-mcp-addon-" + version + "-" + target.String()
 	if target.OS == "windows" {
 		return name + ".zip"
 	}
@@ -456,7 +456,7 @@ func targetArchiveName(version string, target Target) string {
 }
 
 func universalArchiveName(version string) string {
-	return "godot-cli-addon-" + version + ".zip"
+	return "godot-mcp-addon-" + version + ".zip"
 }
 
 func writeArchive(filePath string, compressedZip bool, entries []ArchiveEntry, modified time.Time) error {

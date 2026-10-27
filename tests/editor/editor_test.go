@@ -106,7 +106,7 @@ func testProject(t *testing.T) string {
 func writeInstance(t *testing.T, root string, pid int, port int, version string) {
 	t.Helper()
 
-	dir := filepath.Join(root, ".godot", "godot-cli", "instances")
+	dir := filepath.Join(root, ".godot", "godot-mcp", "instances")
 
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatal(err)

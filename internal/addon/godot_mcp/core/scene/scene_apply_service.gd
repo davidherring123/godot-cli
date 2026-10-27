@@ -82,7 +82,7 @@ func apply(request: Request) -> Response:
 
     var session := SceneEditSession.new(
         undo_redo,
-        "godot-cli: Apply scene batch",
+        "godot-mcp: Apply scene batch",
         root
     )
     var node_service := NodeService.new(scene_context, session)

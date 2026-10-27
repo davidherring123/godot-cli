@@ -94,7 +94,7 @@ func render(reference Reference) string {
 	var text strings.Builder
 
 	text.WriteString("# Godot MCP actions\n\n")
-	text.WriteString("Generated from godot-cli ")
+	text.WriteString("Generated from godot-mcp ")
 
 	if reference.Version == "" {
 		text.WriteString("dev")

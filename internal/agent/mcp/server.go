@@ -1,4 +1,4 @@
-// Package mcp exposes godot-cli's core actions as a Model Context
+// Package mcp exposes godot-mcp's core actions as a Model Context
 // Protocol server.
 package mcp
 
@@ -79,8 +79,8 @@ func NewServer(options Options) (*mcpgo.Server, error) {
 
 	server := mcpgo.NewServer(
 		&mcpgo.Implementation{
-			Name:        "godot-cli",
-			Title:       "godot-cli",
+			Name:        "godot-mcp",
+			Title:       "godot-mcp",
 			Version:     version,
 			Description: "Inspect and edit a local Godot project through the Godot MCP editor bridge.",
 		},
@@ -177,6 +177,6 @@ func defaultInstructions(projectRoot string) string {
 		"Use the narrowest tool directly when the target is known; skip redundant status and discovery calls. " +
 		"Runtime tools start a separate game process: use runtime_start, runtime_status, runtime_capture, and " +
 		"runtime_stop for frames, errors, logs, and windowed PNG captures. Live tools require a running Godot 4 " +
-		"editor with the godot-cli addon. If no editor is running, open this project in Godot and retry. " +
+		"editor with the godot-mcp addon. If no editor is running, open this project in Godot and retry. " +
 		"Tool results are JSON unless image content is explicitly available."
 }

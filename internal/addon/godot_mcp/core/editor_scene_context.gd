@@ -103,7 +103,7 @@ func save() -> Response:
     if path.is_empty():
         return Response.failure(
             ErrorCode.FAILED_PRECONDITION,
-            "Use the editor's Save As before saving this scene through godot-cli"
+            "Use the editor's Save As before saving this scene through godot-mcp"
         )
 
     var result := editor.save_scene()

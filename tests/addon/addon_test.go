@@ -9,7 +9,7 @@ import (
 	"github.com/davidherring123/godot-cli/internal/addon"
 )
 
-const pluginPath = "res://addons/godot_cli/plugin.cfg"
+const pluginPath = "res://addons/godot_mcp/plugin.cfg"
 
 func TestInstallRemovesObsoleteManagedPaths(t *testing.T) {
 	root := writeProject(t, "[application]\n\nconfig/name=\"Test\"\n")
@@ -154,7 +154,7 @@ func TestEnablePreservesExistingPlugins(t *testing.T) {
 	}
 
 	if !strings.Contains(content, pluginPath) {
-		t.Fatalf("godot-cli plugin was not added:\n%s", content)
+		t.Fatalf("godot-mcp plugin was not added:\n%s", content)
 	}
 }
 
@@ -197,7 +197,7 @@ func TestEnableSpacedEnabledAssignment(t *testing.T) {
 	}
 
 	if !strings.Contains(content, pluginPath) {
-		t.Fatalf("godot-cli plugin was not added:\n%s", content)
+		t.Fatalf("godot-mcp plugin was not added:\n%s", content)
 	}
 
 	if !strings.Contains(content, "config/name=\"Test\"") {
@@ -235,7 +235,7 @@ func TestEnableEmptyArray(t *testing.T) {
 	}
 
 	if content := readProject(t, root); !strings.Contains(content, pluginPath) {
-		t.Fatalf("godot-cli plugin was not added:\n%s", content)
+		t.Fatalf("godot-mcp plugin was not added:\n%s", content)
 	}
 }
 
@@ -249,7 +249,7 @@ func TestEnableMissingKey(t *testing.T) {
 	content := readProject(t, root)
 
 	if !strings.Contains(content, pluginPath) {
-		t.Fatalf("godot-cli plugin was not added:\n%s", content)
+		t.Fatalf("godot-mcp plugin was not added:\n%s", content)
 	}
 
 	section := content[strings.Index(content, "[editor_plugins]"):]

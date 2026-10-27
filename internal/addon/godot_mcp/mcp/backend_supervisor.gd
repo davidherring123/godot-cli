@@ -12,7 +12,7 @@ enum Status {
 }
 
 const HOST := "127.0.0.1"
-const STATE_RESOURCE_DIRECTORY := "res://.godot/godot-cli/mcp"
+const STATE_RESOURCE_DIRECTORY := "res://.godot/godot-mcp/mcp"
 const EXECUTABLE_BASENAME := "godot-mcp-host"
 const POLL_INTERVAL := 0.4
 const STARTUP_TIMEOUT := 10.0
@@ -60,7 +60,7 @@ static func architecture_name() -> String:
     return Engine.get_architecture_name().to_lower()
 
 static func bundle_directory() -> String:
-    return "res://addons/godot_cli/bin/%s-%s" % [
+    return "res://addons/godot_mcp/bin/%s-%s" % [
         platform_name(),
         architecture_name(),
     ]
@@ -207,7 +207,7 @@ func shutdown() -> void:
 
             if kill_error != OK:
                 push_error(
-                    "godot-cli: could not stop MCP backend process %d (error %d)" % [
+                    "godot-mcp: could not stop MCP backend process %d (error %d)" % [
                         _managed_pid,
                         kill_error,
                     ]

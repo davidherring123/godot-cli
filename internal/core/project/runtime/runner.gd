@@ -21,12 +21,12 @@ func _initialize() -> void:
     scene_path = _argument(args, SCENE_ARG)
 
     if session_dir.is_empty() or scene_path.is_empty():
-        printerr("godot-cli runtime: missing --session-dir or --scene")
+        printerr("godot-mcp runtime: missing --session-dir or --scene")
         quit(2)
         return
 
     if not _make_directories():
-        printerr("godot-cli runtime: could not create the session directories")
+        printerr("godot-mcp runtime: could not create the session directories")
         quit(2)
         return
 
@@ -192,14 +192,14 @@ func _capture(output: String) -> Dictionary:
     absolute = absolute.simplify_path()
 
     var allowed_root := ProjectSettings.globalize_path(
-        "res://.godot/godot-cli/runtime"
+        "res://.godot/godot-mcp/runtime"
     ).simplify_path()
 
     if not absolute.begins_with(allowed_root + "/"):
         return {
             "ok": false,
             "code": "invalid_argument",
-            "message": "capture path must be inside res://.godot/godot-cli/runtime",
+            "message": "capture path must be inside res://.godot/godot-mcp/runtime",
         }
 
     if DisplayServer.get_name() == "headless":

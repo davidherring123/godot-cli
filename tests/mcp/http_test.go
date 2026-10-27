@@ -239,7 +239,7 @@ func connectMCPHTTPTestSession(ctx context.Context, t *testing.T, endpoint strin
 	t.Helper()
 
 	client := mcpgo.NewClient(
-		&mcpgo.Implementation{Name: "godot-cli-test", Version: "test"},
+		&mcpgo.Implementation{Name: "godot-mcp-test", Version: "test"},
 		nil,
 	)
 

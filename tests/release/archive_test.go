@@ -20,7 +20,7 @@ import (
 	"github.com/davidherring123/godot-cli/internal/release"
 )
 
-const canonicalAddonDir = "../../internal/addon/godot_cli"
+const canonicalAddonDir = "../../internal/addon/godot_mcp"
 
 var fixedTime = time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 
@@ -66,11 +66,11 @@ func TestHostBinaryLayout(t *testing.T) {
 		target release.Target
 		want   string
 	}{
-		{release.Target{OS: "darwin", Arch: "arm64"}, "addons/godot_cli/bin/macos-arm64/godot-mcp-host"},
-		{release.Target{OS: "darwin", Arch: "amd64"}, "addons/godot_cli/bin/macos-x86_64/godot-mcp-host"},
-		{release.Target{OS: "linux", Arch: "amd64"}, "addons/godot_cli/bin/linux-x86_64/godot-mcp-host"},
-		{release.Target{OS: "linux", Arch: "arm64"}, "addons/godot_cli/bin/linux-arm64/godot-mcp-host"},
-		{release.Target{OS: "windows", Arch: "amd64"}, "addons/godot_cli/bin/windows-x86_64/godot-mcp-host.exe"},
+		{release.Target{OS: "darwin", Arch: "arm64"}, "addons/godot_mcp/bin/macos-arm64/godot-mcp-host"},
+		{release.Target{OS: "darwin", Arch: "amd64"}, "addons/godot_mcp/bin/macos-x86_64/godot-mcp-host"},
+		{release.Target{OS: "linux", Arch: "amd64"}, "addons/godot_mcp/bin/linux-x86_64/godot-mcp-host"},
+		{release.Target{OS: "linux", Arch: "arm64"}, "addons/godot_mcp/bin/linux-arm64/godot-mcp-host"},
+		{release.Target{OS: "windows", Arch: "amd64"}, "addons/godot_mcp/bin/windows-x86_64/godot-mcp-host.exe"},
 	}
 
 	if len(release.DefaultTargets) != len(cases) {
@@ -235,7 +235,7 @@ func canonicalNames(t *testing.T, directory string) []string {
 		}
 
 		switch entry.Name() {
-		case ".DS_Store", "Thumbs.db", ".godot-cli-managed":
+		case ".DS_Store", "Thumbs.db", ".godot-mcp-managed":
 			return nil
 		}
 
@@ -290,7 +290,7 @@ func TestAddonEntriesRejectsMissingAddon(t *testing.T) {
 
 func TestAddonEntriesReadsSourceFiles(t *testing.T) {
 	root := t.TempDir()
-	addonDir := filepath.Join(root, "godot_cli")
+	addonDir := filepath.Join(root, "godot_mcp")
 
 	if err := os.MkdirAll(filepath.Join(addonDir, "core"), 0o755); err != nil {
 		t.Fatal(err)

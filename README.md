@@ -1,14 +1,14 @@
-# godot-cli
+# godot-mcp
 
 A Godot 4 editor addon that exposes live project automation over the Model Context Protocol (MCP).
 
-`godot-cli` runs inside Godot. Its **Godot MCP** bottom panel manages a private,
+`godot-mcp` runs inside Godot. Its **Godot MCP** bottom panel manages a private,
 bundled MCP host and configures supported AI clients for the current project.
 There is no public command-line interface to install, configure, or drive the
 addon: installation, client setup, and day-to-day use all start in the editor.
 
 > [!NOTE]
-> `godot-cli` is currently in early development.
+> `godot-mcp` is currently in early development.
 
 ## What it provides
 
@@ -39,7 +39,7 @@ Install the addon with one of these methods:
 
 ### Godot Asset Library
 
-Install `godot-cli` from the editor's **AssetLib** tab.
+Install `godot-mcp` from the editor's **AssetLib** tab.
 
 ### GodotEnv
 
@@ -49,10 +49,10 @@ GodotEnv:
 ```jsonc
 {
   "addons": {
-    "godot_cli": {
-      "url": "https://github.com/davidherring123/godot-cli/releases/download/v0.1.0/godot-cli-addon-v0.1.0.zip",
+    "godot_mcp": {
+      "url": "https://github.com/davidherring123/godot-cli/releases/download/v0.1.0/godot-mcp-addon-v0.1.0.zip",
       "source": "zip",
-      "subfolder": "addons/godot_cli"
+      "subfolder": "addons/godot_mcp"
     }
   }
 }
@@ -64,19 +64,26 @@ godotenv addons install
 
 ### Release ZIP
 
-Download `godot-cli-addon-<version>.zip` from the releases page and extract it
+Download `godot-mcp-addon-<version>.zip` from the releases page and extract it
 at the project root. Do not use the repository's auto-generated "Source code"
 ZIP; it does not contain the host binaries.
 
 ### Enable the addon
 
-After installing, enable **Godot CLI** in **Project Settings > Plugins** if it
+After installing, enable **Godot MCP** in **Project Settings > Plugins** if it
 is not already enabled. The **Godot MCP** panel is added to the bottom panel and
 the bundled backend starts automatically. If the panel reports that the backend
 is not included, use a release archive rather than a development checkout.
 
-Release archives place the addon at `addons/godot_cli/` and the matching host at
-`addons/godot_cli/bin/<os>-<arch>/godot-mcp-host` (`godot-mcp-host.exe` on
+When upgrading from a pre-rename `godot-cli` build, disable that plugin and
+remove `addons/godot_cli/` before installing this addon. Then use **Install** or
+**Repair** in the Godot MCP panel so client configurations point at the renamed
+host path. The new addon uses `addons/godot_mcp/`, `.godot/godot-mcp/`, and
+`godot-mcp` skill directories; old generated state and skill directories may be
+removed after the migration.
+
+Release archives place the addon at `addons/godot_mcp/` and the matching host at
+`addons/godot_mcp/bin/<os>-<arch>/godot-mcp-host` (`godot-mcp-host.exe` on
 Windows). See [RELEASING.md](RELEASING.md) for archive layout and release
 instructions.
 
@@ -98,9 +105,9 @@ project is already current.
 
 | Client | MCP configuration | Skill |
 |---|---|---|
-| OpenCode | `mcp.servers` in `opencode.json(c)` or `.opencode/opencode.json(c)` | `.agents/skills/godot-cli/SKILL.md` |
-| Claude Code | `.mcp.json` | `.claude/skills/godot-cli/SKILL.md` |
-| Codex | `.codex/config.toml` | `.agents/skills/godot-cli/SKILL.md` |
+| OpenCode | `mcp.servers` in `opencode.json(c)` or `.opencode/opencode.json(c)` | `.agents/skills/godot-mcp/SKILL.md` |
+| Claude Code | `.mcp.json` | `.claude/skills/godot-mcp/SKILL.md` |
+| Codex | `.codex/config.toml` | `.agents/skills/godot-mcp/SKILL.md` |
 
 The generated client configuration launches the bundled host with its private
 `connect --project <absolute-project-root>` entrypoint over stdio. The host is
@@ -123,7 +130,7 @@ not fall back to `GODOT_BIN` or a `godot` executable on `PATH`.
 
 Runtime state is scoped to one project and one active session at a time.
 Sessions, logs, and captures live under
-`.godot/godot-cli/runtime/sessions/<session>/`, and every artifact path stays
+`.godot/godot-mcp/runtime/sessions/<session>/`, and every artifact path stays
 inside that directory. Start defaults to a windowed session so screenshots work;
 `headless` remains available for logs and error feedback, and capture returns an
 `unsupported` error instead of a blank image. Stop is idempotent and refuses to

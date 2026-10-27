@@ -14,8 +14,8 @@ import (
 
 const mcpPanelTestScript = `extends SceneTree
 
-const SupervisorScript = preload("res://addons/godot_cli/mcp/backend_supervisor.gd")
-const PanelScript = preload("res://addons/godot_cli/ui/mcp_panel.gd")
+const SupervisorScript = preload("res://addons/godot_mcp/mcp/backend_supervisor.gd")
+const PanelScript = preload("res://addons/godot_mcp/ui/mcp_panel.gd")
 
 var failures: Array[String] = []
 
@@ -28,7 +28,7 @@ func _initialize() -> void:
         "missing backend status was %d" % supervisor.status
     )
     _check(
-        SupervisorScript.bundle_directory().begins_with("res://addons/godot_cli/bin/"),
+        SupervisorScript.bundle_directory().begins_with("res://addons/godot_mcp/bin/"),
         "bundle directory is not under the addon"
     )
     _check(
@@ -204,7 +204,7 @@ func _check(condition: bool, message: String) -> void:
 
 const mcpBackendTestScript = `extends SceneTree
 
-const SupervisorScript = preload("res://addons/godot_cli/mcp/backend_supervisor.gd")
+const SupervisorScript = preload("res://addons/godot_mcp/mcp/backend_supervisor.gd")
 
 var failures: Array[String] = []
 
@@ -283,8 +283,8 @@ func _check(condition: bool, message: String) -> void:
 
 const mcpIntegrationsTestScript = `extends SceneTree
 
-const SupervisorScript = preload("res://addons/godot_cli/mcp/backend_supervisor.gd")
-const PanelScript = preload("res://addons/godot_cli/ui/mcp_panel.gd")
+const SupervisorScript = preload("res://addons/godot_mcp/mcp/backend_supervisor.gd")
+const PanelScript = preload("res://addons/godot_mcp/ui/mcp_panel.gd")
 
 var failures: Array[String] = []
 
@@ -492,15 +492,15 @@ if [ "$2" = "install" ]; then
                 opencode_changed=true
             fi
             : > "$opencode_marker"
-            printf '{"project_root":"%s","host_path":"%s","clients":[{"client":"opencode","config_path":"%s/opencode.json","config_changed":false,"skill_path":"%s/.agents/skills/godot-cli/SKILL.md","skill_changed":true}]}\n' "$project_root" "$host_path" "$project_root" "$project_root"
+            printf '{"project_root":"%s","host_path":"%s","clients":[{"client":"opencode","config_path":"%s/opencode.json","config_changed":false,"skill_path":"%s/.agents/skills/godot-mcp/SKILL.md","skill_changed":true}]}\n' "$project_root" "$host_path" "$project_root" "$project_root"
             ;;
         claude)
             : > "$claude_marker"
-            printf '{"project_root":"%s","host_path":"%s","clients":[{"client":"claude","config_path":"%s/.mcp.json","config_changed":true,"skill_path":"%s/.claude/skills/godot-cli/SKILL.md","skill_changed":true}]}\n' "$project_root" "$host_path" "$project_root" "$project_root"
+            printf '{"project_root":"%s","host_path":"%s","clients":[{"client":"claude","config_path":"%s/.mcp.json","config_changed":true,"skill_path":"%s/.claude/skills/godot-mcp/SKILL.md","skill_changed":true}]}\n' "$project_root" "$host_path" "$project_root" "$project_root"
             ;;
         codex)
             : > "$codex_marker"
-            printf '{"project_root":"%s","host_path":"%s","clients":[{"client":"codex","config_path":"%s/.codex/config.toml","config_changed":true,"skill_path":"%s/.agents/skills/godot-cli/SKILL.md","skill_changed":true}]}\n' "$project_root" "$host_path" "$project_root" "$project_root"
+            printf '{"project_root":"%s","host_path":"%s","clients":[{"client":"codex","config_path":"%s/.codex/config.toml","config_changed":true,"skill_path":"%s/.agents/skills/godot-mcp/SKILL.md","skill_changed":true}]}\n' "$project_root" "$host_path" "$project_root" "$project_root"
             ;;
         all)
             if [ "$opencode_installed" = false ]; then
@@ -515,7 +515,7 @@ if [ "$2" = "install" ]; then
             : > "$opencode_marker"
             : > "$claude_marker"
             : > "$codex_marker"
-            printf '{"project_root":"%s","host_path":"%s","clients":[{"client":"opencode","config_path":"%s/opencode.json","config_changed":false,"skill_path":"%s/.agents/skills/godot-cli/SKILL.md","skill_changed":%s},{"client":"claude","config_path":"%s/.mcp.json","config_changed":%s,"skill_path":"%s/.claude/skills/godot-cli/SKILL.md","skill_changed":%s},{"client":"codex","config_path":"%s/.codex/config.toml","config_changed":%s,"skill_path":"%s/.agents/skills/godot-cli/SKILL.md","skill_changed":%s}]}\n' "$project_root" "$host_path" "$project_root" "$project_root" "$opencode_changed" "$project_root" "$claude_changed" "$project_root" "$claude_changed" "$project_root" "$codex_changed" "$project_root" "$codex_changed"
+            printf '{"project_root":"%s","host_path":"%s","clients":[{"client":"opencode","config_path":"%s/opencode.json","config_changed":false,"skill_path":"%s/.agents/skills/godot-mcp/SKILL.md","skill_changed":%s},{"client":"claude","config_path":"%s/.mcp.json","config_changed":%s,"skill_path":"%s/.claude/skills/godot-mcp/SKILL.md","skill_changed":%s},{"client":"codex","config_path":"%s/.codex/config.toml","config_changed":%s,"skill_path":"%s/.agents/skills/godot-mcp/SKILL.md","skill_changed":%s}]}\n' "$project_root" "$host_path" "$project_root" "$project_root" "$opencode_changed" "$project_root" "$claude_changed" "$project_root" "$claude_changed" "$project_root" "$codex_changed" "$project_root" "$codex_changed"
             ;;
         *)
             printf '%s\n' '{"ok":false,"error":"unknown integration target"}'
@@ -553,7 +553,7 @@ fi
 
 if [ "$2" = "status" ]; then
     cat <<EOF
-{"project_root":"$project_root","host_path":"$host_path","clients":[{"client":"opencode","config_path":"$project_root/opencode.json","config_exists":true,"configured":true,"up_to_date":$opencode_up_to_date,"command":["$host_path","connect","--project","$project_root"],"skill_path":"$project_root/.agents/skills/godot-cli/SKILL.md","skill_installed":$opencode_skill_installed,"skill_current":$opencode_skill_current},{"client":"claude","config_path":"$project_root/.mcp.json","config_exists":$claude_installed,"configured":$claude_installed,"up_to_date":$claude_up_to_date,"skill_path":"$project_root/.claude/skills/godot-cli/SKILL.md","skill_installed":$claude_skill_installed,"skill_current":$claude_skill_current},{"client":"codex","config_path":"$project_root/.codex/config.toml","config_exists":true,"configured":true,"up_to_date":$codex_up_to_date,"command":$codex_command,"skill_path":"$project_root/.agents/skills/godot-cli/SKILL.md","skill_installed":true,"skill_current":true}]}
+{"project_root":"$project_root","host_path":"$host_path","clients":[{"client":"opencode","config_path":"$project_root/opencode.json","config_exists":true,"configured":true,"up_to_date":$opencode_up_to_date,"command":["$host_path","connect","--project","$project_root"],"skill_path":"$project_root/.agents/skills/godot-mcp/SKILL.md","skill_installed":$opencode_skill_installed,"skill_current":$opencode_skill_current},{"client":"claude","config_path":"$project_root/.mcp.json","config_exists":$claude_installed,"configured":$claude_installed,"up_to_date":$claude_up_to_date,"skill_path":"$project_root/.claude/skills/godot-mcp/SKILL.md","skill_installed":$claude_skill_installed,"skill_current":$claude_skill_current},{"client":"codex","config_path":"$project_root/.codex/config.toml","config_exists":true,"configured":true,"up_to_date":$codex_up_to_date,"command":$codex_command,"skill_path":"$project_root/.agents/skills/godot-mcp/SKILL.md","skill_installed":true,"skill_current":true}]}
 EOF
     exit 0
 fi
@@ -776,7 +776,7 @@ func TestPluginLoadsMCPPanelWithoutBundledBackend(t *testing.T) {
 
 	text := string(output)
 
-	if !strings.Contains(text, "godot-cli: bridge listening on") {
+	if !strings.Contains(text, "godot-mcp: bridge listening on") {
 		t.Fatalf("plugin did not start the bridge:\n%s", text)
 	}
 

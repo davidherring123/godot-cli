@@ -173,7 +173,7 @@ func TestMCPLiveDomainBatchDryRunAndErrors(t *testing.T) {
 			"operations": []any{
 				map[string]any{
 					"operation": "set",
-					"setting":   "godot_cli/mcp_missing",
+					"setting":   "godot_mcp/mcp_missing",
 					"value":     1,
 				},
 			},

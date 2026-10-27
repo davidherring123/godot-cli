@@ -115,7 +115,7 @@ func writeFileIfChanged(path string, data []byte) (bool, error) {
 		return false, fmt.Errorf("creating %q: %w", filepath.Dir(path), err)
 	}
 
-	temp, err := os.CreateTemp(filepath.Dir(path), ".godot-cli-*")
+	temp, err := os.CreateTemp(filepath.Dir(path), ".godot-mcp-*")
 	if err != nil {
 		return false, fmt.Errorf("writing %q: %w", path, err)
 	}

@@ -231,7 +231,7 @@ func (server *openCodeServer) preflightMCP(
 }
 
 // runMCPPreflight proves that the private OpenCode server can expose and execute
-// godot-cli's MCP tools for one location and session without invoking a model.
+// godot-mcp's MCP tools for one location and session without invoking a model.
 func (server *openCodeServer) runMCPPreflight(
 	ctx context.Context,
 	projectRoot string,
@@ -560,7 +560,7 @@ func (server *openCodeServer) verifyMCPPermissions(
 		{"godot_scene_list", "*", "godot_scene_list"},
 		{"godot_scene_current", "*", "godot_scene_current"},
 		{"execute", "*", "Code Mode execute"},
-		{"skill", "godot-cli", "godot-cli skill"},
+		{"skill", "godot-mcp", "godot-mcp skill"},
 	}
 	for _, check := range allowed {
 		effect, err := server.evaluatePermission(

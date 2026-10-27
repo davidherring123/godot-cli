@@ -124,7 +124,7 @@ func set_properties(request: Request) -> Response:
 
     if changed:
         undo_redo.create_action(
-            "godot-cli: Set %s properties" % node.name,
+            "godot-mcp: Set %s properties" % node.name,
             UndoRedo.MERGE_DISABLE,
             root,
             true
@@ -236,7 +236,7 @@ func add(request: Request) -> Response:
         return decoded.error
 
     undo_redo.create_action(
-        "godot-cli: Add %s" % node.name,
+        "godot-mcp: Add %s" % node.name,
         UndoRedo.MERGE_DISABLE,
         root,
         true
@@ -375,7 +375,7 @@ func instantiate_scene(request: Request) -> Response:
         return decoded.error
 
     undo_redo.create_action(
-        "godot-cli: Instantiate %s" % scene_path,
+        "godot-mcp: Instantiate %s" % scene_path,
         UndoRedo.MERGE_DISABLE,
         root,
         true
@@ -454,7 +454,7 @@ func rename(request: Request) -> Response:
     var track_updates := _collect_track_updates(root, renames)
 
     undo_redo.create_action(
-        "godot-cli: Rename %s to %s" % [old_name, requested_name],
+        "godot-mcp: Rename %s to %s" % [old_name, requested_name],
         UndoRedo.MERGE_DISABLE,
         root
     )
@@ -548,7 +548,7 @@ func duplicate_node(request: Request) -> Response:
     var owned := _duplicate_owned_nodes(copy)
 
     undo_redo.create_action(
-        "godot-cli: Duplicate %s" % node.name,
+        "godot-mcp: Duplicate %s" % node.name,
         UndoRedo.MERGE_DISABLE,
         root,
         true
@@ -683,7 +683,7 @@ func move_node(request: Request) -> Response:
     var owner_changes := _move_owner_changes(node, new_parent, root)
 
     undo_redo.create_action(
-        "godot-cli: Move %s" % old_name,
+        "godot-mcp: Move %s" % old_name,
         UndoRedo.MERGE_DISABLE,
         root
     )
@@ -765,7 +765,7 @@ func delete(request: Request) -> Response:
     var index := node.get_index()
 
     undo_redo.create_action(
-        "godot-cli: Delete %s" % node.name,
+        "godot-mcp: Delete %s" % node.name,
         UndoRedo.MERGE_DISABLE,
         root
     )

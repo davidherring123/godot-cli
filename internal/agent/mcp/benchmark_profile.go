@@ -101,6 +101,6 @@ func legacyInstructions(projectRoot string) string {
 		"inspect again after a successful mutation unless the response omitted values you need or you are " +
 		"answering a different question.\n\n" +
 		"Use the narrowest tool directly when the target is known; skip redundant status and discovery calls. " +
-		"Live tools require a running Godot 4 editor with the godot-cli addon. If no editor is running, " +
+		"Live tools require a running Godot 4 editor with the godot-mcp addon. If no editor is running, " +
 		"open this project in Godot and retry. Tool results are JSON."
 }

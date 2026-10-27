@@ -165,7 +165,7 @@ func startBenchmarkSetup(
 		prepared.projectRoot,
 		options.Agent,
 		options.Approach,
-		"godot-cli benchmark: "+task.ID,
+		"godot-mcp benchmark: "+task.ID,
 	)
 	cancelSession()
 	if err != nil {
@@ -254,7 +254,7 @@ func runBenchmark(
 	if err := os.MkdirAll(options.ResultsDir, 0755); err != nil {
 		return "", err
 	}
-	tempDir, err := os.MkdirTemp("", "godot-cli-benchmark-")
+	tempDir, err := os.MkdirTemp("", "godot-mcp-benchmark-")
 	if err != nil {
 		return "", err
 	}
@@ -628,7 +628,7 @@ func writeMCPConfig(
 }
 
 func installBenchmarkSkill(projectRoot string) error {
-	path := filepath.Join(projectRoot, ".agents", "skills", "godot-cli", "SKILL.md")
+	path := filepath.Join(projectRoot, ".agents", "skills", "godot-mcp", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -731,7 +731,7 @@ func evaluateResult(input evaluationInput) evaluation {
 		if input.Result.MCP == nil || input.Result.MCP.Calls == 0 {
 			result.TaskFailures = append(
 				result.TaskFailures,
-				"agent did not invoke godot-cli MCP tools",
+				"agent did not invoke godot-mcp MCP tools",
 			)
 		}
 		if input.Result.MCPProfile != agentmcp.BenchmarkProfileHybrid {
@@ -753,14 +753,14 @@ func evaluateResult(input evaluationInput) evaluation {
 func taskPrompt(task taskDefinition, approach, profile string) string {
 	if approach == approachDirect {
 		return task.Goal + " Directly edit the Godot project files. " +
-			"Do not use godot-cli, the godot MCP server, or any MCP tools."
+			"Do not use godot-mcp, the godot MCP server, or any MCP tools."
 	}
 	if profile == agentmcp.BenchmarkProfileHybrid {
-		return task.Goal + " Use the complete godot MCP toolset for Godot-aware inspection, validation, runtime feedback, and nuanced repairs. You may directly create or rewrite .tscn, .tres, project.godot, scripts, and shaders when that is the most coherent approach. Validate direct semantic-file writes through Godot. Do not invoke the godot-cli command-line executable."
+		return task.Goal + " Use the complete godot MCP toolset for Godot-aware inspection, validation, runtime feedback, and nuanced repairs. You may directly create or rewrite .tscn, .tres, project.godot, scripts, and shaders when that is the most coherent approach. Validate direct semantic-file writes through Godot. Do not invoke the godot-mcp command-line executable."
 	}
 	return task.Goal + " Use the godot MCP tools exposed to this session for all " +
 		"scene inspection and changes. Do not edit .tscn files directly. " +
-		"Do not invoke the godot-cli command-line executable; MCP is the only " +
+		"Do not invoke the godot-mcp command-line executable; MCP is the only " +
 		"supported route for this run."
 }
 

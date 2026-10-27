@@ -128,7 +128,7 @@ func define[P, R any](
 var (
 	EditorStatus = define[editor.StatusParams, editor.StatusResult](
 		editor.StatusName,
-		"Show whether a Godot editor with the godot-cli addon is running for this project",
+		"Show whether a Godot editor with the godot-mcp addon is running for this project",
 		editor.Status,
 		withReadOnly(),
 	)

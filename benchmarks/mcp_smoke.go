@@ -26,7 +26,7 @@ func smokeGodotMCP(repositoryRoot string, options runOptions) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	tempDir, err := os.MkdirTemp("", "godot-cli-mcp-smoke-")
+	tempDir, err := os.MkdirTemp("", "godot-mcp-mcp-smoke-")
 	if err != nil {
 		return "", err
 	}
@@ -119,7 +119,7 @@ func smokeGodotMCP(repositoryRoot string, options runOptions) (string, error) {
 
 	report := setup.preflight
 	return fmt.Sprintf(
-		"Validated godot-cli MCP through OpenCode %s session %s: %d godot tools, permissions allow godot_* + execute and the godot-cli skill (instructions eligible), scene_list listed %s, scene_current reported it active; session collected empty and was deleted",
+		"Validated godot-mcp MCP through OpenCode %s session %s: %d godot tools, permissions allow godot_* + execute and the godot-mcp skill (instructions eligible), scene_list listed %s, scene_current reported it active; session collected empty and was deleted",
 		commandVersion(setup.prepared.opencodePath),
 		sessionID,
 		countMCPTools(report.Tools),

@@ -56,7 +56,7 @@ func TestStartRequiresRegisteredEditor(t *testing.T) {
 
 	assertRuntimeError(t, err, "failed_precondition")
 	assertErrorContains(t, err, "running Godot editor")
-	assertErrorContains(t, err, "godot-cli addon")
+	assertErrorContains(t, err, "godot-mcp addon")
 }
 
 func TestStartRejectsEditorWithoutExecutable(t *testing.T) {
@@ -210,7 +210,7 @@ func assertStarted(t *testing.T, start gdruntime.StatusResult) {
 		t.Fatalf("start = %+v; want session, pid, and scene", start)
 	}
 
-	if !strings.HasPrefix(start.ArtifactsDir, "res://.godot/godot-cli/runtime/") {
+	if !strings.HasPrefix(start.ArtifactsDir, "res://.godot/godot-mcp/runtime/") {
 		t.Fatalf("artifacts directory = %q; want a runtime res:// path", start.ArtifactsDir)
 	}
 
@@ -494,7 +494,7 @@ func writeRuntimeFixture(
 	directory := filepath.Join(
 		root,
 		".godot",
-		"godot-cli",
+		"godot-mcp",
 		"runtime",
 		"sessions",
 		session,
@@ -610,7 +610,7 @@ func TestWindowedCaptureProducesImage(t *testing.T) {
 		t.Fatal("capture did not provide PNG image data")
 	}
 
-	if !strings.HasPrefix(capture.Artifact, "res://.godot/godot-cli/runtime/") {
+	if !strings.HasPrefix(capture.Artifact, "res://.godot/godot-mcp/runtime/") {
 		t.Fatalf("artifact = %q; want a runtime res:// path", capture.Artifact)
 	}
 
@@ -675,7 +675,7 @@ func requireGodot(t *testing.T) string {
 func registerEditor(t *testing.T, root string, executable string) {
 	t.Helper()
 
-	instances := filepath.Join(root, ".godot", "godot-cli", "instances")
+	instances := filepath.Join(root, ".godot", "godot-mcp", "instances")
 	if err := os.MkdirAll(instances, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -708,7 +708,7 @@ func newProject(t *testing.T, sceneError bool) string {
 	project := `config_version=5
 
 [application]
-config/name="godot-cli runtime test"
+config/name="godot-mcp runtime test"
 run/main_scene="res://main.tscn"
 
 [rendering]
@@ -734,7 +734,7 @@ func _ready() -> void:
 		script = `extends Node2D
 
 func _ready() -> void:
-	push_error("godot-cli runtime test error")
+	push_error("godot-mcp runtime test error")
 `
 	}
 

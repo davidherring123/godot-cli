@@ -1,9 +1,9 @@
 @tool
 extends VBoxContainer
 
-const BackendSupervisor = preload("res://addons/godot_cli/mcp/backend_supervisor.gd")
-const IntegrationManager = preload("res://addons/godot_cli/mcp/integration_manager.gd")
-const PLUGIN_CONFIG_PATH := "res://addons/godot_cli/plugin.cfg"
+const BackendSupervisor = preload("res://addons/godot_mcp/mcp/backend_supervisor.gd")
+const IntegrationManager = preload("res://addons/godot_mcp/mcp/integration_manager.gd")
+const PLUGIN_CONFIG_PATH := "res://addons/godot_mcp/plugin.cfg"
 
 const COLOR_ERROR := Color(0.9, 0.35, 0.35)
 const COLOR_RUNNING := Color(0.42, 0.78, 0.45)

@@ -18,7 +18,7 @@ import (
 
 const (
 	// AddonPrefix is the path where Godot projects install the addon.
-	AddonPrefix = "addons/godot_cli"
+	AddonPrefix = "addons/godot_mcp"
 
 	addonFileMode      = fs.FileMode(0o644)
 	executableFileMode = fs.FileMode(0o755)

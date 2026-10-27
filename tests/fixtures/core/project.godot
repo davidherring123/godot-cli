@@ -1,9 +1,9 @@
-; Project used by the godot-cli core test suite.
+; Project used by the godot-mcp core test suite.
 config_version=5
 
 [application]
 
-config/name="godot-cli Business Tests"
+config/name="godot-mcp Business Tests"
 config/features=PackedStringArray("4.4")
 
 [display]
@@ -12,4 +12,4 @@ window/size/viewport_width=800
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_cli/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")

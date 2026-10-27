@@ -36,7 +36,7 @@ func TestSceneEditSessionDefersHistoryAndUndoesInOrder(t *testing.T) {
 		"..",
 		"internal",
 		"addon",
-		"godot_cli",
+		"godot_mcp",
 		"core",
 		"scene",
 		"scene_edit_session.gd",
@@ -111,7 +111,7 @@ const Session = preload("res://addon_session.gd")
 class FakeHistory:
     extends RefCounted
 
-    const NO_ARG := &"__godot_cli_no_arg__"
+    const NO_ARG := &"__godot_mcp_no_arg__"
 
     var undo_redo := UndoRedo.new()
     var create_count := 0

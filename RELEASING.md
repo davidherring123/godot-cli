@@ -1,10 +1,10 @@
 # Releasing the addon
 
-godot-cli releases are installable Godot addon archives. They contain the
+godot-mcp releases are installable Godot addon archives. They contain the
 canonical GDScript addon and prebuilt `godot-mcp-host` binaries, so **end users
 do not need Go** or a separate host installation. Users install the archive and
 configure AI clients from the editor's **Godot MCP** panel; there is no public
-`godot-cli` command to run.
+`godot-mcp` command to run.
 
 ## Build
 
@@ -16,9 +16,9 @@ Artifacts are written to `dist/` (ignored by git; do not commit them):
 
 | File | Use |
 |---|---|
-| `godot-cli-addon-<version>.zip` | Godot Asset Library, GitHub ZIP installs, GodotEnv. Contains every supported platform. |
-| `godot-cli-addon-<version>-<os>-<arch>.tar.gz` | Per-platform macOS/Linux download. |
-| `godot-cli-addon-<version>-windows-amd64.zip` | Per-platform Windows download. |
+| `godot-mcp-addon-<version>.zip` | Godot Asset Library, GitHub ZIP installs, GodotEnv. Contains every supported platform. |
+| `godot-mcp-addon-<version>-<os>-<arch>.tar.gz` | Per-platform macOS/Linux download. |
+| `godot-mcp-addon-<version>-windows-amd64.zip` | Per-platform Windows download. |
 | `SHA256SUMS` | SHA-256 checksums for all archives. |
 
 Supported targets: darwin arm64/amd64, linux amd64/arm64, and windows amd64.
@@ -43,7 +43,7 @@ go test ./tests/release
 ## Archive layout
 
 ```text
-addons/godot_cli/
+addons/godot_mcp/
   plugin.cfg
   bridge/
   core/
@@ -55,7 +55,7 @@ addons/godot_cli/
   bin/windows-x86_64/godot-mcp-host.exe
 ```
 
-The GDScript files come from `internal/addon/godot_cli`, the canonical addon
+The GDScript files come from `internal/addon/godot_mcp`, the canonical addon
 tree packaged into every archive. Universal archives contain every binary above;
 per-platform archives contain only their own `bin/<os>-<arch>/` directory. Host
 binaries are executable (`0755`) in both tar and ZIP archives.
@@ -81,16 +81,16 @@ On Windows the host file is `godot-mcp-host.exe`.
 
 ### Godot Asset Library
 
-Upload `godot-cli-addon-<version>.zip` with the release and use its URL for the
+Upload `godot-mcp-addon-<version>.zip` with the release and use its URL for the
 Asset Library entry. The all-platform ZIP is the asset to submit so every
 supported OS and architecture works after installation.
 
 ### GitHub ZIP
 
 Attach all archives from `dist/` to the GitHub release. Users download
-`godot-cli-addon-<version>.zip` (not the repository's auto-generated "Source
+`godot-mcp-addon-<version>.zip` (not the repository's auto-generated "Source
 code" ZIP, which has no binaries) and extract it at the project root, leaving
-`addons/godot_cli/` in place. Per-platform `.tar.gz` files are extracted the
+`addons/godot_mcp/` in place. Per-platform `.tar.gz` files are extracted the
 same way.
 
 ### GodotEnv
@@ -100,10 +100,10 @@ Reference the release ZIP from `addons.jsonc` and install it with GodotEnv:
 ```jsonc
 {
   "addons": {
-    "godot_cli": {
-      "url": "https://github.com/davidherring123/godot-cli/releases/download/v0.1.0/godot-cli-addon-v0.1.0.zip",
+    "godot_mcp": {
+      "url": "https://github.com/davidherring123/godot-cli/releases/download/v0.1.0/godot-mcp-addon-v0.1.0.zip",
       "source": "zip",
-      "subfolder": "addons/godot_cli"
+      "subfolder": "addons/godot_mcp"
     }
   }
 }
@@ -117,11 +117,16 @@ GodotEnv copies the archive's addon tree into the project; Go is not required.
 
 ## After installation
 
-Enable **Godot CLI** in **Project Settings > Plugins**. The addon starts its
+Enable **Godot MCP** in **Project Settings > Plugins**. The addon starts its
 bundled backend when enabled and adds the **Godot MCP** bottom panel. AI client
 configuration is project-scoped and is installed from that panel with
 **Refresh Status**, **Install**, **Repair**, or **Install All**. No project
 installer or public CLI command is part of the user flow.
+
+For upgrades from pre-rename builds, disable the old plugin and remove
+`addons/godot_cli/` before extracting the new archive. Use **Install** or
+**Repair** afterward to refresh client configurations from the old absolute
+host path to `addons/godot_mcp/`.
 
 ## Limitations
 

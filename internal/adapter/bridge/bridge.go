@@ -160,7 +160,7 @@ func FindInstance(projectRoot string) (editorinstance.Instance, error) {
 	instancesDir := filepath.Join(
 		projectRoot,
 		".godot",
-		"godot-cli",
+		"godot-mcp",
 		"instances",
 	)
 

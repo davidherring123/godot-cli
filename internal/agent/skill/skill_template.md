@@ -1,5 +1,5 @@
 ---
-name: godot-cli
+name: godot-mcp
 description: Optional workflow guidance for building and editing Godot projects with the Godot MCP server.
 ---
 

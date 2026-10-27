@@ -140,4 +140,4 @@ func _send(peer: StreamPeerTCP, response: Response) -> void:
     var error := peer.put_data(data)
 
     if error != OK:
-        push_error("godot-cli: failed to send response")
+        push_error("godot-mcp: failed to send response")

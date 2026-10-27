@@ -66,7 +66,7 @@ func NewServeCommand(version string) *cobra.Command {
 		Long: "Serve the Godot MCP tools over Streamable HTTP for the Godot editor addon. " +
 			"The endpoint is always loopback-only; the addon passes a state file so it can discover " +
 			"the bound URL and process ID. Use connect for a stdio client configuration.",
-		Example: commandName + " serve --project C:/Projects/MyGame --state-file .godot/godot-cli/mcp/backend-1234.json",
+		Example: commandName + " serve --project C:/Projects/MyGame --state-file .godot/godot-mcp/mcp/backend-1234.json",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			resolved, err := project.Resolve(projectPath)
@@ -271,7 +271,7 @@ func newIntegrationsInstallCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:       "install <opencode|claude|codex|all>",
 		Short:     "Install project-scoped AI client integrations as JSON",
-		Long:      "Merge the godot MCP server into the selected client's project configuration and install the portable godot-cli skill. Existing unrelated configuration is preserved.",
+		Long:      "Merge the godot MCP server into the selected client's project configuration and install the portable godot-mcp skill. Existing unrelated configuration is preserved.",
 		Example:   commandName + " integrations install opencode --project C:/Projects/MyGame",
 		Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		ValidArgs: []string{"opencode", "claude", "codex", "all"},

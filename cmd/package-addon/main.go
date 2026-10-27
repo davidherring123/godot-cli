@@ -1,4 +1,4 @@
-// Command package-addon builds reproducible godot-cli addon release archives.
+// Command package-addon builds reproducible godot-mcp addon release archives.
 package main
 
 import (

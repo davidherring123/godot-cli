@@ -781,7 +781,7 @@ func _release_cached(path: String) -> void:
     var cached := ResourceLoader.get_cached_ref(path)
 
     if cached != null:
-        cached.take_over_path(path + ".godot-cli-deleted")
+        cached.take_over_path(path + ".godot-mcp-deleted")
 
 func _referencing_paths(path: String) -> Array[String]:
     var root := editor.get_resource_filesystem().get_filesystem()

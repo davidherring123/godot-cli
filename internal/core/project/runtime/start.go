@@ -170,7 +170,7 @@ func runtimeGodotExecutable(projectRoot string) (string, error) {
 		case errors.Is(err, editorinstance.ErrNoEditor):
 			return "", newError(
 				string(apierr.CodeFailedPrecondition),
-				"runtime.start requires a running Godot editor with the godot-cli addon registered for this project; open the project in Godot with the addon enabled, then retry",
+				"runtime.start requires a running Godot editor with the godot-mcp addon registered for this project; open the project in Godot with the addon enabled, then retry",
 			)
 		case errors.Is(err, editorinstance.ErrMultipleEditors):
 			return "", newError(
@@ -191,7 +191,7 @@ func runtimeGodotExecutable(projectRoot string) (string, error) {
 	if executable == "" {
 		return "", newError(
 			string(apierr.CodeFailedPrecondition),
-			"the running Godot editor did not report an executable path; restart Godot after installing or updating the godot-cli addon, then retry",
+			"the running Godot editor did not report an executable path; restart Godot after installing or updating the godot-mcp addon, then retry",
 		)
 	}
 

@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	runtimeDirName    = ".godot/godot-cli/runtime"
+	runtimeDirName    = ".godot/godot-mcp/runtime"
 	sessionsDirName   = "sessions"
 	heartbeatTimeout  = 5 * time.Second
 	readyGrace        = 20 * time.Second

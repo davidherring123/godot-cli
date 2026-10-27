@@ -2,7 +2,7 @@
 
 ## Project Context
 
-godot-cli is a Godot 4 addon and private Go MCP host, with a GDScript addon executing live editor operations. Users install the addon and manage the bundled host from the editor's Godot MCP panel; there is no public project CLI.
+godot-mcp is a Godot 4 addon and private Go MCP host, with a GDScript addon executing live editor operations. Users install the addon and manage the bundled host from the editor's Godot MCP panel; there is no public project CLI.
 
 Read `ARCHITECTURE.md` before modifying code under `internal/`, including the embedded GDScript addon. It defines package ownership, dependency boundaries, action registration, editor behavior, and the procedure for introducing new actions.
 

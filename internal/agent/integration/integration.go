@@ -103,12 +103,12 @@ func ParseClients(value string) ([]Client, error) {
 func ResolveHostPath(projectRoot string) (string, error) {
 	executablePath, err := os.Executable()
 	if err != nil {
-		return "", fmt.Errorf("locating the godot-cli executable: %w", err)
+		return "", fmt.Errorf("locating the godot-mcp executable: %w", err)
 	}
 
 	executablePath, err = filepath.Abs(executablePath)
 	if err != nil {
-		return "", fmt.Errorf("resolving the godot-cli executable: %w", err)
+		return "", fmt.Errorf("resolving the godot-mcp executable: %w", err)
 	}
 
 	if isHostExecutable(executablePath) {

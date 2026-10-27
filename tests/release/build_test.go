@@ -97,7 +97,7 @@ exit 1
 		t.Fatalf("release build command = %v, want ./cmd/godot-mcp-host", commandLine)
 	}
 
-	if strings.Contains(string(arguments), "./cmd/godot-cli\n") {
+	if strings.Contains(string(arguments), "./cmd/godot-mcp\n") {
 		t.Fatalf("release build still packages the legacy CLI:\n%s", arguments)
 	}
 }

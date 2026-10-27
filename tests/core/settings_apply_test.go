@@ -103,7 +103,7 @@ func TestProjectSettingsApplyFailureRollsBackWithoutSaving(t *testing.T) {
 	restoreSetting(t, session, viewportWidthSetting)
 
 	before := readProjectFile(t, session)
-	missing := "godot_cli/apply_missing"
+	missing := "godot_mcp/apply_missing"
 
 	_, err := settings.Apply(session.Root(), settings.ApplyParams{
 		Operations: []settings.ApplyOperation{
