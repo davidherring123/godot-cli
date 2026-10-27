@@ -15,19 +15,36 @@ func NewMCPCommand(version string) *cobra.Command {
 	var projectPath string
 	var tracePath string
 	var benchmarkProfile string
+	var transport string
+	var host string
+	var port int
+	var stateFile string
 
 	cmd := &cobra.Command{
 		Use:   "mcp",
-		Short: "Run a Model Context Protocol server over stdio",
-		Long: "Expose the project's godot-cli actions as MCP tools over stdin/stdout. " +
+		Short: "Run a Model Context Protocol server over stdio or Streamable HTTP",
+		Long: "Expose the project's godot-cli actions as MCP tools. " +
+			"The default transport is stdio over stdin/stdout; use --transport http for the MCP Streamable HTTP transport at /mcp. " +
+			"HTTP only binds a loopback address, writes an optional discovery state file after binding, " +
+			"and removes that file on shutdown when this process still owns it. " +
 			"The server targets one Godot project: pass --project, or start it from anywhere inside the project. " +
 			"Live-editor tools require a running Godot 4 editor with the godot-cli addon installed. " +
-			"stdout is reserved for MCP messages; diagnostics are written to stderr.",
+			"For stdio, stdout is reserved for MCP messages; diagnostics are written to stderr.",
 		Example: "godot-cli mcp\n" +
 			"godot-cli mcp --project C:/Projects/MyGame\n" +
+			"godot-cli mcp --transport http --port 8765 --state-file .godot/godot-cli/mcp.json\n" +
 			"godot-cli mcp --trace-file /tmp/godot-cli-trace.jsonl",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if transport != mcp.TransportStdio && transport != mcp.TransportHTTP {
+				return fmt.Errorf(
+					"invalid MCP transport %q; use %q or %q",
+					transport,
+					mcp.TransportStdio,
+					mcp.TransportHTTP,
+				)
+			}
+
 			resolved, err := project.Resolve(projectPath)
 			if err != nil {
 				return err
@@ -42,6 +59,10 @@ func NewMCPCommand(version string) *cobra.Command {
 				Version:          version,
 				ProjectRoot:      resolved.Root,
 				BenchmarkProfile: benchmarkProfile,
+				Transport:        transport,
+				Host:             host,
+				Port:             port,
+				StateFile:        stateFile,
 			}
 
 			if traceFile != nil {
@@ -80,6 +101,30 @@ func NewMCPCommand(version string) *cobra.Command {
 		"trace-file",
 		"",
 		"Append one JSON object per completed MCP tool call to this JSONL file; disabled by default",
+	)
+	cmd.Flags().StringVar(
+		&transport,
+		"transport",
+		mcp.TransportStdio,
+		"MCP transport: stdio or http",
+	)
+	cmd.Flags().StringVar(
+		&host,
+		"host",
+		"127.0.0.1",
+		"Loopback host for --transport http",
+	)
+	cmd.Flags().IntVar(
+		&port,
+		"port",
+		0,
+		"Port for --transport http; 0 chooses an available port",
+	)
+	cmd.Flags().StringVar(
+		&stateFile,
+		"state-file",
+		"",
+		"Write an atomic MCP server discovery JSON file for --transport http; disabled by default",
 	)
 	cmd.Flags().StringVar(
 		&benchmarkProfile,

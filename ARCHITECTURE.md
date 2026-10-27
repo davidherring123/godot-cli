@@ -186,7 +186,11 @@ results are returned as both JSON text and structured content. Tool failures use
   `artifact.ImageSource` (currently `runtime.capture`) also add an MCP image
   content block while the structured result keeps only metadata. Tool calls are
   serialized so the editor only handles one operation at a time. `godot-cli mcp`
-  serves stdio and resolves one project for the process lifetime.
+  serves stdio by default and Streamable HTTP on loopback with `--transport
+  http`; HTTP binds before publishing an optional atomic `pid`/`transport`/`url`/
+  `version`/`project`/`started_at` state file and removes it on shutdown only
+  when the process still owns it. Both transports resolve one project for the
+  process lifetime.
 - `internal/core/project` — the `Project` type, `Resolve` path handling, and
   `FindProjectRoot` project discovery used by every command. Its subpackages
   hold project-scoped domains: `editor`, `runtime`, `input`, `scenepath`, and

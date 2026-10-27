@@ -56,7 +56,13 @@ Runtime state is scoped to one project and one active session at a time. Session
 
 ## MCP server
 
-`godot-cli mcp` exposes the project's actions as a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio. It serves one Godot project per process: start it from anywhere inside the project, or pass `--project`.
+`godot-cli mcp` exposes the project's actions as a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio by default. It serves one Godot project per process: start it from anywhere inside the project, or pass `--project`.
+
+Use `--transport http` to serve the MCP Streamable HTTP transport instead. The endpoint is `/mcp`. HTTP only binds a loopback `--host` (default `127.0.0.1`) and accepts `--port` (default `0`, which asks the operating system for an available port). With `--state-file`, the server binds first, then atomically writes a discovery document containing `pid`, `transport`, `url`, `version`, `project`, and `started_at`. On shutdown it removes that file only when this process still owns it.
+
+```shell
+godot-cli mcp --transport http --port 8765 --state-file .godot/godot-cli/mcp.json
+```
 
 Live-editor tools require Godot 4 to be running with the godot-cli addon installed. Run `godot-cli init` once in the project first; it installs and enables the addon. If no editor is running, the `editor_open` tool (or `godot-cli editor open`) starts it and waits for the bridge. Tools that work on saved files, such as `scene_list` and `validate_scene`, do not need a running editor.
 
@@ -85,7 +91,7 @@ For ordered multi-step edits within one domain, use `resource_apply`, `project_s
 
 `scene_apply` is the batch tool. It accepts 1–100 ordered `operations` of node mutations (`node.add`, `node.set`, `node.rename`, `node.duplicate`, `node.move`, `node.delete`, `node.instantiate`), validates the whole batch on a temporary copy of the active scene, and commits it as one editor undo step. Each operation uses the `operation` field and only the fields valid for that kind; operations can carry an `id` and later operations can target the resulting node with `@id`. Set `dry_run` to return best-effort planned paths and summaries without editing. The preview never writes remapped paths into live shared subresources, so dry-run and failed prevalidation do not alter animation tracks or NodePath-bearing resources. Prevalidation still uses a packed copy, so editor-only and unowned runtime nodes are not modeled; the live pass validates and rolls back on such drift. If any operation fails during the live pass, earlier operations are reversed directly without adding the failed batch to undo history, so a previously clean scene stays clean; nodes created by the failed batch are freed, and an incomplete rollback is reported as `internal_error` with restored/total counts and failure details. Result paths are snapshots at the time each operation completed, not final paths after later renames, moves, or deletes, and an id cannot be referenced after its node is deleted. `save` runs once after the batch succeeds; if the save fails, the batch remains applied and undoable, so retry with `scene save` rather than re-running the batch. The result names the exact operation index, `operation`, and id on failure. The granular node tools remain available and behave as before.
 
-stdout is reserved for MCP messages; diagnostics are written to stderr.
+stdout is reserved for stdio MCP messages; diagnostics are written to stderr.
 
 ## Installation
 

@@ -12,6 +12,13 @@ import (
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+const (
+	// TransportStdio serves newline-delimited JSON-RPC over stdin/stdout.
+	TransportStdio = "stdio"
+	// TransportHTTP serves the MCP Streamable HTTP transport on loopback.
+	TransportHTTP = "http"
+)
+
 // Options configures an MCP server instance.
 type Options struct {
 	Version      string
@@ -21,6 +28,17 @@ type Options struct {
 	// BenchmarkProfile selects a controlled benchmark-only tool surface. An
 	// empty value preserves the production defaults.
 	BenchmarkProfile string
+
+	// Transport selects the serving transport. An empty value preserves the
+	// original stdio behavior.
+	Transport string
+	// Host and Port configure the HTTP transport. Host must be a loopback
+	// address; Port 0 asks the operating system for an available port.
+	Host string
+	Port int
+	// StateFile, when set for HTTP, receives an atomically written
+	// ServerState discovery document.
+	StateFile string
 
 	// TraceWriter, when non-nil, receives one newline-delimited JSON object
 	// per completed tools/call. Tracing is disabled by default; it never
@@ -95,8 +113,29 @@ func NewServer(options Options) (*mcpgo.Server, error) {
 	return server, nil
 }
 
-// Run serves the MCP protocol over stdio until the client disconnects.
+// Run serves the MCP protocol over the transport selected by options.Transport
+// until the context is cancelled or the client disconnects. The empty transport
+// preserves the original stdio behavior.
 func Run(ctx context.Context, options Options) error {
+	switch options.Transport {
+	case "", TransportStdio:
+		return RunStdio(ctx, options)
+	case TransportHTTP:
+		return RunHTTP(ctx, options)
+	default:
+		return fmt.Errorf(
+			"unsupported MCP transport %q; use %q or %q",
+			options.Transport,
+			TransportStdio,
+			TransportHTTP,
+		)
+	}
+}
+
+// RunStdio serves the MCP protocol over stdin/stdout until the client
+// disconnects. Diagnostics are written to stderr so stdout stays reserved for
+// protocol messages.
+func RunStdio(ctx context.Context, options Options) error {
 	if options.ProjectRoot == "" {
 		return errors.New("project root is required")
 	}
