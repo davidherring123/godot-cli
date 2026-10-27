@@ -26,9 +26,9 @@ internal/core/
   node/            node.* actions
   scene/           scene.* actions, including scene.apply
   resource/        resource.* actions
-  validation/      validate.* actions
+    validation/      active editor scene validation
   project/         project discovery and project-scoped concerns
-    editor/        editor.open / editor.status
+    editor/        legacy CLI editor.open and MCP editor.status
     runtime/       runtime.* game process lifecycle
     input/         input.* Input Map actions
     scenepath/     scene-path resolution within a project
@@ -79,11 +79,10 @@ transport and editor-instance finder, `adapter/godot` as the executable finder.
 an adapter.
 
 Editor discovery: on enable, the addon writes
-`.godot/godot-cli/instances/<pid>.json` (pid, port, project); the CLI reads it
-and connects. If no editor is reachable, live commands fail — assume a running,
-addon-enabled editor. `validate` is the exception: by default it runs the saved
-project in a fresh `godot --headless` process and never talks to the editor.
-`validate --live` uses the editor like any other live command.
+`.godot/godot-cli/instances/<pid>.json` (pid, port, project, executable); the
+host reads it and connects. If no editor is reachable, editor-backed commands
+fail — assume a running, addon-enabled editor. `validate.scene` validates the
+active scene, including unsaved changes, through that editor.
 
 `runtime.*` is also Go-only. It starts the game itself instead of asking the
 editor to play the scene, so it works without the addon and without an editor:
@@ -174,9 +173,10 @@ results are returned as both JSON text and structured content. Tool failures use
   discovery for a running editor. It retains the generic `Connect`/`Call`
   surface used by wire-level tests and `tests/harness`, and adapts itself to
   `invocation.Transport`.
-- `internal/adapter/godot` — locates the Godot executable for `validate.scene`,
-  `editor.open`, and `runtime.start` (`GODOT_BIN`, then `godot`/`godot4` on
-  PATH). `internal/port/godot` is the neutral port and sentinel.
+- `internal/adapter/godot` — locates the Godot executable for legacy
+  `editor.open` and as a fallback for `runtime.start` (`GODOT_BIN`, then
+  `godot`/`godot4` on PATH). Runtime prefers the executable reported by the
+  connected editor. `internal/port/godot` is the neutral port and sentinel.
 - `internal/compose` — the single composition root. `Install()` binds the
   bridge transport, editor instance finder, and Godot executable finder to
   their core ports. Domain packages must never be wired from inside themselves.
@@ -198,11 +198,10 @@ results are returned as both JSON text and structured content. Tool failures use
   `FindProjectRoot` project discovery used by every command. Its subpackages
   hold project-scoped domains: `editor`, `runtime`, `input`, `scenepath`, and
   `settings`.
-- `internal/core/project/editor` — Go-only `editor.open` and `editor.status`
-  actions. `open` launches `godot --editor` detached, waits for the addon's
-  instance file, and reuses an already-registered editor; `status` reports the
-  registered instance without starting one. Both use the neutral
-  `editorinstance` port and the neutral `godot` executable port.
+- `internal/core/project/editor` — `editor.status` reports the registered
+  instance without starting one. The package retains legacy CLI-only
+  `editor.open`, but it is not registered as an MCP action in the addon-first
+  product.
 - `internal/model/property` — shared property metadata used by the node,
   resource, and project settings domains. This is model/support code, not a
   domain.
@@ -215,12 +214,10 @@ results are returned as both JSON text and structured content. Tool failures use
   request channel, and safe stop. The runner script is embedded, like the
   validation runner, and runs as a custom `SceneTree`; autoloads still
   initialize normally.
-- `internal/core/validation` — saved-project validation spawns `godot --headless`
-  with an embedded `runner.gd`, merges the runner's JSON report with Godot's
-  `ERROR:`/`SCRIPT ERROR:` output, and never writes to the project.
-  `validate.live` packs and re-instantiates the active editor scene in memory:
-  it detects scripts that no longer parse and serialization failures without
-  saving anything.
+- `internal/core/validation` — `validate.scene` packs and re-instantiates the
+  active editor scene in memory. It detects scripts that no longer parse and
+  serialization failures, including unsaved changes, without saving, opening,
+  switching, or running the scene.
 - `internal/agent/skill` — owns the canonical portable `SKILL.md` template and
   the project skill paths used by integrations: `.agents/skills/godot-cli/` for
   OpenCode and Codex, and `.claude/skills/godot-cli/` for Claude Code. It also

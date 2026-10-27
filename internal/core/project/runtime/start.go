@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/davidherring123/godot-cli/internal/core/project/scenepath"
+	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
 	"github.com/davidherring123/godot-cli/internal/port/godot"
 	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 )
@@ -54,7 +55,7 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 		)
 	}
 
-	godotPath, err := godot.FindExecutable()
+	godotPath, err := runtimeGodotExecutable(projectRoot)
 	if err != nil {
 		return StatusResult{}, err
 	}
@@ -160,6 +161,17 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 	}
 
 	return waitForReady(projectRoot, directory, metadata, timeout)
+}
+
+func runtimeGodotExecutable(projectRoot string) (string, error) {
+	instance, err := editorinstance.Find(projectRoot)
+	if err == nil && instance.Executable != "" {
+		if info, statErr := os.Stat(instance.Executable); statErr == nil && !info.IsDir() {
+			return instance.Executable, nil
+		}
+	}
+
+	return godot.FindExecutable()
 }
 
 func waitForReady(

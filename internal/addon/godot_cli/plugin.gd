@@ -96,7 +96,8 @@ func _register_instance(port: int) -> void:
         "pid": pid,
         "port": port,
         "project": ProjectSettings.globalize_path("res://"),
-        "version": "dev"
+        "version": "dev",
+        "executable": OS.get_executable_path()
     }
 
     file.store_string(JSON.stringify(data, "\t"))

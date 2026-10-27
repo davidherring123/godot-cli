@@ -74,6 +74,7 @@ func TestInstallIncludesMCPPanel(t *testing.T) {
 		"ui/mcp_panel.gd",
 		"add_control_to_bottom_panel(mcp_panel, \"Godot MCP\")",
 		"mcp_backend.poll(delta)",
+		"OS.get_executable_path()",
 	} {
 		if !strings.Contains(string(plugin), expected) {
 			t.Fatalf("installed plugin is missing %q:\n%s", expected, plugin)

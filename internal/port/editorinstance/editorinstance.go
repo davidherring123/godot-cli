@@ -20,10 +20,11 @@ var (
 
 // Instance is one editor registration.
 type Instance struct {
-	PID     int    `json:"pid"`
-	Port    int    `json:"port"`
-	Project string `json:"project"`
-	Version string `json:"version"`
+	PID        int    `json:"pid"`
+	Port       int    `json:"port"`
+	Project    string `json:"project"`
+	Version    string `json:"version"`
+	Executable string `json:"executable,omitempty"`
 }
 
 // Finder discovers the single running editor registered for a project.

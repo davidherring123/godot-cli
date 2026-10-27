@@ -2,7 +2,6 @@ package cli
 
 import (
 	"errors"
-	"time"
 
 	"github.com/davidherring123/godot-cli/internal/core/validation"
 	"github.com/spf13/cobra"
@@ -11,78 +10,32 @@ import (
 var errValidationFailed = errors.New("validation failed")
 
 func NewValidateCommand() *cobra.Command {
-	var (
-		live    bool
-		timeout time.Duration
-		flags   editorSceneFlags
-	)
+	var flags editorSceneFlags
 
 	cmd := &cobra.Command{
-		Use:     "validate [scene]",
-		Short:   "Validate a scene by loading and running it in Godot",
-		Long:    "Load a scene in a fresh headless Godot process, run it briefly, and report load, script, resource, and early runtime errors as JSON. Uses the configured main scene unless a scene path is supplied. Godot is asked to quit gracefully; the project is never opened in the editor, saved, or modified. The project must already be imported: resources without import data fail, as they would when running the game. Prints JSON with valid, scene, and errors, and exits nonzero when validation fails. With --live, validate the active editor scene instead, including unsaved state, through the running editor addon; nothing is saved.",
-		Example: "godot-cli validate\ngodot-cli validate res://levels/arena.tscn\ngodot-cli validate --live --expect-scene res://main.tscn",
-		Args:    cobra.MaximumNArgs(1),
-		RunE: func(_ *cobra.Command, args []string) error {
-			if live && len(args) > 0 {
-				return errors.New("a scene argument cannot be combined with --live")
-			}
-
-			if !live && flags.expectedScene != "" {
-				return errors.New("--expect-scene requires --live")
-			}
-
-			return runValidate(args, live, timeout, flags.expectedScene)
+		Use:     "validate",
+		Short:   "Validate the active editor scene",
+		Long:    "Validate the active editor scene, including unsaved changes, through the running editor addon. The command checks script parsing and scene serialization without saving, opening, switching, or running the scene. Use runtime start for gameplay and early-runtime verification.",
+		Example: "godot-cli validate\ngodot-cli validate --expect-scene res://main.tscn",
+		Args:    cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return runValidate(flags.expectedScene)
 		},
 	}
 
-	cmd.Flags().BoolVar(&live, "live", false, "Validate the active editor scene instead of the saved project")
-	cmd.Flags().DurationVar(&timeout, "timeout", 15*time.Second, "How long the headless validation run may take before Godot is stopped")
 	flags.bind(cmd)
 
 	return cmd
 }
 
-func runValidate(
-	args []string,
-	live bool,
-	timeout time.Duration,
-	expectedScene string,
-) error {
+func runValidate(expectedScene string) error {
 	project, err := FetchProjectContext()
 	if err != nil {
 		return err
 	}
 
-	if live {
-		result, err := validate.Live(
-			project.Root,
-			validate.LiveParams{ExpectedScene: expectedScene},
-		)
-		if err != nil {
-			return err
-		}
-
-		if err := PrintJSON(result); err != nil {
-			return err
-		}
-
-		if !result.Valid {
-			return errValidationFailed
-		}
-
-		return nil
-	}
-
-	scene := ""
-
-	if len(args) > 0 {
-		scene = args[0]
-	}
-
 	result, err := validate.Scene(project.Root, validate.SceneParams{
-		Scene:          scene,
-		TimeoutSeconds: timeout.Seconds(),
+		ExpectedScene: expectedScene,
 	})
 	if err != nil {
 		return err

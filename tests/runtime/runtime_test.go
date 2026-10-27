@@ -28,6 +28,51 @@ func TestRuntimeHelperProcess(_ *testing.T) {
 	os.Exit(0)
 }
 
+func TestStartUsesExecutableReportedByEditor(t *testing.T) {
+	if os.PathSeparator == '\\' {
+		t.Skip("shell fixture is Unix-only")
+	}
+
+	root := newProject(t, false)
+	marker := filepath.Join(t.TempDir(), "started")
+	executable := filepath.Join(t.TempDir(), "fake-godot")
+	script := "#!/bin/sh\n: > \"" + marker + "\"\nexit 1\n"
+
+	if err := os.WriteFile(executable, []byte(script), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	instances := filepath.Join(root, ".godot", "godot-cli", "instances")
+	if err := os.MkdirAll(instances, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	registration, err := json.Marshal(map[string]any{
+		"pid":        os.Getpid(),
+		"port":       49152,
+		"project":    root,
+		"version":    "test",
+		"executable": executable,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(instances, "editor.json"),
+		registration,
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("GODOT_BIN", filepath.Join(t.TempDir(), "wrong-godot"))
+	_, _ = gdruntime.Start(root, gdruntime.StartParams{TimeoutSeconds: 1})
+
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("runtime did not use the editor-reported executable: %v", err)
+	}
+}
+
 func TestStatusWithoutRuntime(t *testing.T) {
 	root := newProject(t, false)
 

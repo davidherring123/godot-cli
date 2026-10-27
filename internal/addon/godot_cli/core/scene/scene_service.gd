@@ -13,7 +13,7 @@ func get_actions() -> Dictionary:
         "scene.create": ActionHandler.new(create_scene, false, false, false),
         "scene.tree": ActionHandler.new(get_tree, true, false, true),
         "scene.save": ActionHandler.new(save, true, false, true),
-        "validate.live": ActionHandler.new(validate_live, true, false, true),
+        "validate.scene": ActionHandler.new(validate_scene, true, false, true),
     }
 
 func current(request: Request) -> Response:
@@ -226,7 +226,7 @@ func get_tree(_request: Request) -> Response:
 func save(_request: Request) -> Response:
     return scene_context.save()
 
-func validate_live(_request: Request) -> Response:
+func validate_scene(_request: Request) -> Response:
     var root := scene_context.editor.get_edited_scene_root()
     var errors: Array[String] = []
 
