@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -44,6 +45,28 @@ func (target Target) String() string {
 	return target.OS + "-" + target.Arch
 }
 
+// BundleString returns the platform directory name reported by Godot. Build
+// targets retain Go's GOOS/GOARCH names, while the installed addon must use the
+// names available from OS.get_name and Engine.get_architecture_name.
+func (target Target) BundleString() string {
+	platform := target.OS
+	if platform == "darwin" {
+		platform = "macos"
+	}
+
+	architecture := target.Arch
+	switch architecture {
+	case "amd64":
+		architecture = "x86_64"
+	case "386":
+		architecture = "x86_32"
+	case "arm":
+		architecture = "arm32"
+	}
+
+	return platform + "-" + architecture
+}
+
 // HostBinaryName returns the host executable name for the target.
 func (target Target) HostBinaryName() string {
 	if target.OS == "windows" {
@@ -55,7 +78,7 @@ func (target Target) HostBinaryName() string {
 
 // HostEntryName returns the host executable path inside an addon archive.
 func (target Target) HostEntryName() string {
-	return path.Join(AddonPrefix, "bin", target.String(), target.HostBinaryName())
+	return path.Join(AddonPrefix, "bin", target.BundleString(), target.HostBinaryName())
 }
 
 // Options configures a release build.
@@ -98,6 +121,11 @@ func Build(options Options) ([]string, error) {
 	}
 
 	addonEntries, err := AddonEntries(filepath.Join(root, filepath.FromSlash(DefaultAddonDir)))
+	if err != nil {
+		return nil, err
+	}
+
+	addonEntries, err = withAddonVersion(addonEntries, version)
 	if err != nil {
 		return nil, err
 	}
@@ -232,6 +260,41 @@ func AddonEntries(addonDir string) ([]ArchiveEntry, error) {
 	})
 
 	return entries, nil
+}
+
+func withAddonVersion(entries []ArchiveEntry, version string) ([]ArchiveEntry, error) {
+	pluginName := path.Join(AddonPrefix, "plugin.cfg")
+	updated := append([]ArchiveEntry(nil), entries...)
+
+	for index, entry := range updated {
+		if entry.Name != pluginName {
+			continue
+		}
+
+		data, err := os.ReadFile(entry.Source)
+		if err != nil {
+			return nil, fmt.Errorf("reading plugin.cfg for version stamping: %w", err)
+		}
+
+		lines := strings.Split(string(data), "\n")
+		found := false
+		for lineIndex, line := range lines {
+			if strings.HasPrefix(strings.TrimSpace(line), "version=") {
+				lines[lineIndex] = `version="` + version + `"`
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, errors.New("canonical addon plugin.cfg has no version entry")
+		}
+
+		updated[index].Source = ""
+		updated[index].Data = []byte(strings.Join(lines, "\n"))
+		return updated, nil
+	}
+
+	return nil, errors.New("addon entries have no plugin.cfg")
 }
 
 func repositoryRoot(root string) (string, error) {

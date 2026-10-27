@@ -46,11 +46,11 @@ addons/godot_cli/
   bridge/
   core/
   requests/
-  bin/darwin-arm64/godot-mcp-host
-  bin/darwin-amd64/godot-mcp-host
-  bin/linux-amd64/godot-mcp-host
+  bin/macos-arm64/godot-mcp-host
+  bin/macos-x86_64/godot-mcp-host
+  bin/linux-x86_64/godot-mcp-host
   bin/linux-arm64/godot-mcp-host
-  bin/windows-amd64/godot-mcp-host.exe
+  bin/windows-x86_64/godot-mcp-host.exe
 ```
 
 The GDScript files come from `internal/addon/godot_cli`, the same canonical

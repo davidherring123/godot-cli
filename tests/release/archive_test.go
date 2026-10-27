@@ -66,11 +66,11 @@ func TestHostBinaryLayout(t *testing.T) {
 		target release.Target
 		want   string
 	}{
-		{release.Target{OS: "darwin", Arch: "arm64"}, "addons/godot_cli/bin/darwin-arm64/godot-mcp-host"},
-		{release.Target{OS: "darwin", Arch: "amd64"}, "addons/godot_cli/bin/darwin-amd64/godot-mcp-host"},
-		{release.Target{OS: "linux", Arch: "amd64"}, "addons/godot_cli/bin/linux-amd64/godot-mcp-host"},
+		{release.Target{OS: "darwin", Arch: "arm64"}, "addons/godot_cli/bin/macos-arm64/godot-mcp-host"},
+		{release.Target{OS: "darwin", Arch: "amd64"}, "addons/godot_cli/bin/macos-x86_64/godot-mcp-host"},
+		{release.Target{OS: "linux", Arch: "amd64"}, "addons/godot_cli/bin/linux-x86_64/godot-mcp-host"},
 		{release.Target{OS: "linux", Arch: "arm64"}, "addons/godot_cli/bin/linux-arm64/godot-mcp-host"},
-		{release.Target{OS: "windows", Arch: "amd64"}, "addons/godot_cli/bin/windows-amd64/godot-mcp-host.exe"},
+		{release.Target{OS: "windows", Arch: "amd64"}, "addons/godot_cli/bin/windows-x86_64/godot-mcp-host.exe"},
 	}
 
 	if len(release.DefaultTargets) != len(cases) {

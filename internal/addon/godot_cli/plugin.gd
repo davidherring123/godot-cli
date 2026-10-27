@@ -30,6 +30,11 @@ func _enter_tree() -> void:
     add_control_to_bottom_panel(mcp_panel, "MCP")
     mcp_panel.set_bridge_status(true, bridge.get_port())
 
+    # The bundled backend is an implementation detail of the addon. Start it
+    # automatically so installation and enabling the plugin complete onboarding.
+    if mcp_backend.is_bundled():
+        mcp_backend.start()
+
     set_process(true)
 
     print(
