@@ -55,6 +55,25 @@ func _initialize() -> void:
             "integrations tab title is wrong: %s" % tabs.get_tab_title(1)
         )
         _check(tabs.current_tab == 0, "panel should open on MCP Status")
+        _check(
+            tabs.has_theme_stylebox_override("panel"),
+            "panel tabs do not have an editor-style content surface"
+        )
+
+        var tab_bar := tabs.get_tab_bar()
+        _check(
+            tab_bar.has_theme_stylebox_override("tab_selected"),
+            "selected tab style is missing"
+        )
+        _check(
+            tab_bar.has_theme_stylebox_override("tab_unselected"),
+            "unselected tab style is missing"
+        )
+        _check(
+            tab_bar.get_theme_color("font_selected_color") != \
+                tab_bar.get_theme_color("font_unselected_color"),
+            "selected and unselected tab text are not visually distinct"
+        )
 
     var status_tab := panel.find_child("MCPStatusTab", true, false) as ScrollContainer
     var integrations_tab := panel.find_child("IntegrationsTab", true, false) as ScrollContainer

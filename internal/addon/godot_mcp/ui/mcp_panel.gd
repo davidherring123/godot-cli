@@ -40,6 +40,9 @@ var _install_all_button: Button
 var _integration_buttons := {}
 var _integration_mcp_labels := {}
 var _integration_skill_labels := {}
+var _key_labels: Array[Label] = []
+var _content_labels: Array[Label] = []
+var _subtitle_label: Label
 
 func _init(backend_supervisor: BackendSupervisor) -> void:
     _supervisor = backend_supervisor
@@ -64,6 +67,9 @@ func set_bridge_status(active: bool, port: int) -> void:
     _bridge_port = port
     _refresh()
 
+func _ready() -> void:
+    _apply_editor_theme()
+
 func _exit_tree() -> void:
     if _supervisor != null \
     and _supervisor.changed.is_connected(_refresh):
@@ -80,11 +86,11 @@ func _build_ui() -> void:
     heading.theme_type_variation = "HeaderLarge"
     add_child(heading)
 
-    var subtitle := Label.new()
-    subtitle.name = "PanelSubtitle"
-    subtitle.text = "Manage the bundled MCP backend and AI client integrations for this project."
-    subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    add_child(subtitle)
+    _subtitle_label = Label.new()
+    _subtitle_label.name = "PanelSubtitle"
+    _subtitle_label.text = "Manage the bundled MCP backend and AI client integrations for this project."
+    _subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    add_child(_subtitle_label)
 
     _tabs = TabContainer.new()
     _tabs.name = "PanelTabs"
@@ -106,6 +112,7 @@ func _build_ui() -> void:
 
     _tabs.set_tab_title(TAB_STATUS, "MCP Status")
     _tabs.set_tab_title(TAB_INTEGRATIONS, "Integrations")
+    _tabs.current_tab = TAB_STATUS
 
     _copy_reset_timer = Timer.new()
     _copy_reset_timer.one_shot = true
@@ -120,6 +127,81 @@ func _new_tab_scroll(node_name: String) -> ScrollContainer:
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     return scroll
+
+func _apply_editor_theme() -> void:
+    if _tabs == null:
+        return
+
+    var base := _editor_color("base_color", Color(0.16, 0.16, 0.16))
+    var surface := _editor_color("dark_color_1", base.darkened(0.12))
+    var inactive := _editor_color("dark_color_2", surface.darkened(0.12))
+    var hover := _editor_color("dark_color_3", inactive.lightened(0.08))
+    var accent := _editor_color("accent_color", COLOR_STARTING)
+    var text := _editor_color("font_color", Color(0.82, 0.82, 0.82))
+    var muted := _editor_color("font_disabled_color", COLOR_MUTED)
+
+    var panel_style := StyleBoxFlat.new()
+    panel_style.bg_color = surface
+    panel_style.border_color = inactive
+    panel_style.set_border_width_all(1)
+    panel_style.set_corner_radius_all(4)
+    _tabs.add_theme_stylebox_override("panel", panel_style)
+
+    var tab_bar := _tabs.get_tab_bar()
+    tab_bar.add_theme_stylebox_override(
+        "tab_selected",
+        _tab_style(surface, accent, true)
+    )
+    tab_bar.add_theme_stylebox_override(
+        "tab_unselected",
+        _tab_style(inactive, accent, false)
+    )
+    tab_bar.add_theme_stylebox_override(
+        "tab_hovered",
+        _tab_style(hover, accent, false)
+    )
+    tab_bar.add_theme_color_override("font_selected_color", text)
+    tab_bar.add_theme_color_override("font_unselected_color", muted)
+    tab_bar.add_theme_color_override("font_hovered_color", text)
+
+    var tab_font_size := tab_bar.get_theme_font_size("font_size")
+
+    if tab_font_size > 0:
+        tab_bar.add_theme_font_size_override("font_size", tab_font_size + 1)
+
+    if _subtitle_label != null:
+        _subtitle_label.add_theme_color_override("font_color", muted)
+
+    for label in _key_labels:
+        label.add_theme_color_override("font_color", muted)
+
+    var body_font_size := get_theme_font_size("font_size", "Label")
+
+    if body_font_size > 0:
+        for label in _content_labels:
+            label.add_theme_font_size_override("font_size", body_font_size + 1)
+
+func _editor_color(color_name: String, fallback: Color) -> Color:
+    if has_theme_color(color_name, "Editor"):
+        return get_theme_color(color_name, "Editor")
+
+    return fallback
+
+func _tab_style(
+    background: Color,
+    accent: Color,
+    selected: bool
+) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = background
+    style.set_corner_radius_all(4)
+    style.set_content_margin_all(10)
+
+    if selected:
+        style.border_color = accent
+        style.border_width_top = 2
+
+    return style
 
 func _new_tab_layout(
     scroll: ScrollContainer,
@@ -252,6 +334,7 @@ func _build_integrations_tab(layout: VBoxContainer) -> void:
     integration_hint.text = \
         "Install the MCP server registration and workflow skill for each client."
     integration_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _content_labels.append(integration_hint)
     layout.add_child(integration_hint)
 
     _integration_error_banner = _build_integration_error_banner()
@@ -362,6 +445,8 @@ func _add_integration_row(
     client_label.name = "%sLabel" % _client_node_prefix(client_id)
     client_label.text = label_text
     client_label.tooltip_text = "Install MCP and workflow-skill support for %s." % label_text
+    client_label.theme_type_variation = "HeaderSmall"
+    _content_labels.append(client_label)
     grid.add_child(client_label)
 
     var mcp_label := _new_value_label(
@@ -401,6 +486,7 @@ func _new_value_label(node_name: String) -> Label:
     var label := Label.new()
     label.name = node_name
     label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _content_labels.append(label)
     return label
 
 func _add_row(
@@ -413,6 +499,8 @@ func _add_row(
     key.text = label_text
     key.custom_minimum_size.x = 132
     key.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+    _key_labels.append(key)
+    _content_labels.append(key)
     grid.add_child(key)
 
     value.name = value_name
