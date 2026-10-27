@@ -1,11 +1,11 @@
 ---
 name: godot-cli
-description: Optional workflow guidance for building and editing Godot projects with the godot-cli MCP server.
+description: Optional workflow guidance for building and editing Godot projects with the Godot MCP server.
 ---
 
-# godot-cli workflow
+# Godot MCP workflow
 
-Use godot-cli MCP tools for supported semantic inspection and mutation of scenes,
+Use the Godot MCP tools for supported semantic inspection and mutation of scenes,
 nodes, resources, project settings, and the Input Map. Tool descriptions and
 schemas are authoritative for exact names, arguments, and results.
 

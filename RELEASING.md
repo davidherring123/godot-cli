@@ -2,7 +2,9 @@
 
 godot-cli releases are installable Godot addon archives. They contain the
 canonical GDScript addon and prebuilt `godot-mcp-host` binaries, so **end users
-do not need Go** or a separate CLI installation.
+do not need Go** or a separate host installation. Users install the archive and
+configure AI clients from the editor's **Godot MCP** panel; there is no public
+`godot-cli` command to run.
 
 ## Build
 
@@ -53,21 +55,27 @@ addons/godot_cli/
   bin/windows-x86_64/godot-mcp-host.exe
 ```
 
-The GDScript files come from `internal/addon/godot_cli`, the same canonical
-tree `godot-cli init` installs. Universal archives contain every binary above;
+The GDScript files come from `internal/addon/godot_cli`, the canonical addon
+tree packaged into every archive. Universal archives contain every binary above;
 per-platform archives contain only their own `bin/<os>-<arch>/` directory. Host
 binaries are executable (`0755`) in both tar and ZIP archives.
 
-A launcher or MCP client can invoke the host for the current machine directly:
+The packaged host is a private implementation detail of the addon. Its command
+surface is limited to `serve`, `connect`, `integrations`, and `version`:
 
-```sh
-addons/godot_cli/bin/<os>-<arch>/godot-mcp-host connect --project /path/to/game
-```
+- `serve` runs the loopback Streamable HTTP backend started by the **Godot MCP**
+  panel.
+- `connect` runs the stdio MCP server written into generated client
+  configuration as `<host> connect --project <absolute-project-root>`.
+- `integrations status|install <opencode|claude|codex|all>` manages
+  project-scoped client configuration and the portable skill.
+- `version` reports the released host version.
 
-`connect` is the stable stdio entrypoint used by client configuration. The
-addon starts the same binary with `serve` for its private loopback HTTP
-endpoint; `integrations status|install --project` and `version` are the only
-other host commands. On Windows the file is `godot-mcp-host.exe`.
+No `init`, editor launch, scene, node, resource, project, Input Map, validation,
+runtime, or generic MCP command is exposed to users. Client configuration is
+installed from the panel, not typed by hand.
+
+On Windows the host file is `godot-mcp-host.exe`.
 
 ## Install options
 
@@ -106,6 +114,14 @@ godotenv addons install
 ```
 
 GodotEnv copies the archive's addon tree into the project; Go is not required.
+
+## After installation
+
+Enable **Godot CLI** in **Project Settings > Plugins**. The addon starts its
+bundled backend when enabled and adds the **Godot MCP** bottom panel. AI client
+configuration is project-scoped and is installed from that panel with
+**Refresh Status**, **Install**, **Repair**, or **Install All**. No project
+installer or public CLI command is part of the user flow.
 
 ## Limitations
 
