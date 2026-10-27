@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/internal/port/editorinstance"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
 )
 
 const HOST = "127.0.0.1"

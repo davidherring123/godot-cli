@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/agent/mcp"
-	"github.com/davidherring123/godot-cli/internal/core"
-	"github.com/davidherring123/godot-cli/internal/core/scene"
-	"github.com/davidherring123/godot-cli/tests/harness"
+	"github.com/davidherring123/godot-mcp/internal/agent/mcp"
+	"github.com/davidherring123/godot-mcp/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/core/scene"
+	"github.com/davidherring123/godot-mcp/tests/harness"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

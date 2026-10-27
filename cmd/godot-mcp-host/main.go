@@ -10,8 +10,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/davidherring123/godot-cli/internal/compose"
-	"github.com/davidherring123/godot-cli/internal/hostcmd"
+	"github.com/davidherring123/godot-mcp/internal/compose"
+	"github.com/davidherring123/godot-mcp/internal/hostcmd"
 )
 
 // VERSION is replaced with -ldflags "-X main.VERSION=..." in release builds.

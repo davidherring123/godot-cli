@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const verifierPrefix = "GODOT_CLI_BENCHMARK_RESULT:"
+const verifierPrefix = "GODOT_MCP_BENCHMARK_RESULT:"
 
 type probeResult struct {
 	Loaded bool         `json:"loaded"`

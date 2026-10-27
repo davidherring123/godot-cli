@@ -4,7 +4,7 @@ package settings
 import (
 	"encoding/json"
 
-	"github.com/davidherring123/godot-cli/internal/model/property"
+	"github.com/davidherring123/godot-mcp/internal/model/property"
 )
 
 type ListParams struct {

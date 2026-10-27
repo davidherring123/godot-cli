@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/compose"
+	"github.com/davidherring123/godot-mcp/internal/compose"
 )
 
 const (

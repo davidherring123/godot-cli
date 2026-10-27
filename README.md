@@ -50,7 +50,7 @@ GodotEnv:
 {
   "addons": {
     "godot_mcp": {
-      "url": "https://github.com/davidherring123/godot-cli/releases/download/v0.1.0/godot-mcp-addon-v0.1.0.zip",
+      "url": "https://github.com/davidherring123/godot-mcp/releases/download/<version>/godot-mcp-addon-<version>.zip",
       "source": "zip",
       "subfolder": "addons/godot_mcp"
     }

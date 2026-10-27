@@ -1,4 +1,4 @@
-module github.com/davidherring123/godot-cli
+module github.com/davidherring123/godot-mcp
 
 go 1.25.8
 

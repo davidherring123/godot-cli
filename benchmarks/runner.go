@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/addon"
-	agentmcp "github.com/davidherring123/godot-cli/internal/agent/mcp"
+	"github.com/davidherring123/godot-mcp/internal/addon"
+	agentmcp "github.com/davidherring123/godot-mcp/internal/agent/mcp"
 )
 
 //go:embed benchmark_skill.md

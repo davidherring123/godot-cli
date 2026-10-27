@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/addon"
+	"github.com/davidherring123/godot-mcp/internal/addon"
 )
 
 const pluginPath = "res://addons/godot_mcp/plugin.cfg"

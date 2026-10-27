@@ -4,7 +4,7 @@ package runtime
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/protocol/artifact"
+	"github.com/davidherring123/godot-mcp/internal/protocol/artifact"
 )
 
 const (

@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/release"
+	"github.com/davidherring123/godot-mcp/internal/release"
 )
 
 const canonicalAddonDir = "../../internal/addon/godot_mcp"

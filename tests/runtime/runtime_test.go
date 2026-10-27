@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	gdruntime "github.com/davidherring123/godot-cli/internal/core/project/runtime"
+	gdruntime "github.com/davidherring123/godot-mcp/internal/core/project/runtime"
 )
 
-const runtimeHelperEnv = "GODOT_CLI_RUNTIME_TEST_HELPER"
+const runtimeHelperEnv = "GODOT_MCP_RUNTIME_TEST_HELPER"
 
 // TestRuntimeHelperProcess is a long-lived child used by lifecycle tests that
 // need a real PID without launching Godot.

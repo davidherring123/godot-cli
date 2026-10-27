@@ -5,7 +5,7 @@ package batch
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
 )
 
 // MaxOperations is the maximum number of operations accepted by one apply

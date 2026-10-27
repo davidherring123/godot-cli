@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/core"
 )
 
 // Action describes one canonical MCP action in the generated reference.

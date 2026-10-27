@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/davidherring123/godot-cli/internal/core"
-	"github.com/davidherring123/godot-cli/internal/core/project/runtime"
-	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/core/project/runtime"
+	"github.com/davidherring123/godot-mcp/internal/port/editorinstance"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

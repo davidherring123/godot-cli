@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/core"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/agent/skill"
-	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/agent/skill"
+	"github.com/davidherring123/godot-mcp/internal/core"
 )
 
 func TestGenerateReferencesEveryCoreAction(t *testing.T) {

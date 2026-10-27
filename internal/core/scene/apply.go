@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/davidherring123/godot-cli/internal/port/invocation"
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
-	"github.com/davidherring123/godot-cli/internal/support/batch"
+	"github.com/davidherring123/godot-mcp/internal/port/invocation"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/internal/support/batch"
 )
 
 const ApplyName = "scene.apply"

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/compose"
+	"github.com/davidherring123/godot-mcp/internal/compose"
 )
 
 func TestMain(m *testing.M) {

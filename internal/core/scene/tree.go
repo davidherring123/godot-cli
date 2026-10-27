@@ -1,6 +1,6 @@
 package scene
 
-import "github.com/davidherring123/godot-cli/internal/port/invocation"
+import "github.com/davidherring123/godot-mcp/internal/port/invocation"
 
 const TreeName = "scene.tree"
 

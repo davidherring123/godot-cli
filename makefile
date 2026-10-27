@@ -83,7 +83,7 @@ benchmark-smoke:
 
 clean:
 ifeq ($(OS),Windows_NT)
-	@$$target = [IO.Path]::GetFullPath('$(BIN_DIR)'); $$root = [IO.Path]::GetFullPath('.').TrimEnd('\') + '\'; if (-not $$target.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase)) { throw 'BIN_DIR must be inside the workspace' }; if (Test-Path -LiteralPath $$target) { Remove-Item -LiteralPath $$target -Recurse -Force -ErrorAction Stop }
+	@$$root = [IO.Path]::GetFullPath('.').TrimEnd('\') + '\'; foreach ($$path in @('$(BIN_DIR)', '$(DIST_DIR)')) { $$target = [IO.Path]::GetFullPath($$path); if (-not $$target.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase)) { throw "clean target must be inside the workspace: $$path" }; if (Test-Path -LiteralPath $$target) { Remove-Item -LiteralPath $$target -Recurse -Force -ErrorAction Stop } }
 else
-	rm -rf $(BIN_DIR)
+	rm -rf $(BIN_DIR) $(DIST_DIR)
 endif

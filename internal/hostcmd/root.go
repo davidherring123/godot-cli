@@ -12,9 +12,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/davidherring123/godot-cli/internal/agent/integration"
-	"github.com/davidherring123/godot-cli/internal/agent/mcp"
-	"github.com/davidherring123/godot-cli/internal/core/project"
+	"github.com/davidherring123/godot-mcp/internal/agent/integration"
+	"github.com/davidherring123/godot-mcp/internal/agent/mcp"
+	"github.com/davidherring123/godot-mcp/internal/core/project"
 	"github.com/spf13/cobra"
 )
 

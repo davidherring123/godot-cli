@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/addon"
+	"github.com/davidherring123/godot-mcp/internal/addon"
 )
 
 const mcpPanelTestScript = `extends SceneTree

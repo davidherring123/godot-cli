@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
-	"github.com/davidherring123/godot-cli/internal/core/node"
-	"github.com/davidherring123/godot-cli/internal/core/validation"
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
-	"github.com/davidherring123/godot-cli/tests/harness"
+	"github.com/davidherring123/godot-mcp/internal/adapter/bridge"
+	"github.com/davidherring123/godot-mcp/internal/core/node"
+	"github.com/davidherring123/godot-mcp/internal/core/validation"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/tests/harness"
 )
 
 func TestValidateSceneSucceeds(t *testing.T) {

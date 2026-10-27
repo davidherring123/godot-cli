@@ -9,9 +9,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/davidherring123/godot-cli/internal/addon"
-	"github.com/davidherring123/godot-cli/internal/agent/skill"
-	"github.com/davidherring123/godot-cli/internal/release"
+	"github.com/davidherring123/godot-mcp/internal/addon"
+	"github.com/davidherring123/godot-mcp/internal/agent/skill"
+	"github.com/davidherring123/godot-mcp/internal/release"
 )
 
 // ServerName is the MCP server name written to client configuration.

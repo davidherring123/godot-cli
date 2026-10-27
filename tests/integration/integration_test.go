@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/agent/integration"
-	"github.com/davidherring123/godot-cli/internal/agent/skill"
-	"github.com/davidherring123/godot-cli/internal/release"
+	"github.com/davidherring123/godot-mcp/internal/agent/integration"
+	"github.com/davidherring123/godot-mcp/internal/agent/skill"
+	"github.com/davidherring123/godot-mcp/internal/release"
 )
 
 func TestInstallAllMergesExistingConfiguration(t *testing.T) {

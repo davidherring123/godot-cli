@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/agent/integration"
-	"github.com/davidherring123/godot-cli/internal/hostcmd"
+	"github.com/davidherring123/godot-mcp/internal/agent/integration"
+	"github.com/davidherring123/godot-mcp/internal/hostcmd"
 	"github.com/spf13/cobra"
 )
 

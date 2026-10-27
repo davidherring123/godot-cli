@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
 )
 
 const (

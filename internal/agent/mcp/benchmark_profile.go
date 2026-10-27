@@ -3,7 +3,7 @@ package mcp
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/core"
 )
 
 const (

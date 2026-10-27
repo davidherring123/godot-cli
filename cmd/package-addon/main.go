@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/release"
+	"github.com/davidherring123/godot-mcp/internal/release"
 )
 
 func main() {

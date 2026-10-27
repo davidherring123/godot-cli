@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/davidherring123/godot-cli/internal/core/node"
-	"github.com/davidherring123/godot-cli/internal/core/project/editor"
-	"github.com/davidherring123/godot-cli/internal/core/project/input"
-	"github.com/davidherring123/godot-cli/internal/core/project/runtime"
-	"github.com/davidherring123/godot-cli/internal/core/project/settings"
-	"github.com/davidherring123/godot-cli/internal/core/resource"
-	"github.com/davidherring123/godot-cli/internal/core/scene"
-	"github.com/davidherring123/godot-cli/internal/core/validation"
+	"github.com/davidherring123/godot-mcp/internal/core/node"
+	"github.com/davidherring123/godot-mcp/internal/core/project/editor"
+	"github.com/davidherring123/godot-mcp/internal/core/project/input"
+	"github.com/davidherring123/godot-mcp/internal/core/project/runtime"
+	"github.com/davidherring123/godot-mcp/internal/core/project/settings"
+	"github.com/davidherring123/godot-mcp/internal/core/resource"
+	"github.com/davidherring123/godot-mcp/internal/core/scene"
+	"github.com/davidherring123/godot-mcp/internal/core/validation"
 	"github.com/invopop/jsonschema"
 )
 
