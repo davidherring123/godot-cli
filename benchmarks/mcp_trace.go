@@ -15,7 +15,7 @@ import (
 
 // mcpTraceCall is one completed tools/call record from the MCP server's JSONL
 // trace. The field names are the stable contract shared with
-// internal/agent/mcp; see --trace-file in `godot-cli mcp`.
+// internal/agent/mcp; see --trace-file on `godot-mcp-host connect`.
 type mcpTraceCall struct {
 	Tool       string          `json:"tool"`
 	Arguments  json.RawMessage `json:"arguments"`

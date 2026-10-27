@@ -6,8 +6,11 @@ package hostcmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/davidherring123/godot-cli/internal/agent/integration"
 	"github.com/davidherring123/godot-cli/internal/agent/mcp"
@@ -113,6 +116,8 @@ func NewServeCommand(version string) *cobra.Command {
 // configuration.
 func NewConnectCommand(version string) *cobra.Command {
 	var projectPath string
+	var tracePath string
+	var benchmarkProfile string
 
 	cmd := &cobra.Command{
 		Use:   "connect",
@@ -130,10 +135,38 @@ func NewConnectCommand(version string) *cobra.Command {
 				return err
 			}
 
-			return mcp.RunStdio(cmd.Context(), mcp.Options{
-				Version:     version,
-				ProjectRoot: resolved.Root,
-			})
+			traceFile, err := openTraceFile(tracePath)
+			if err != nil {
+				return err
+			}
+
+			options := mcp.Options{
+				Version:          version,
+				ProjectRoot:      resolved.Root,
+				BenchmarkProfile: benchmarkProfile,
+			}
+
+			if traceFile != nil {
+				options.TraceWriter = traceFile
+			}
+
+			runErr := mcp.RunStdio(cmd.Context(), options)
+
+			if traceFile == nil {
+				return runErr
+			}
+
+			// Report delayed write errors instead of losing them with the file
+			// handle. They do not change the result of any tool call.
+			if err := traceFile.Sync(); err != nil {
+				runErr = errors.Join(runErr, fmt.Errorf("syncing trace file: %w", err))
+			}
+
+			if err := traceFile.Close(); err != nil {
+				runErr = errors.Join(runErr, fmt.Errorf("closing trace file: %w", err))
+			}
+
+			return runErr
 		},
 	}
 
@@ -143,8 +176,40 @@ func NewConnectCommand(version string) *cobra.Command {
 		"",
 		"Godot project directory or any path inside it; defaults to the current directory",
 	)
+	cmd.Flags().StringVar(
+		&tracePath,
+		"trace-file",
+		"",
+		"Append one JSON object per completed MCP tool call to this JSONL file; disabled by default",
+	)
+	_ = cmd.Flags().MarkHidden("trace-file")
+	cmd.Flags().StringVar(
+		&benchmarkProfile,
+		"benchmark-profile",
+		"",
+		"Select a controlled MCP benchmark surface",
+	)
+	_ = cmd.Flags().MarkHidden("benchmark-profile")
 
 	return cmd
+}
+
+func openTraceFile(path string) (*os.File, error) {
+	if path == "" {
+		return nil, nil
+	}
+
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("resolving trace file %q: %w", path, err)
+	}
+
+	file, err := os.OpenFile(absolute, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("opening trace file %q: %w", absolute, err)
+	}
+
+	return file, nil
 }
 
 // NewIntegrationsCommand exposes the project-scoped client integration status

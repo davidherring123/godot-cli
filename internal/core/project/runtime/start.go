@@ -2,6 +2,7 @@ package runtime
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/davidherring123/godot-cli/internal/core/project/scenepath"
 	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
-	"github.com/davidherring123/godot-cli/internal/port/godot"
 	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
 )
 
@@ -165,13 +165,63 @@ func Start(projectRoot string, params StartParams) (StatusResult, error) {
 
 func runtimeGodotExecutable(projectRoot string) (string, error) {
 	instance, err := editorinstance.Find(projectRoot)
-	if err == nil && instance.Executable != "" {
-		if info, statErr := os.Stat(instance.Executable); statErr == nil && !info.IsDir() {
-			return instance.Executable, nil
+	if err != nil {
+		switch {
+		case errors.Is(err, editorinstance.ErrNoEditor):
+			return "", newError(
+				string(apierr.CodeFailedPrecondition),
+				"runtime.start requires a running Godot editor with the godot-cli addon registered for this project; open the project in Godot with the addon enabled, then retry",
+			)
+		case errors.Is(err, editorinstance.ErrMultipleEditors):
+			return "", newError(
+				string(apierr.CodeFailedPrecondition),
+				"runtime.start requires exactly one running Godot editor for this project; close the extra editor windows, then retry",
+			)
+		default:
+			return "", newError(
+				string(apierr.CodeInternalError),
+				"discovering the running Godot editor: %v",
+				err,
+			)
 		}
 	}
 
-	return godot.FindExecutable()
+	executable := strings.TrimSpace(instance.Executable)
+
+	if executable == "" {
+		return "", newError(
+			string(apierr.CodeFailedPrecondition),
+			"the running Godot editor did not report an executable path; restart Godot after installing or updating the godot-cli addon, then retry",
+		)
+	}
+
+	info, statErr := os.Stat(executable)
+	if statErr != nil {
+		return "", newError(
+			string(apierr.CodeFailedPrecondition),
+			"the Godot executable reported by the running editor is unavailable (%s): %v; restart Godot from a valid Godot 4 installation, then retry",
+			executable,
+			statErr,
+		)
+	}
+
+	if !info.Mode().IsRegular() {
+		return "", newError(
+			string(apierr.CodeFailedPrecondition),
+			"the Godot executable reported by the running editor is not a regular file (%s); restart Godot from a valid Godot 4 installation, then retry",
+			executable,
+		)
+	}
+
+	if os.PathSeparator != '\\' && info.Mode().Perm()&0o111 == 0 {
+		return "", newError(
+			string(apierr.CodeFailedPrecondition),
+			"the Godot executable reported by the running editor is not executable (%s); restart Godot from a valid Godot 4 installation, then retry",
+			executable,
+		)
+	}
+
+	return executable, nil
 }
 
 func waitForReady(

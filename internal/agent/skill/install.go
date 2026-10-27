@@ -1,25 +1,15 @@
+// Package skill owns the portable agent skill and generates its action
+// reference from the core action registry.
 package skill
 
 import (
 	_ "embed"
-	"fmt"
 	"os"
 	"path/filepath"
 )
 
 //go:embed skill_template.md
 var skillTemplate string
-
-func ValidateNames(targets []string) error {
-	for _, target := range targets {
-		switch target {
-		case "codex", "opencode":
-		default:
-			return fmt.Errorf("unsupported/unknown agent %q (supported: codex, opencode)", target)
-		}
-	}
-	return nil
-}
 
 // Content returns the canonical portable skill template.
 func Content() []byte {

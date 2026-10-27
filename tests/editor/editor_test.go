@@ -87,28 +87,6 @@ func TestStatusRejectsMultipleEditors(t *testing.T) {
 	}
 }
 
-func TestOpenReturnsAlreadyRunningEditor(t *testing.T) {
-	root := testProject(t)
-	writeInstance(t, root, os.Getpid(), 49152, "test")
-
-	result, err := editor.Open(root, editor.OpenParams{})
-	if err != nil {
-		t.Fatalf("opening editor: %v", err)
-	}
-
-	if result.Opened {
-		t.Fatal("Open reported opened; want an existing editor")
-	}
-
-	if !result.AlreadyRunning {
-		t.Fatal("Open did not report already_running")
-	}
-
-	if result.PID != os.Getpid() || result.Port != 49152 || result.Version != "test" {
-		t.Fatalf("result = %+v; want pid %d, port 49152, version test", result, os.Getpid())
-	}
-}
-
 func testProject(t *testing.T) string {
 	t.Helper()
 

@@ -1,5 +1,5 @@
-BINARY := godot-cli
-CMD := ./cmd/godot-cli
+BINARY := godot-mcp-host
+CMD := ./cmd/godot-mcp-host
 BIN_DIR := ./bin
 DIST_DIR := ./dist
 INSTALL_DIR := $(HOME)/.local/bin
@@ -23,7 +23,7 @@ BENCHMARK_ARGS ?=
 ifeq ($(OS),Windows_NT)
 SHELL := powershell.exe
 .SHELLFLAGS := -NoProfile -NonInteractive -Command
-BINARY := godot-cli.exe
+BINARY := godot-mcp-host.exe
 INSTALL_DIR := $(USERPROFILE)/.local/bin
 endif
 

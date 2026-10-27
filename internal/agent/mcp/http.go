@@ -114,7 +114,7 @@ func RunHTTP(ctx context.Context, options Options) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	fmt.Fprintf(os.Stderr, "godot-cli mcp: serving Streamable HTTP at %s\n", state.URL)
+	fmt.Fprintf(os.Stderr, "godot-mcp-host: serving Streamable HTTP at %s\n", state.URL)
 
 	serveErr := make(chan error, 1)
 

@@ -476,11 +476,11 @@ func prepareRun(
 	tracePath := ""
 	mcpConfigPath := ""
 	if options.Approach == approachMCP {
-		cliPath := filepath.Join(tempDir, "godot-cli")
+		hostPath := filepath.Join(tempDir, "godot-mcp-host")
 
-		logf("Building godot-cli")
+		logf("Building godot-mcp-host")
 
-		if err := buildBinary(repositoryRoot, cliPath, "./cmd/godot-cli"); err != nil {
+		if err := buildBinary(repositoryRoot, hostPath, "./cmd/godot-mcp-host"); err != nil {
 			return preparedRun{}, err
 		}
 		if err := addon.Install(projectRoot); err != nil {
@@ -496,7 +496,7 @@ func prepareRun(
 		tracePath = filepath.Join(tempDir, "mcp-trace.jsonl")
 		logf("Configuring isolated godot MCP server")
 
-		mcpConfigPath, err = writeMCPConfig(projectRoot, cliPath, tracePath, options.MCPProfile)
+		mcpConfigPath, err = writeMCPConfig(projectRoot, hostPath, tracePath, options.MCPProfile)
 		if err != nil {
 			return preparedRun{}, fmt.Errorf("configuring godot MCP server: %w", err)
 		}
@@ -590,7 +590,7 @@ func writeMCPConfig(
 	}
 	command := []string{
 		binary,
-		"mcp",
+		"connect",
 		"--project",
 		root,
 		"--trace-file",

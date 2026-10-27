@@ -113,6 +113,18 @@ func TestConnectCommandIsStableStdioEntrypoint(t *testing.T) {
 	if flag := connect.Flags().Lookup("project"); flag == nil {
 		t.Error("connect is missing --project")
 	}
+
+	for _, name := range []string{"trace-file", "benchmark-profile"} {
+		flag := connect.Flags().Lookup(name)
+		if flag == nil {
+			t.Errorf("connect is missing the benchmark-only --%s flag", name)
+			continue
+		}
+
+		if !flag.Hidden {
+			t.Errorf("connect --%s is visible in user-facing help", name)
+		}
+	}
 }
 
 func TestIntegrationsCommandSurface(t *testing.T) {
@@ -219,6 +231,28 @@ func TestIntegrationCommandsPrintJSON(t *testing.T) {
 		if !client.Configured || !client.UpToDate {
 			t.Errorf("%s status = %+v", client.Client, client)
 		}
+	}
+}
+
+func TestRepositoryExposesOnlyPrivateHostEntrypoints(t *testing.T) {
+	entries, err := os.ReadDir(filepath.Join("..", "..", "cmd"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got []string
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			got = append(got, entry.Name())
+		}
+	}
+
+	sort.Strings(got)
+
+	want := []string{"godot-mcp-host", "package-addon"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("cmd entrypoints = %v, want %v", got, want)
 	}
 }
 
