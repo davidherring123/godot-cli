@@ -30,7 +30,7 @@ addon: installation, client setup, and day-to-day use all start in the editor.
 - A supported platform with a bundled host: macOS arm64/x86_64, Linux
   x86_64/arm64, or Windows x86_64.
 
-Go is only required to build `godot-cli` from source. End users do not need Go,
+Go is only required to build the addon host from source. End users do not need Go,
 a separately installed binary, or any terminal setup.
 
 ## Installation

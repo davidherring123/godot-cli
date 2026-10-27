@@ -29,8 +29,8 @@ const (
 func NewRootCommand(version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   commandName,
-		Short: "Private MCP host managed by the godot-cli editor addon",
-		Long: "Serve the godot-cli MCP tools for a single Godot project. " +
+		Short: "Private MCP host managed by the Godot MCP editor addon",
+		Long: "Serve the Godot MCP tools for a single Godot project. " +
 			"This executable is bundled with the addon: the editor starts and stops the HTTP endpoint, " +
 			"and AI clients launch the stable stdio entrypoint written into their project configuration.",
 		Version:       version,
@@ -63,7 +63,7 @@ func NewServeCommand(version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
 		Short: "Serve the editor-managed MCP endpoint on loopback",
-		Long: "Serve the godot-cli MCP tools over Streamable HTTP for the Godot editor addon. " +
+		Long: "Serve the Godot MCP tools over Streamable HTTP for the Godot editor addon. " +
 			"The endpoint is always loopback-only; the addon passes a state file so it can discover " +
 			"the bound URL and process ID. Use connect for a stdio client configuration.",
 		Example: commandName + " serve --project C:/Projects/MyGame --state-file .godot/godot-cli/mcp/backend-1234.json",
@@ -122,10 +122,10 @@ func NewConnectCommand(version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "connect",
 		Short: "Serve the MCP server over stdio for one Godot project",
-		Long: "Serve the godot-cli MCP tools over stdio for one Godot project. " +
+		Long: "Serve the Godot MCP tools over stdio for one Godot project. " +
 			"This is the stable entrypoint written into AI client configuration. " +
 			"Pass --project, or start it from anywhere inside the project. " +
-			"Live-editor tools require a running Godot 4 editor with the godot-cli addon installed. " +
+			"Live-editor tools require a running Godot 4 editor with the Godot MCP addon installed. " +
 			"stdout is reserved for MCP messages; diagnostics are written to stderr.",
 		Example: commandName + " connect --project C:/Projects/MyGame",
 		Args:    cobra.NoArgs,

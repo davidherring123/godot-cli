@@ -82,7 +82,7 @@ func NewServer(options Options) (*mcpgo.Server, error) {
 			Name:        "godot-cli",
 			Title:       "godot-cli",
 			Version:     version,
-			Description: "Inspect and edit a local Godot project through the godot-cli editor bridge.",
+			Description: "Inspect and edit a local Godot project through the Godot MCP editor bridge.",
 		},
 		&mcpgo.ServerOptions{Instructions: instructions},
 	)

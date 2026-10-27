@@ -63,7 +63,7 @@ internal/release/              reproducible addon release packaging
 internal/adapter/
   bridge/          TCP editor transport and instance-file discovery
 
-internal/cli/      private host command parsing only
+internal/hostcmd/  private host command parsing only
 internal/agent/
   mcp/             MCP server, transports, tool registration
   integration/     project-scoped AI client configuration
@@ -184,7 +184,7 @@ than running an installer command.
 
 ## Layers and invariants
 
-- `internal/cli` — private host command parsing only: `serve`, `connect`,
+- `internal/hostcmd` — private host command parsing only: `serve`, `connect`,
   `integrations`, and `version`. It must not expose project actions as user
   commands, contain editor logic, or import transport types directly.
 - `internal/core/<node|scene|resource|validation>` and the project-scoped

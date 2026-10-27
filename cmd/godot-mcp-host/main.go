@@ -1,5 +1,5 @@
 // Command godot-mcp-host serves MCP for a Godot project on behalf of the
-// godot-cli editor addon. It is bundled in release addons and is the only
+// Godot MCP editor addon. It is bundled in release addons and is the only
 // shipped Go entrypoint besides the contributor-only release packager.
 package main
 
