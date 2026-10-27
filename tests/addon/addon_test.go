@@ -49,6 +49,7 @@ func TestInstallIncludesMCPPanel(t *testing.T) {
 
 	for _, relative := range []string{
 		"mcp/backend_supervisor.gd",
+		"mcp/integration_manager.gd",
 		"ui/mcp_panel.gd",
 	} {
 		path := filepath.Join(addon.Path(root), filepath.FromSlash(relative))
@@ -71,7 +72,7 @@ func TestInstallIncludesMCPPanel(t *testing.T) {
 	for _, expected := range []string{
 		"mcp/backend_supervisor.gd",
 		"ui/mcp_panel.gd",
-		"add_control_to_bottom_panel(mcp_panel, \"MCP\")",
+		"add_control_to_bottom_panel(mcp_panel, \"Godot MCP\")",
 		"mcp_backend.poll(delta)",
 	} {
 		if !strings.Contains(string(plugin), expected) {

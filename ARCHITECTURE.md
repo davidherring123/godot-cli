@@ -244,7 +244,11 @@ results are returned as both JSON text and structured content. Tool failures use
   `mcp/backend_supervisor.gd`. The supervisor starts and stops only the bundled
   `bin/<platform>-<arch>/godot-mcp-host` process it launched and uses a
   per-editor discovery file so concurrent editor instances cannot claim or
-  remove each other's backend state. The TCP bridge is unchanged and keeps
+  remove each other's backend state. `mcp/integration_manager.gd` calls the
+  bundled host directly with `integrations status|install --project <root>`
+  through captured `OS.execute` output, expects one JSON object, and gives the
+  panel per-client MCP/skill status plus Install/Repair actions for OpenCode,
+  Claude Code, and Codex. The TCP bridge is unchanged and keeps
   working when no backend bundle is present. Domain code
   lives under `core/node/`, `core/scene/`, `core/resource/`, and
   `core/project/{settings,input}/`. Shared core support
@@ -332,8 +336,10 @@ action in `All()` also exposes it as an MCP tool automatically.
   host resolution, status, and idempotent installs; no Godot process required.
 - `tests/addon` checks addon installation and runs a small headless Godot script
   that verifies deferred session history plus one-step undo/redo ordering. It
-  also checks the installed MCP panel/supervisor scripts, renders the panel
-  without a backend, and starts/stops a fake bundled host.
+  also checks the installed MCP panel/supervisor/integration scripts, renders
+  the panel without a backend, starts/stops a fake bundled host, and drives
+  integration status/install calls against a fake host to verify arguments and
+  rendered MCP/skill state.
 - `tests/invocation` — transport-neutral unit tests for `invocation.Call` and
   `apierr` code/error behavior; no Godot process required.
 - `tests/release` — addon release archive layout, file modes, and deterministic

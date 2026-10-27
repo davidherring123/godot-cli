@@ -98,6 +98,26 @@ For ordered multi-step edits within one domain, use `resource_apply`, `project_s
 
 stdout is reserved for stdio MCP messages; diagnostics are written to stderr.
 
+### Editor panel
+
+With the addon enabled, the editor's **Godot MCP** bottom panel starts and
+stops the bundled host, shows the live bridge endpoint, and manages AI-client
+integrations. **Refresh Status** reads the current MCP registration and
+workflow-skill state for OpenCode, Claude Code, and Codex. **Install**,
+**Repair**, and **Install All** update only the current project's configuration
+and skill files; existing unrelated configuration is preserved. The controls
+are disabled when the release bundle does not include a host binary.
+
+The panel invokes the bundled host directly, without a shell, and expects one
+JSON result object:
+
+```shell
+addons/godot_cli/bin/<os>-<arch>/godot-mcp-host integrations status --project /path/to/game
+addons/godot_cli/bin/<os>-<arch>/godot-mcp-host integrations install opencode --project /path/to/game
+```
+
+Install targets are `opencode`, `claude`, `codex`, and `all`.
+
 ## Installation
 
 End users need Godot 4; Go is only required to build godot-cli from source.

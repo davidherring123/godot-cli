@@ -27,7 +27,7 @@ func _enter_tree() -> void:
 
     mcp_backend = McpBackendSupervisor.new()
     mcp_panel = McpPanel.new(mcp_backend)
-    add_control_to_bottom_panel(mcp_panel, "MCP")
+    add_control_to_bottom_panel(mcp_panel, "Godot MCP")
     mcp_panel.set_bridge_status(true, bridge.get_port())
 
     # The bundled backend is an implementation detail of the addon. Start it
