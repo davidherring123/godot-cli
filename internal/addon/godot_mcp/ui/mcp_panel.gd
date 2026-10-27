@@ -195,8 +195,10 @@ func _tab_style(
     var style := StyleBoxFlat.new()
     style.bg_color = background
     style.set_corner_radius_all(4)
-    style.set_content_margin_all(10)
-    style.set_content_margin(SIDE_TOP, 14)
+    style.set_content_margin_all(12)
+    style.set_content_margin(SIDE_LEFT, 16)
+    style.set_content_margin(SIDE_TOP, 18)
+    style.set_content_margin(SIDE_RIGHT, 16)
 
     if selected:
         style.border_color = accent
