@@ -507,6 +507,7 @@ func _refresh_integration_error() -> void:
 func _refresh_integration_warning() -> void:
     _integration_warning.visible = \
         _integrations.is_status_loaded() \
+        and _integrations.last_error.is_empty() \
         and not _integrations.has_any_mcp_configured() \
         and _integrations.all_mcp_missing()
 

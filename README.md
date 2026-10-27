@@ -91,11 +91,14 @@ instructions.
 
 Open the project in Godot and use the **Godot MCP** bottom panel:
 
-1. **Refresh Status** reads the current MCP registration and workflow-skill
+1. Use **MCP Status** for backend health, endpoint details, and lifecycle
+   controls. It warns when no AI client integration is configured.
+2. Open **Integrations** to manage client registration and workflow skills.
+3. **Refresh Status** reads the current MCP registration and workflow-skill
    state for each client.
-2. **Install** or **Repair** updates one client; **Install All** updates every
+4. **Install** or **Repair** updates one client; **Install All** updates every
    supported client.
-3. **Start**, **Restart**, and **Stop** control the bundled backend. **Copy
+5. **Start**, **Restart**, and **Stop** control the bundled backend. **Copy
    Endpoint** copies the loopback Streamable HTTP endpoint when a client needs
    to connect to it directly.
 

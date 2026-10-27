@@ -165,9 +165,12 @@ status and `Copy Endpoint`. On shutdown the host removes the state file only whe
 it still owns it; a second server cannot publish to the same state path while
 the first is running.
 
-The panel's **Refresh Status**, **Install**, **Repair**, and **Install All**
-controls invoke `integrations` as a direct child process without a shell. The
-manager expects one JSON object and renders per-client MCP and skill state.
+The panel has inner **MCP Status** and **Integrations** tabs. MCP Status owns
+backend health and lifecycle controls and warns, after a successful status
+report, when no client is configured. Integrations owns **Refresh Status**,
+**Install**, **Repair**, and **Install All**; those controls invoke
+`integrations` as a direct child process without a shell. The manager expects
+one JSON object and renders per-client MCP and skill state.
 `integrations install` resolves the bundled host path, merges the client
 configuration, and installs the canonical skill. Client configurations launch
 `<host> connect --project <absolute-root>`:
