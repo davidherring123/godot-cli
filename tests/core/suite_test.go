@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/compose"
-	"github.com/davidherring123/godot-cli/tests/harness"
+	"github.com/davidherring123/godot-mcp/internal/compose"
+	"github.com/davidherring123/godot-mcp/tests/harness"
 )
 
 var (

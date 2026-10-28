@@ -1,6 +1,6 @@
 package input
 
-import "github.com/davidherring123/godot-cli/internal/protocol/apierr"
+import "github.com/davidherring123/godot-mcp/internal/protocol/apierr"
 
 const EventDeleteName = "input.event_delete"
 

@@ -1,11 +1,11 @@
 ---
-name: godot-cli
-description: Optional workflow guidance for building and editing Godot projects with the godot-cli MCP server.
+name: godot-mcp
+description: Optional workflow guidance for building and editing Godot projects with the godot-mcp MCP server.
 ---
 
-# godot-cli workflow
+# godot-mcp workflow
 
-Use godot-cli MCP tools for supported semantic inspection and mutation of scenes,
+Use godot-mcp MCP tools for supported semantic inspection and mutation of scenes,
 nodes, resources, project settings, and the Input Map. Tool descriptions and
 schemas are authoritative for exact names, arguments, and results.
 
@@ -23,8 +23,8 @@ Godot validation and can conflict with an open editor.
   path is unknown.
 - Treat mutation results as confirmation of applied values. Do not re-inspect
   solely to confirm them; inspect again only to answer a new question.
-- If a live-editor operation reports that no editor is available, use
-  `editor_open` and retry. Saved-scene validation does not require the editor.
+- If an operation reports that no editor is available, open this project in
+  Godot with the addon enabled, then retry. Scene validation requires the editor.
 
 Batch related scene and node edits. They are editor undo steps; save once on the
 last mutation or with `scene_save`, rather than after every call. Save intended
@@ -52,7 +52,7 @@ to impose these defaults.
 
 ## Validate the right claim
 
-Use saved-scene validation to check persisted loading/runtime errors and live
-validation to check the active scene, including unsaved edits. Neither proves
-that gameplay is correct or fun. Run the project or use the appropriate project
-checks when behavior matters, and report that distinction clearly.
+Use `validate_scene` to check the active editor scene, including unsaved edits,
+for script and serialization errors. It does not run the game or prove that
+gameplay is correct. Use the runtime tools when behavior matters, and report
+that distinction clearly.

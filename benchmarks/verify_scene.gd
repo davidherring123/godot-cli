@@ -1,6 +1,6 @@
 extends SceneTree
 
-const RESULT_PREFIX := "GODOT_CLI_BENCHMARK_RESULT:"
+const RESULT_PREFIX := "GODOT_MCP_BENCHMARK_RESULT:"
 
 func _initialize() -> void:
     var args := OS.get_cmdline_user_args()

@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
-	"github.com/davidherring123/godot-cli/internal/core/scene"
+	"github.com/davidherring123/godot-mcp/internal/adapter/bridge"
+	"github.com/davidherring123/godot-mcp/internal/core/scene"
 )
 
 type godotEditor struct {

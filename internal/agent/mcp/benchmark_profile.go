@@ -3,7 +3,7 @@ package mcp
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/core"
 )
 
 const (
@@ -83,8 +83,8 @@ func legacyInstructions(projectRoot string) string {
 		projectDescription = "the Godot project at " + projectRoot
 	}
 
-	return "This server inspects and edits " + projectDescription + ". Most tools use a running Godot 4 editor; " +
-		"scene_list reads saved files and validate_scene uses a separate headless Godot process.\n\n" +
+	return "This server inspects and edits " + projectDescription + ". It is managed by a running Godot 4 editor; " +
+		"validate_scene checks the active editor scene, including unsaved changes.\n\n" +
 		"Prefer these tools for supported semantic inspection and mutation of scenes, nodes, resources, " +
 		"project settings, and the Input Map. Do not parse or rewrite .tscn, .tres, or project.godot files " +
 		"by hand when a tool covers the change. Use file tools for GDScript and shader source, " +
@@ -97,11 +97,10 @@ func legacyInstructions(projectRoot string) string {
 		"Resource, project-setting, and Input Map mutations write their files immediately and are not editor undo " +
 		"steps. A mutation response reports the values that were applied and, " +
 		"for active-scene edits, whether the scene was saved; it does not confirm gameplay or runtime behavior. " +
-		"Use validation for load, script, and serialization checks and run the project for gameplay. Do not " +
+		"Use validate_scene for script and serialization checks and run the project for gameplay. Do not " +
 		"inspect again after a successful mutation unless the response omitted values you need or you are " +
 		"answering a different question.\n\n" +
 		"Use the narrowest tool directly when the target is known; skip redundant status and discovery calls. " +
-		"Live tools require a running Godot 4 editor with the godot-cli addon. If no editor is running, " +
-		"editor_open launches or reuses an editor; retry the tool afterward. If the addon is missing, run `godot-cli init` once in the " +
-		"project and restart Godot. Tool results are JSON."
+		"Live tools require a running Godot 4 editor with the godot-mcp addon. If no editor is running, " +
+		"open this project in Godot and retry. Tool results are JSON."
 }

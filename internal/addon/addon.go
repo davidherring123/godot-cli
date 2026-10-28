@@ -9,9 +9,9 @@ import (
 	"strings"
 )
 
-const addonPath = "addons/godot_cli"
+const addonPath = "addons/godot_mcp"
 
-//go:embed godot_cli
+//go:embed godot_mcp
 var embeddedFiles embed.FS
 
 func IsInstalled(projectRoot string) bool {
@@ -25,14 +25,14 @@ func IsInstalled(projectRoot string) bool {
 	return err == nil
 }
 
-// IsManaged reports whether the installed addon was installed by godot-cli.
+// IsManaged reports whether the installed addon was installed by godot-mcp.
 func IsManaged(projectRoot string) bool {
-	_, err := os.Stat(filepath.Join(Path(projectRoot), ".godot-cli-managed"))
+	_, err := os.Stat(filepath.Join(Path(projectRoot), ".godot-mcp-managed"))
 	return err == nil
 }
 
 func Install(projectRoot string) error {
-	source, err := fs.Sub(embeddedFiles, "godot_cli")
+	source, err := fs.Sub(embeddedFiles, "godot_mcp")
 	if err != nil {
 		return err
 	}
@@ -78,8 +78,8 @@ func Install(projectRoot string) error {
 	}
 
 	return os.WriteFile(
-		filepath.Join(destination, ".godot-cli-managed"),
-		[]byte("managed by godot-cli\n"),
+		filepath.Join(destination, ".godot-mcp-managed"),
+		[]byte("managed by godot-mcp\n"),
 		0644,
 	)
 }

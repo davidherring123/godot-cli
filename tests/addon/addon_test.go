@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/addon"
+	"github.com/davidherring123/godot-mcp/internal/addon"
 )
 
-const pluginPath = "res://addons/godot_cli/plugin.cfg"
+const pluginPath = "res://addons/godot_mcp/plugin.cfg"
 
 func TestInstallRemovesObsoleteManagedPaths(t *testing.T) {
 	root := writeProject(t, "[application]\n\nconfig/name=\"Test\"\n")
@@ -37,6 +37,48 @@ func TestInstallRemovesObsoleteManagedPaths(t *testing.T) {
 	newPath := filepath.Join(addon.Path(root), "core", "project", "input", "input_service.gd")
 	if _, err := os.Stat(newPath); err != nil {
 		t.Fatalf("new input service is missing: %v", err)
+	}
+}
+
+func TestInstallIncludesMCPPanel(t *testing.T) {
+	root := writeProject(t, "[application]\n\nconfig/name=\"Test\"\n")
+
+	if err := addon.Install(root); err != nil {
+		t.Fatalf("installing addon: %v", err)
+	}
+
+	for _, relative := range []string{
+		"mcp/backend_supervisor.gd",
+		"mcp/integration_manager.gd",
+		"ui/mcp_panel.gd",
+	} {
+		path := filepath.Join(addon.Path(root), filepath.FromSlash(relative))
+
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("installed addon is missing %s: %v", relative, err)
+		}
+
+		if info.Size() == 0 {
+			t.Fatalf("installed addon file %s is empty", relative)
+		}
+	}
+
+	plugin, err := os.ReadFile(filepath.Join(addon.Path(root), "plugin.gd"))
+	if err != nil {
+		t.Fatalf("reading installed plugin: %v", err)
+	}
+
+	for _, expected := range []string{
+		"mcp/backend_supervisor.gd",
+		"ui/mcp_panel.gd",
+		"add_control_to_bottom_panel(mcp_panel, \"Godot MCP\")",
+		"mcp_backend.poll(delta)",
+		"OS.get_executable_path()",
+	} {
+		if !strings.Contains(string(plugin), expected) {
+			t.Fatalf("installed plugin is missing %q:\n%s", expected, plugin)
+		}
 	}
 }
 
@@ -112,7 +154,7 @@ func TestEnablePreservesExistingPlugins(t *testing.T) {
 	}
 
 	if !strings.Contains(content, pluginPath) {
-		t.Fatalf("godot-cli plugin was not added:\n%s", content)
+		t.Fatalf("godot-mcp plugin was not added:\n%s", content)
 	}
 }
 
@@ -155,7 +197,7 @@ func TestEnableSpacedEnabledAssignment(t *testing.T) {
 	}
 
 	if !strings.Contains(content, pluginPath) {
-		t.Fatalf("godot-cli plugin was not added:\n%s", content)
+		t.Fatalf("godot-mcp plugin was not added:\n%s", content)
 	}
 
 	if !strings.Contains(content, "config/name=\"Test\"") {
@@ -193,7 +235,7 @@ func TestEnableEmptyArray(t *testing.T) {
 	}
 
 	if content := readProject(t, root); !strings.Contains(content, pluginPath) {
-		t.Fatalf("godot-cli plugin was not added:\n%s", content)
+		t.Fatalf("godot-mcp plugin was not added:\n%s", content)
 	}
 }
 
@@ -207,7 +249,7 @@ func TestEnableMissingKey(t *testing.T) {
 	content := readProject(t, root)
 
 	if !strings.Contains(content, pluginPath) {
-		t.Fatalf("godot-cli plugin was not added:\n%s", content)
+		t.Fatalf("godot-mcp plugin was not added:\n%s", content)
 	}
 
 	section := content[strings.Index(content, "[editor_plugins]"):]

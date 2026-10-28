@@ -3,7 +3,7 @@ package input
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/support/batch"
+	"github.com/davidherring123/godot-mcp/internal/support/batch"
 )
 
 // ApplyName is the ordered Input Map batch action. The CLI exposes it as

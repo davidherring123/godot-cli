@@ -1,7 +1,7 @@
 // Package editorinstance defines the neutral model and discovery port for
 // running Godot editor registrations.
 //
-// The addon writes .godot/godot-cli/instances/<pid>.json. An adapter provides
+// The addon writes .godot/godot-mcp/instances/<pid>.json. An adapter provides
 // the filesystem/process implementation; domain packages only depend on this
 // port.
 package editorinstance
@@ -20,10 +20,11 @@ var (
 
 // Instance is one editor registration.
 type Instance struct {
-	PID     int    `json:"pid"`
-	Port    int    `json:"port"`
-	Project string `json:"project"`
-	Version string `json:"version"`
+	PID        int    `json:"pid"`
+	Port       int    `json:"port"`
+	Project    string `json:"project"`
+	Version    string `json:"version"`
+	Executable string `json:"executable,omitempty"`
 }
 
 // Finder discovers the single running editor registered for a project.

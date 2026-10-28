@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/core"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -173,7 +173,7 @@ func TestMCPLiveDomainBatchDryRunAndErrors(t *testing.T) {
 			"operations": []any{
 				map[string]any{
 					"operation": "set",
-					"setting":   "godot_cli/mcp_missing",
+					"setting":   "godot_mcp/mcp_missing",
 					"value":     1,
 				},
 			},

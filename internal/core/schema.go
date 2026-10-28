@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/davidherring123/godot-cli/internal/core/node"
-	"github.com/davidherring123/godot-cli/internal/core/project/editor"
-	"github.com/davidherring123/godot-cli/internal/core/project/input"
-	"github.com/davidherring123/godot-cli/internal/core/project/runtime"
-	"github.com/davidherring123/godot-cli/internal/core/project/settings"
-	"github.com/davidherring123/godot-cli/internal/core/resource"
-	"github.com/davidherring123/godot-cli/internal/core/scene"
-	"github.com/davidherring123/godot-cli/internal/core/validation"
+	"github.com/davidherring123/godot-mcp/internal/core/node"
+	"github.com/davidherring123/godot-mcp/internal/core/project/editor"
+	"github.com/davidherring123/godot-mcp/internal/core/project/input"
+	"github.com/davidherring123/godot-mcp/internal/core/project/runtime"
+	"github.com/davidherring123/godot-mcp/internal/core/project/settings"
+	"github.com/davidherring123/godot-mcp/internal/core/resource"
+	"github.com/davidherring123/godot-mcp/internal/core/scene"
+	"github.com/davidherring123/godot-mcp/internal/core/validation"
 	"github.com/invopop/jsonschema"
 )
 
@@ -126,15 +126,9 @@ func define[P, R any](
 }
 
 var (
-	EditorOpen = define[editor.OpenParams, editor.OpenResult](
-		editor.OpenName,
-		"Open the Godot editor for this project and wait for the godot-cli addon to connect",
-		editor.Open,
-		withAdditive(),
-	)
 	EditorStatus = define[editor.StatusParams, editor.StatusResult](
 		editor.StatusName,
-		"Show whether a Godot editor with the godot-cli addon is running for this project",
+		"Show whether a Godot editor with the godot-mcp addon is running for this project",
 		editor.Status,
 		withReadOnly(),
 	)
@@ -149,15 +143,9 @@ var (
 		"Apply 1-100 ordered node operations to the active scene as one atomic undo step, with best-effort prevalidation, optional dry_run, and deferred history registration",
 		scene.Apply,
 	)
-	ValidateLive = define[validate.LiveParams, validate.LiveResult](
-		validate.LiveName,
-		"Validate the active editor scene, including unsaved state",
-		validate.Live,
-		withReadOnly(),
-	)
-	ValidateScene = define[validate.SceneParams, validate.RunResult](
+	ValidateScene = define[validate.SceneParams, validate.SceneResult](
 		validate.SceneName,
-		"Validate a scene by loading and running it briefly in a fresh headless Godot process",
+		"Validate the active editor scene, including unsaved changes, without saving, opening, or switching scenes",
 		validate.Scene,
 		withReadOnly(),
 	)
@@ -269,7 +257,6 @@ var (
 
 func All() []ActionDefinition {
 	return []ActionDefinition{
-		EditorOpen,
 		EditorStatus,
 		SceneList,
 		SceneCurrent,
@@ -278,7 +265,6 @@ func All() []ActionDefinition {
 		SceneSave,
 		SceneTree,
 		SceneApply,
-		ValidateLive,
 		ValidateScene,
 		NodeInspect,
 		NodeSet,

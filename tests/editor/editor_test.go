@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core/project/editor"
-	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
+	"github.com/davidherring123/godot-mcp/internal/core/project/editor"
+	"github.com/davidherring123/godot-mcp/internal/port/editorinstance"
 )
 
 // deadPID is above every supported platform's maximum PID so liveness checks
@@ -87,28 +87,6 @@ func TestStatusRejectsMultipleEditors(t *testing.T) {
 	}
 }
 
-func TestOpenReturnsAlreadyRunningEditor(t *testing.T) {
-	root := testProject(t)
-	writeInstance(t, root, os.Getpid(), 49152, "test")
-
-	result, err := editor.Open(root, editor.OpenParams{})
-	if err != nil {
-		t.Fatalf("opening editor: %v", err)
-	}
-
-	if result.Opened {
-		t.Fatal("Open reported opened; want an existing editor")
-	}
-
-	if !result.AlreadyRunning {
-		t.Fatal("Open did not report already_running")
-	}
-
-	if result.PID != os.Getpid() || result.Port != 49152 || result.Version != "test" {
-		t.Fatalf("result = %+v; want pid %d, port 49152, version test", result, os.Getpid())
-	}
-}
-
 func testProject(t *testing.T) string {
 	t.Helper()
 
@@ -128,7 +106,7 @@ func testProject(t *testing.T) string {
 func writeInstance(t *testing.T, root string, pid int, port int, version string) {
 	t.Helper()
 
-	dir := filepath.Join(root, ".godot", "godot-cli", "instances")
+	dir := filepath.Join(root, ".godot", "godot-mcp", "instances")
 
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatal(err)

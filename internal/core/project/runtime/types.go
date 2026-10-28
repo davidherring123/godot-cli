@@ -4,7 +4,7 @@ package runtime
 import (
 	"fmt"
 
-	"github.com/davidherring123/godot-cli/internal/protocol/artifact"
+	"github.com/davidherring123/godot-mcp/internal/protocol/artifact"
 )
 
 const (
@@ -105,7 +105,7 @@ type CaptureParams struct {
 // Image as image content when it fits the embedding limit.
 type CaptureResult struct {
 	Session    string `json:"session" jsonschema:"description=Runtime session ID."`
-	Artifact   string `json:"artifact" jsonschema:"description=Project-relative res:// path to the PNG under .godot/godot-cli/runtime."`
+	Artifact   string `json:"artifact" jsonschema:"description=Project-relative res:// path to the PNG under .godot/godot-mcp/runtime."`
 	MIMEType   string `json:"mime_type" jsonschema:"description=Image MIME type, currently image/png."`
 	Width      int    `json:"width" jsonschema:"description=Image width in pixels."`
 	Height     int    `json:"height" jsonschema:"description=Image height in pixels."`

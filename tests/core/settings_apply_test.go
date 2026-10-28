@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
-	"github.com/davidherring123/godot-cli/internal/core/project/settings"
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
-	"github.com/davidherring123/godot-cli/internal/support/batch"
-	"github.com/davidherring123/godot-cli/tests/harness"
+	"github.com/davidherring123/godot-mcp/internal/adapter/bridge"
+	"github.com/davidherring123/godot-mcp/internal/core/project/settings"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/internal/support/batch"
+	"github.com/davidherring123/godot-mcp/tests/harness"
 )
 
 func TestProjectSettingsApplyDryRunAndApply(t *testing.T) {
@@ -103,7 +103,7 @@ func TestProjectSettingsApplyFailureRollsBackWithoutSaving(t *testing.T) {
 	restoreSetting(t, session, viewportWidthSetting)
 
 	before := readProjectFile(t, session)
-	missing := "godot_cli/apply_missing"
+	missing := "godot_mcp/apply_missing"
 
 	_, err := settings.Apply(session.Root(), settings.ApplyParams{
 		Operations: []settings.ApplyOperation{

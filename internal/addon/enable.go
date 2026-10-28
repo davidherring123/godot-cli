@@ -14,7 +14,7 @@ const (
 	editorPluginsSection = "[editor_plugins]"
 )
 
-// Enabled reports whether project.godot enables the godot-cli editor plugin.
+// Enabled reports whether project.godot enables the godot-mcp editor plugin.
 func Enabled(projectRoot string) (bool, error) {
 	data, err := os.ReadFile(filepath.Join(projectRoot, projectFileName))
 	if err != nil {
@@ -29,7 +29,7 @@ func Enabled(projectRoot string) (bool, error) {
 	return enabled, nil
 }
 
-// Enable adds the godot-cli plugin to project.godot's enabled editor plugins.
+// Enable adds the godot-mcp plugin to project.godot's enabled editor plugins.
 // It reports whether the project file changed.
 func Enable(projectRoot string) (bool, error) {
 	path := filepath.Join(projectRoot, projectFileName)

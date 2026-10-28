@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/core"
-	"github.com/davidherring123/godot-cli/internal/protocol/artifact"
+	"github.com/davidherring123/godot-mcp/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/protocol/artifact"
 	"github.com/invopop/jsonschema"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -177,6 +177,42 @@ func TestRuntimeStopAdvertisesIdempotentAnnotations(t *testing.T) {
 
 	if start.Annotations.IdempotentHint {
 		t.Fatal("runtime_start should not advertise idempotentHint=true")
+	}
+}
+
+func TestRuntimeStartWithoutEditorIsActionable(t *testing.T) {
+	root := t.TempDir()
+
+	if err := os.WriteFile(
+		filepath.Join(root, "project.godot"),
+		[]byte("[application]\nrun/main_scene=\"res://main.tscn\"\n"),
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	session := connectMCP(t, root, []core.ActionDefinition{core.RuntimeStart})
+
+	result, err := session.CallTool(context.Background(), &mcpgo.CallToolParams{
+		Name:      "runtime_start",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatalf("calling runtime_start: %v", err)
+	}
+
+	if !result.IsError {
+		t.Fatal("runtime_start without an editor returned success")
+	}
+
+	text := mcpText(result)
+
+	if !strings.Contains(text, `"code":"failed_precondition"`) {
+		t.Fatalf("error result = %s; want failed_precondition", text)
+	}
+
+	if !strings.Contains(text, "running Godot editor") {
+		t.Fatalf("error result = %s; want an editor recovery hint", text)
 	}
 }
 

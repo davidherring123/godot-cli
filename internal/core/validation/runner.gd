@@ -1,6 +1,6 @@
 extends SceneTree
 
-const REPORT_PREFIX := "GODOT_CLI_VALIDATE:"
+const REPORT_PREFIX := "GODOT_MCP_VALIDATE:"
 const RUN_FRAMES := 3
 
 var scene_path := ""

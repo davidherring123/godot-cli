@@ -2,8 +2,8 @@
 package node
 
 import (
-	"github.com/davidherring123/godot-cli/internal/port/invocation"
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/internal/port/invocation"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
 )
 
 const AddName = "node.add"

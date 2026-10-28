@@ -1,4 +1,4 @@
-# Contributing to godot-cli
+# Contributing to godot-mcp
 
 Contributions, bug reports, and feature suggestions are welcome.
 

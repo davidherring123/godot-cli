@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
-	"github.com/davidherring123/godot-cli/internal/addon"
+	"github.com/davidherring123/godot-mcp/internal/adapter/bridge"
+	"github.com/davidherring123/godot-mcp/internal/addon"
 )
 
 const (
@@ -85,7 +85,7 @@ func Start(outputLogf func(format string, args ...any)) (*Session, error) {
 		return nil, err
 	}
 
-	tempDir, err := os.MkdirTemp("", "godot-cli-tests-")
+	tempDir, err := os.MkdirTemp("", "godot-mcp-tests-")
 	if err != nil {
 		return nil, fmt.Errorf("creating temporary directory: %w", err)
 	}
@@ -110,7 +110,7 @@ func Start(outputLogf func(format string, args ...any)) (*Session, error) {
 		return nil, fmt.Errorf("installing addon: %w", err)
 	}
 
-	logf("Installed current godot-cli addon")
+	logf("Installed current godot-mcp addon")
 
 	if err := session.startEditor(godotPath, mode); err != nil {
 		_ = session.Close()

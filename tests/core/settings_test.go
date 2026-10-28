@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/davidherring123/godot-cli/internal/adapter/bridge"
-	"github.com/davidherring123/godot-cli/internal/core/project/settings"
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
-	"github.com/davidherring123/godot-cli/tests/harness"
+	"github.com/davidherring123/godot-mcp/internal/adapter/bridge"
+	"github.com/davidherring123/godot-mcp/internal/core/project/settings"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/tests/harness"
 )
 
 const (
@@ -53,7 +53,7 @@ func TestProjectListUnknownPrefixIsEmpty(t *testing.T) {
 	session := requireSuite(t)
 
 	result := listProjectSettings(t, session, settings.ListParams{
-		Prefix: "godot_cli/does_not_exist",
+		Prefix: "godot_mcp/does_not_exist",
 	})
 
 	if len(result.Settings) != 0 {
@@ -92,7 +92,7 @@ func TestProjectGetMissingReturnsNotFound(t *testing.T) {
 	](
 		session.Client,
 		settings.GetName,
-		settings.GetParams{Setting: "godot_cli/missing"},
+		settings.GetParams{Setting: "godot_mcp/missing"},
 	)
 
 	assertAPIErrorCode(t, err, apierr.CodeNotFound)
@@ -201,7 +201,7 @@ func TestProjectSetUnknownReturnsNotFound(t *testing.T) {
 		session.Client,
 		settings.SetName,
 		settings.SetParams{
-			Setting: "godot_cli/missing",
+			Setting: "godot_mcp/missing",
 			Value:   json.RawMessage(`1`),
 		},
 	)

@@ -120,5 +120,5 @@ func (tracer *callTracer) report(err error) {
 // reportLocked writes a diagnostic to the configured trace error writer while
 // the tracer mutex is held, keeping diagnostics from interleaving.
 func (tracer *callTracer) reportLocked(err error) {
-	_, _ = fmt.Fprintf(tracer.errorWriter, "godot-cli mcp: trace disabled: %v\n", err)
+	_, _ = fmt.Fprintf(tracer.errorWriter, "godot-mcp-host: trace disabled: %v\n", err)
 }

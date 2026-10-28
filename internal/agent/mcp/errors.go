@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/davidherring123/godot-cli/internal/core"
-	"github.com/davidherring123/godot-cli/internal/core/project/runtime"
-	"github.com/davidherring123/godot-cli/internal/port/editorinstance"
-	"github.com/davidherring123/godot-cli/internal/port/godot"
-	"github.com/davidherring123/godot-cli/internal/protocol/apierr"
+	"github.com/davidherring123/godot-mcp/internal/core"
+	"github.com/davidherring123/godot-mcp/internal/core/project/runtime"
+	"github.com/davidherring123/godot-mcp/internal/port/editorinstance"
+	"github.com/davidherring123/godot-mcp/internal/protocol/apierr"
 	mcpgo "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -41,8 +40,7 @@ func errorResult(err error) *mcpgo.CallToolResult {
 		payload.Code = string(apierr.CodeInvalidArgument)
 		payload.Message = argumentError.Error()
 	case errors.Is(err, editorinstance.ErrNoEditor),
-		errors.Is(err, editorinstance.ErrMultipleEditors),
-		errors.Is(err, godot.ErrNotFound):
+		errors.Is(err, editorinstance.ErrMultipleEditors):
 		payload.Code = string(apierr.CodeFailedPrecondition)
 	}
 

@@ -1,7 +1,10 @@
-BINARY := godot-cli
-CMD := ./cmd/godot-cli
+BINARY := godot-mcp-host
+CMD := ./cmd/godot-mcp-host
 BIN_DIR := ./bin
+DIST_DIR := ./dist
 INSTALL_DIR := $(HOME)/.local/bin
+
+VERSION ?= dev
 
 TEST_PACKAGES ?= ./internal/... ./tests/...
 TEST_ARGS ?=
@@ -20,13 +23,13 @@ BENCHMARK_ARGS ?=
 ifeq ($(OS),Windows_NT)
 SHELL := powershell.exe
 .SHELLFLAGS := -NoProfile -NonInteractive -Command
-BINARY := godot-cli.exe
+BINARY := godot-mcp-host.exe
 INSTALL_DIR := $(USERPROFILE)/.local/bin
 endif
 
 export GOBIN = $(INSTALL_DIR)
 
-.PHONY: build install run format format-check vet lint test check clean benchmark benchmark-smoke
+.PHONY: build install run format format-check vet lint test check clean release-addon benchmark benchmark-smoke
 
 build:
 ifeq ($(OS),Windows_NT)
@@ -35,6 +38,9 @@ else
 	mkdir -p $(BIN_DIR)
 endif
 	go build -o "$(BIN_DIR)/$(BINARY)" $(CMD)
+
+release-addon:
+	go run ./cmd/package-addon --version "$(VERSION)" --out "$(DIST_DIR)"
 
 install:
 	go install $(CMD)
@@ -77,7 +83,7 @@ benchmark-smoke:
 
 clean:
 ifeq ($(OS),Windows_NT)
-	@$$target = [IO.Path]::GetFullPath('$(BIN_DIR)'); $$root = [IO.Path]::GetFullPath('.').TrimEnd('\') + '\'; if (-not $$target.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase)) { throw 'BIN_DIR must be inside the workspace' }; if (Test-Path -LiteralPath $$target) { Remove-Item -LiteralPath $$target -Recurse -Force -ErrorAction Stop }
+	@$$root = [IO.Path]::GetFullPath('.').TrimEnd('\') + '\'; foreach ($$path in @('$(BIN_DIR)', '$(DIST_DIR)')) { $$target = [IO.Path]::GetFullPath($$path); if (-not $$target.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase)) { throw "clean target must be inside the workspace: $$path" }; if (Test-Path -LiteralPath $$target) { Remove-Item -LiteralPath $$target -Recurse -Force -ErrorAction Stop } }
 else
-	rm -rf $(BIN_DIR)
+	rm -rf $(BIN_DIR) $(DIST_DIR)
 endif

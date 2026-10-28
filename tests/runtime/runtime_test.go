@@ -11,11 +11,10 @@ import (
 	"testing"
 	"time"
 
-	gdruntime "github.com/davidherring123/godot-cli/internal/core/project/runtime"
-	"github.com/davidherring123/godot-cli/internal/port/godot"
+	gdruntime "github.com/davidherring123/godot-mcp/internal/core/project/runtime"
 )
 
-const runtimeHelperEnv = "GODOT_CLI_RUNTIME_TEST_HELPER"
+const runtimeHelperEnv = "GODOT_MCP_RUNTIME_TEST_HELPER"
 
 // TestRuntimeHelperProcess is a long-lived child used by lifecycle tests that
 // need a real PID without launching Godot.
@@ -26,6 +25,105 @@ func TestRuntimeHelperProcess(_ *testing.T) {
 
 	time.Sleep(30 * time.Second)
 	os.Exit(0)
+}
+
+func TestStartUsesExecutableReportedByEditor(t *testing.T) {
+	if os.PathSeparator == '\\' {
+		t.Skip("shell fixture is Unix-only")
+	}
+
+	root := newProject(t, false)
+	marker := filepath.Join(t.TempDir(), "started")
+	executable := filepath.Join(t.TempDir(), "fake-godot")
+	script := "#!/bin/sh\n: > \"" + marker + "\"\nexit 1\n"
+
+	if err := os.WriteFile(executable, []byte(script), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	registerEditor(t, root, executable)
+	_, _ = gdruntime.Start(root, gdruntime.StartParams{TimeoutSeconds: 1})
+
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("runtime did not use the editor-reported executable: %v", err)
+	}
+}
+
+func TestStartRequiresRegisteredEditor(t *testing.T) {
+	root := newProject(t, false)
+
+	_, err := gdruntime.Start(root, gdruntime.StartParams{TimeoutSeconds: 1})
+
+	assertRuntimeError(t, err, "failed_precondition")
+	assertErrorContains(t, err, "running Godot editor")
+	assertErrorContains(t, err, "godot-mcp addon")
+}
+
+func TestStartRejectsEditorWithoutExecutable(t *testing.T) {
+	root := newProject(t, false)
+	registerEditor(t, root, "")
+
+	_, err := gdruntime.Start(root, gdruntime.StartParams{TimeoutSeconds: 1})
+
+	assertRuntimeError(t, err, "failed_precondition")
+	assertErrorContains(t, err, "did not report an executable path")
+	assertErrorContains(t, err, "restart Godot")
+}
+
+func TestStartRejectsStaleEditorExecutable(t *testing.T) {
+	root := newProject(t, false)
+	missing := filepath.Join(t.TempDir(), "removed-godot")
+	registerEditor(t, root, missing)
+
+	_, err := gdruntime.Start(root, gdruntime.StartParams{TimeoutSeconds: 1})
+
+	assertRuntimeError(t, err, "failed_precondition")
+	assertErrorContains(t, err, "unavailable")
+	assertErrorContains(t, err, missing)
+	assertErrorContains(t, err, "restart Godot")
+}
+
+func TestStartRejectsNonExecutableEditorBinary(t *testing.T) {
+	if os.PathSeparator == '\\' {
+		t.Skip("executable permission bits are Unix-only")
+	}
+
+	root := newProject(t, false)
+	executable := filepath.Join(t.TempDir(), "not-executable")
+
+	if err := os.WriteFile(executable, []byte("not executable"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	registerEditor(t, root, executable)
+
+	_, err := gdruntime.Start(root, gdruntime.StartParams{TimeoutSeconds: 1})
+
+	assertRuntimeError(t, err, "failed_precondition")
+	assertErrorContains(t, err, "not executable")
+	assertErrorContains(t, err, "restart Godot")
+}
+
+func assertRuntimeError(t *testing.T, err error, code string) {
+	t.Helper()
+
+	var runtimeError *gdruntime.Error
+
+	if !errors.As(err, &runtimeError) {
+		t.Fatalf("error = %v; want a runtime error", err)
+	}
+
+	if runtimeError.Code != code {
+		t.Fatalf("error code = %q; want %q (%s)", runtimeError.Code, code, runtimeError.Message)
+	}
+}
+
+func assertErrorContains(t *testing.T, err error, fragment string) {
+	t.Helper()
+
+	if err == nil || !strings.Contains(err.Error(), fragment) {
+		t.Fatalf("error = %v; want it to contain %q", err, fragment)
+	}
 }
 
 func TestStatusWithoutRuntime(t *testing.T) {
@@ -62,9 +160,10 @@ func TestSessionPathTraversalRejected(t *testing.T) {
 }
 
 func TestHeadlessLifecycleAndErrors(t *testing.T) {
-	requireGodot(t)
+	executable := requireGodot(t)
 
 	root := newProject(t, true)
+	registerEditor(t, root, executable)
 	start := startHeadlessRuntime(t, root)
 
 	t.Cleanup(func() {
@@ -111,7 +210,7 @@ func assertStarted(t *testing.T, start gdruntime.StatusResult) {
 		t.Fatalf("start = %+v; want session, pid, and scene", start)
 	}
 
-	if !strings.HasPrefix(start.ArtifactsDir, "res://.godot/godot-cli/runtime/") {
+	if !strings.HasPrefix(start.ArtifactsDir, "res://.godot/godot-mcp/runtime/") {
 		t.Fatalf("artifacts directory = %q; want a runtime res:// path", start.ArtifactsDir)
 	}
 
@@ -219,9 +318,10 @@ func assertAlreadyStopped(t *testing.T, root string, session string) {
 }
 
 func TestStartReportsMissingScene(t *testing.T) {
-	requireGodot(t)
+	executable := requireGodot(t)
 
 	root := newProject(t, false)
+	registerEditor(t, root, executable)
 
 	_, err := gdruntime.Start(root, gdruntime.StartParams{
 		Scene:          "res://missing.tscn",
@@ -394,7 +494,7 @@ func writeRuntimeFixture(
 	directory := filepath.Join(
 		root,
 		".godot",
-		"godot-cli",
+		"godot-mcp",
 		"runtime",
 		"sessions",
 		session,
@@ -471,9 +571,10 @@ func TestWindowedCaptureProducesImage(t *testing.T) {
 		t.Skip("set GODOT_MODE=graphical to exercise windowed screenshot capture")
 	}
 
-	requireGodot(t)
+	executable := requireGodot(t)
 
 	root := newProject(t, false)
+	registerEditor(t, root, executable)
 
 	start, err := gdruntime.Start(root, gdruntime.StartParams{TimeoutSeconds: 30})
 	if err != nil {
@@ -509,7 +610,7 @@ func TestWindowedCaptureProducesImage(t *testing.T) {
 		t.Fatal("capture did not provide PNG image data")
 	}
 
-	if !strings.HasPrefix(capture.Artifact, "res://.godot/godot-cli/runtime/") {
+	if !strings.HasPrefix(capture.Artifact, "res://.godot/godot-mcp/runtime/") {
 		t.Fatalf("artifact = %q; want a runtime res:// path", capture.Artifact)
 	}
 
@@ -552,11 +653,50 @@ func waitForRuntimeError(t *testing.T, root string, session string) gdruntime.St
 	}
 }
 
-func requireGodot(t *testing.T) {
+func requireGodot(t *testing.T) string {
 	t.Helper()
 
-	if _, err := godot.FindExecutable(); err != nil {
-		t.Skip(err)
+	for _, candidate := range []string{os.Getenv("GODOT_BIN"), "godot", "godot4"} {
+		if candidate == "" {
+			continue
+		}
+
+		path, err := exec.LookPath(candidate)
+		if err == nil {
+			return path
+		}
+	}
+
+	t.Skip("godot executable not found; set GODOT_BIN to run runtime tests")
+
+	return ""
+}
+
+func registerEditor(t *testing.T, root string, executable string) {
+	t.Helper()
+
+	instances := filepath.Join(root, ".godot", "godot-mcp", "instances")
+	if err := os.MkdirAll(instances, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	registration, err := json.Marshal(map[string]any{
+		"pid":        os.Getpid(),
+		"port":       49152,
+		"project":    root,
+		"version":    "test",
+		"executable": executable,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(instances, "editor.json"),
+		registration,
+		0644,
+	); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -568,7 +708,7 @@ func newProject(t *testing.T, sceneError bool) string {
 	project := `config_version=5
 
 [application]
-config/name="godot-cli runtime test"
+config/name="godot-mcp runtime test"
 run/main_scene="res://main.tscn"
 
 [rendering]
@@ -594,7 +734,7 @@ func _ready() -> void:
 		script = `extends Node2D
 
 func _ready() -> void:
-	push_error("godot-cli runtime test error")
+	push_error("godot-mcp runtime test error")
 `
 	}
 
