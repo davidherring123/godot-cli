@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -52,7 +53,7 @@ func TestInstallAllMergesExistingConfiguration(t *testing.T) {
 		"[mcp_servers.other]",
 		`command = "other-server"`,
 		"[mcp_servers.godot]",
-		`command = "` + hostPath + `"`,
+		"command = " + strconv.Quote(hostPath),
 	} {
 		if !strings.Contains(codexContent, fragment) {
 			t.Errorf("codex config is missing %q:\n%s", fragment, codexContent)
@@ -278,7 +279,7 @@ CODEX_TEST = "1"
 		!strings.Contains(codexContent, `CODEX_TEST = "1"`) {
 		t.Errorf("Codex server options were not preserved:\n%s", codexContent)
 	}
-	if !strings.Contains(codexContent, `command = "`+hostPath+`"`) {
+	if !strings.Contains(codexContent, "command = "+strconv.Quote(hostPath)) {
 		t.Errorf("Codex command was not installed:\n%s", codexContent)
 	}
 }
