@@ -1,5 +1,10 @@
 # godot-mcp
 
+[![CI](https://github.com/davidherring123/godot-mcp/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/davidherring123/godot-mcp/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/davidherring123/godot-mcp?include_prereleases)](https://github.com/davidherring123/godot-mcp/releases)
+[![Godot 4](https://img.shields.io/badge/Godot-4-478CBF?logo=godotengine&logoColor=white)](https://godotengine.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Connect your AI coding assistant to the Godot 4 editor through the Model Context
 Protocol (MCP). Inspect and edit scenes, manage resources, and run your game—all
 with access to the live project, including unsaved scene changes.
@@ -18,15 +23,13 @@ Requires **Godot 4** on macOS (arm64/x86_64), Linux (x86_64/arm64), or Windows
 ### GodotEnv (recommended)
 
 Install [GodotEnv](https://github.com/chickensoft-games/GodotEnv#-installation),
-then add this entry to your project's `addons.json` or `addons.jsonc`. Replace
-both `<version>` placeholders with the release tag from
-[Releases](https://github.com/davidherring123/godot-mcp/releases).
+then add this entry to your project's `addons.json` or `addons.jsonc`:
 
 ```json
 {
   "addons": {
     "godot_mcp": {
-      "url": "https://github.com/davidherring123/godot-mcp/releases/download/<version>/godot-mcp-addon-<version>.zip",
+      "url": "https://github.com/davidherring123/godot-mcp/releases/download/v0.1.0/godot-mcp-addon-v0.1.0.zip",
       "source": "zip",
       "subfolder": "addons/godot_mcp"
     }
@@ -44,8 +47,7 @@ To update, change the version in the URL and run the command again.
 
 ### Manual installation
 
-1. Download `godot-mcp-addon-<version>.zip` from
-   [Releases](https://github.com/davidherring123/godot-mcp/releases).
+1. Download [godot-mcp-addon-v0.1.0.zip](https://github.com/davidherring123/godot-mcp/releases/download/v0.1.0/godot-mcp-addon-v0.1.0.zip).
 2. Extract the archive into your project root. The plugin should be at
    `addons/godot_mcp/plugin.cfg`.
 

@@ -8,6 +8,10 @@ configure AI clients from the editor's **Godot MCP** panel; there is no public
 
 ## Build
 
+The release version is supplied through `VERSION`. Packaging stamps it into
+both the archived `plugin.cfg` and the host binary; the source plugin version
+does not need a manual bump.
+
 ```sh
 make release-addon VERSION=v0.1.0
 ```
